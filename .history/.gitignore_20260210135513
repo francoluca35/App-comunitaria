@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+out
+.env
+.env.local
+.env.production
+coverage
+node_modules
+node_modules
