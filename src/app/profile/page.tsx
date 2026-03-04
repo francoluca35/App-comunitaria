@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useApp } from '@/app/providers'
@@ -14,20 +15,17 @@ import { toast } from 'sonner'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { currentUser, logout } = useApp()
+  const { currentUser, authLoading, logout } = useApp()
   const { theme, setTheme } = useTheme()
 
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.replace('/login')
+    }
+  }, [authLoading, currentUser, router])
+
   if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Inicia sesión para ver tu perfil</p>
-            <Button onClick={() => router.push('/login')}>Iniciar Sesión</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return null
   }
 
   const handleLogout = () => {
