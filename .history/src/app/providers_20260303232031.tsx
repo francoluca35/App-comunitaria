@@ -312,63 +312,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [supabase])
 
   const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    const e = email?.trim().toLowerCase() ?? ''
+    const p = password ?? ''
+    if (!e || !p) return { ok: false, error: 'Email y contraseña son obligatorios' }
+    if (p.length < 6) return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres' }
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: e, password: p }),
       })
-      if (error) {
-        const status = (error as { status?: number }).status
-        const msg = (error.message ?? '').toLowerCase()
-        if (status === 500) {
-          return { ok: false, error: 'Error del servidor. Intentá de nuevo en unos minutos o creá el usuario desde la app (Registrarse).' }
-        }
-        if (status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('too many')) {
-          return { ok: false, error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' }
-        }
-        if (status === 400 || msg.includes('invalid login') || msg.includes('invalid')) {
-          return { ok: false, error: 'Email o contraseña incorrectos' }
-        }
-        if (msg.includes('email not confirmed') || msg.includes('confirm')) {
-          return { ok: false, error: 'Confirmá tu email antes de iniciar sesión (revisá la bandeja de entrada)' }
-        }
-        return { ok: false, error: error.message || 'Error al iniciar sesión' }
-      }
-      if (!data?.user) return { ok: false, error: 'Error al iniciar sesión' }
+      const data = await res.json().catch(() => ({ ok: false, error: 'Error de respuesta' }))
+      if (!data.ok) return { ok: false, error: data.error || 'Email o contraseña incorrectos' }
 
-      let { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, role, status')
-        .eq('id', data.user.id)
-        .single()
-
-      if (!profile) {
-        await supabase.from('profiles').upsert(
-          {
-            id: data.user.id,
-            email: data.user.email ?? '',
-            name: data.user.user_metadata?.name ?? data.user.email ?? null,
-            role: 'viewer',
-            status: 'active',
-          },
-          { onConflict: 'id' }
-        )
-        const res = await supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { data: profile } = await supabase
           .from('profiles')
           .select('id, email, name, avatar_url, role, status')
-          .eq('id', data.user.id)
+          .eq('id', session.user.id)
           .single()
-        profile = res.data
+        if (profile && profile.status !== 'blocked') setCurrentUser(profileToUser(profile))
       }
-
-      if (profile?.status === 'blocked') {
-        await supabase.auth.signOut()
-        return { ok: false, error: 'Usuario bloqueado' }
-      }
-      if (profile) setCurrentUser(profileToUser(profile))
       return { ok: true }
-    } catch (e) {
-      return { ok: false, error: 'Error de conexión. Revisá tu internet e intentá de nuevo.' }
+    } catch {
+      return { ok: false, error: 'Error de conexión. Revisá tu internet.' }
     }
   }
 
@@ -377,9 +346,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return !error
   }
 
-  const logout = () => {
-    supabase.auth.signOut()
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // ignore
+    }
     setCurrentUser(null)
+    supabase.auth.signOut()
   }
 
   const register = async (data: {
@@ -391,60 +365,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
     email: string
     password: string
   }): Promise<{ ok: boolean; error?: string }> => {
-    const email = data.email.trim().toLowerCase()
+    const email = (data.email ?? '').trim().toLowerCase()
+    const password = data.password ?? ''
+    if (!email || !password) return { ok: false, error: 'Email y contraseña son obligatorios' }
+    if (password.length < 6) return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres' }
+
     try {
-      const { data: signUpData, error } = await supabase.auth.signUp({
-        email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.name.trim() || undefined,
-            birth_date: data.birthDate || undefined,
-            phone: data.phone.trim() || undefined,
-            province: data.province.trim() || undefined,
-            locality: data.locality.trim() || undefined,
-          },
-        },
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          name: (data.name ?? '').trim(),
+          birthDate: data.birthDate ?? '',
+          phone: (data.phone ?? '').trim(),
+          province: (data.province ?? '').trim(),
+          locality: (data.locality ?? '').trim(),
+        }),
       })
+      const json = await res.json().catch(() => ({ ok: false, error: 'Error de respuesta' }))
+      if (!json.ok) return { ok: false, error: json.error || 'Error al crear la cuenta' }
 
-      if (error) {
-        const status = (error as { status?: number }).status
-        const msg = (error.message ?? '').toLowerCase()
-        if (status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('too many')) {
-          return { ok: false, error: 'Demasiados intentos de registro. Esperá unos minutos (o 1 hora para el mismo email) e intentá de nuevo.' }
-        }
-        if (status === 500) {
-          return { ok: false, error: 'Error del servidor. Intentá de nuevo en unos minutos.' }
-        }
-        if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('already been')) {
-          return { ok: false, error: 'Ese email ya está registrado. Iniciá sesión o usá otro email.' }
-        }
-        return { ok: false, error: error.message || 'Error al crear la cuenta' }
+      await new Promise((r) => setTimeout(r, 500))
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, email, name, avatar_url, role, status')
+          .eq('id', session.user.id)
+          .single()
+        const userForContext = profile && profile.status !== 'blocked'
+          ? profileToUser(profile)
+          : {
+              id: session.user.id,
+              email: session.user.email ?? '',
+              name: ((data.name ?? '').trim() || session.user.email) ?? null,
+              isAdmin: false,
+              isBlocked: false,
+              avatar: undefined as string | undefined,
+            }
+        setCurrentUser(userForContext)
       }
-
-      if (!signUpData?.user) return { ok: false, error: 'Error al crear la cuenta' }
-
-      await new Promise((r) => setTimeout(r, 600))
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, role, status')
-        .eq('id', signUpData.user.id)
-        .single()
-
-      const userForContext = profile && profile.status !== 'blocked'
-        ? profileToUser(profile)
-        : {
-            id: signUpData.user.id,
-            email: signUpData.user.email!,
-            name: data.name.trim() || null,
-            isAdmin: false,
-            isBlocked: false,
-            avatar: undefined as string | undefined,
-          }
-      setCurrentUser(userForContext)
       return { ok: true }
     } catch {
-      return { ok: false, error: 'Error de conexión. Revisá tu internet e intentá de nuevo.' }
+      return { ok: false, error: 'Error de conexión. Revisá tu internet.' }
     }
   }
 

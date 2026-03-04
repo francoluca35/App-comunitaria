@@ -41,9 +41,23 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    const email = loginEmail?.trim() ?? ''
+    const password = loginPassword ?? ''
+    if (!email) {
+      toast.error('Ingresá tu email')
+      return
+    }
+    if (!password) {
+      toast.error('Ingresá tu contraseña')
+      return
+    }
+    if (password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
     setLoading(true)
     try {
-      const result = await login(loginEmail, loginPassword)
+      const result = await login(email, password)
       if (result.ok) {
         toast.success('¡Bienvenido de vuelta!')
         router.push('/')
