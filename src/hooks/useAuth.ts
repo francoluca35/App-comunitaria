@@ -3,8 +3,9 @@
 import { useApp } from '@/app/providers'
 
 /**
- * Hook de autenticación. Expone solo lo necesario para login/register/logout.
- * Debe usarse dentro de <Providers> (AppProvider).
+ * Hook de autenticación. El perfil del usuario se obtiene vía API (/api/auth/me)
+ * en el servidor para evitar llamadas directas a Supabase desde el cliente y
+ * reducir errores de lock (AbortError). Debe usarse dentro de <Providers> (AppProvider).
  */
 export function useAuth() {
   const app = useApp()
