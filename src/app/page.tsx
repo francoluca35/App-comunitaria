@@ -89,7 +89,7 @@ export default function HomePage() {
       await refreshUser()
       toast.success('Foto de perfil actualizada')
       setAvatarDismissed(true)
-      fileInputRef.current.value = ''
+      if (fileInputRef.current) fileInputRef.current.value = ''
     } catch {
       setUploadError('Error de conexión. Intentá de nuevo.')
     } finally {
