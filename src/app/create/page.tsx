@@ -3,15 +3,20 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, Category } from '@/app/providers'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
 import { Textarea } from '@/app/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select'
 import { Card, CardContent } from '@/app/components/ui/card'
-import { BottomNav } from '@/components/BottomNav'
-import { ArrowLeft, Upload, X, AlertCircle } from 'lucide-react'
+import { DashboardLayout } from '@/components/DashboardLayout'
+import { ArrowLeft, AlertCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
+
+const BUCKET = 'publicaciones'
+const MAX_IMAGES = 5
+const MAX_FILE_MB = 5
 
 const CATEGORIES: { value: Category; label: string }[] = [
   { value: 'mascotas', label: 'Mascotas' },
@@ -28,32 +33,63 @@ export default function CreatePostPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<Category>('noticias')
-  const [images, setImages] = useState<string[]>([])
   const [whatsappNumber, setWhatsappNumber] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [sending, setSending] = useState(false)
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files) return
-
-    if (images.length + files.length > config.maxImagesPerPost) {
-      toast.error(`Máximo ${config.maxImagesPerPost} imágenes por publicación`)
+    if (!files?.length) return
+    const list = Array.from(files)
+    if (imageFiles.length + list.length > MAX_IMAGES) {
+      toast.error(`Máximo ${MAX_IMAGES} imágenes`)
       return
     }
-
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImages((prev) => [...prev, reader.result as string])
+    const valid: File[] = []
+    for (const f of list) {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(`${f.name} supera ${MAX_FILE_MB} MB`)
+        continue
       }
-      reader.readAsDataURL(file)
-    })
+      if (!f.type.startsWith('image/')) {
+        toast.error(`${f.name} no es una imagen`)
+        continue
+      }
+      valid.push(f)
+    }
+    setImageFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES))
   }
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index))
+    setImageFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadImages = async (): Promise<string[]> => {
+    if (!currentUser || imageFiles.length === 0) return []
+    const supabase = createClient()
+    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!baseUrl) {
+      toast.error('Configuración de Storage no disponible')
+      return []
+    }
+    const urls: string[] = []
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i]
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
+      if (error) {
+        toast.error(`Error al subir ${file.name}: ${error.message}`)
+        throw error
+      }
+      // URL pública explícita (el bucket "publicaciones" debe estar en Public en Supabase Dashboard)
+      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
+      urls.push(publicUrl)
+    }
+    return urls
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!currentUser) {
@@ -63,20 +99,29 @@ export default function CreatePostPage() {
     }
 
     if (!title.trim() || !description.trim()) {
-      toast.error('Completa todos los campos requeridos')
+      toast.error('Completa título y descripción')
       return
     }
 
-    addPost({
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      images,
-      whatsappNumber: whatsappNumber.trim() || undefined,
-    })
-
-    toast.success('Publicación enviada! Será revisada por un administrador.')
-    router.push('/')
+    setSending(true)
+    try {
+      const imageUrls = imageFiles.length > 0 ? await uploadImages() : []
+      const result = await addPost({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        images: imageUrls,
+        whatsappNumber: whatsappNumber.trim() || undefined,
+      })
+      if (!result.ok) {
+        toast.error(result.error ?? 'Error al enviar')
+        return
+      }
+      toast.success('Publicación enviada. Será revisada por un administrador.')
+      router.push('/')
+    } finally {
+      setSending(false)
+    }
   }
 
   if (!currentUser) {
@@ -95,17 +140,14 @@ export default function CreatePostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
-      <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+    <DashboardLayout>
+      <div className="max-w-md mx-auto">
+        <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg">Nueva Publicación</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Nueva Publicación</h1>
         </div>
-      </div>
-
-      <div className="max-w-md mx-auto px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <CardContent className="p-4">
@@ -169,6 +211,38 @@ export default function CreatePostPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400">{description.length}/1000 caracteres</p>
           </div>
 
+          <div className="space-y-2">
+            <Label>Imágenes (opcional, máx. {MAX_IMAGES})</Label>
+            {imageFiles.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {imageFiles.map((file, index) => (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center"
+                      aria-label="Quitar"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {imageFiles.length < MAX_IMAGES && (
+              <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm text-slate-600 dark:text-gray-400">Agregar fotos (máx. {MAX_FILE_MB} MB c/u)</p>
+              </label>
+            )}
+          </div>
+
           {config.whatsappEnabled && (
             <div className="space-y-2">
               <Label htmlFor="whatsapp">Número de WhatsApp (opcional)</Label>
@@ -180,52 +254,16 @@ export default function CreatePostPage() {
                 onChange={(e) => setWhatsappNumber(e.target.value)}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Si proporcionas tu WhatsApp, otros usuarios podrán contactarte directamente
+                Si lo agregás, otros podrán contactarte por WhatsApp
               </p>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Imágenes (opcional, máx. {config.maxImagesPerPost})</Label>
-
-            {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                {images.map((image, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <img src={image} alt={`Preview ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
-                      onClick={() => removeImage(index)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {images.length < config.maxImagesPerPost && (
-              <label className="block">
-                <input type="file" accept="image/*" multiple onChange={handleImageUpload} className="hidden" />
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Haz clic para subir imágenes</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">PNG, JPG hasta 5MB</p>
-                </div>
-              </label>
-            )}
-          </div>
-
-          <Button type="submit" className="w-full" size="lg">
-            Enviar Publicación
+          <Button type="submit" className="w-full" size="lg" disabled={sending}>
+            {sending ? 'Enviando…' : 'Enviar publicación'}
           </Button>
         </form>
       </div>
-
-      <BottomNav />
-    </div>
+    </DashboardLayout>
   )
 }

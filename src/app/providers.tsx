@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, ReactNo
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { createClient } from '@/lib/supabase/client'
+import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
 
 export type Category = 'mascotas' | 'alertas' | 'avisos' | 'objetos' | 'noticias'
 
@@ -16,6 +17,26 @@ export interface User {
   isAdmin: boolean
   isBlocked: boolean
   avatar?: string
+  isModerator?: boolean
+  suspendedUntil?: string | null
+  phone?: string
+}
+
+/** Perfil completo para admin (sin contraseña). */
+export interface AdminProfile {
+  id: string
+  email: string
+  name: string | null
+  avatar_url: string | null
+  role: string
+  status: string
+  birth_date: string | null
+  phone: string | null
+  province: string | null
+  locality: string | null
+  created_at: string
+  updated_at: string
+  suspended_until: string | null
 }
 
 export interface Post {
@@ -50,12 +71,24 @@ export interface AppConfig {
   termsOfService: string
 }
 
+/** Notificación de registro para admin (todos los datos excepto contraseña) */
+export interface RegistrationNotification {
+  id: string
+  email: string
+  name: string
+  birthDate: string
+  phone: string
+  province: string
+  locality: string
+  createdAt: Date
+}
+
 interface AppContextType {
   currentUser: User | null
   authLoading: boolean
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
   loginWithGoogle: () => Promise<boolean>
-  logout: () => void
+  logout: () => void | Promise<void>
   register: (data: {
     name: string
     birthDate: string
@@ -65,11 +98,14 @@ interface AppContextType {
     email: string
     password: string
   }) => Promise<{ ok: boolean; error?: string }>
+  /** Vuelve a cargar el perfil desde la API (p. ej. tras subir avatar). */
+  refreshUser: () => Promise<void>
 
   posts: Post[]
+  postsLoading: boolean
   addPost: (
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
-  ) => void
+  ) => Promise<{ ok: boolean; error?: string }>
   updatePostStatus: (postId: string, status: PostStatus, rejectedImages?: number[]) => void
   deletePost: (postId: string) => void
 
@@ -78,6 +114,19 @@ interface AppContextType {
 
   users: User[]
   toggleBlockUser: (userId: string) => void
+
+  /** Lista completa de perfiles para admin (cargada al ser admin). */
+  adminProfiles: AdminProfile[]
+  adminProfilesLoading: boolean
+  loadAdminProfiles: () => Promise<void>
+  updateUserRole: (userId: string, role: 'viewer' | 'moderator' | 'admin') => Promise<{ ok: boolean; error?: string }>
+  setUserSuspended: (userId: string, days: number | null) => Promise<{ ok: boolean; error?: string }>
+  blockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
+  unblockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
+  deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
+
+  /** Registros recientes para que el admin vea quién se registró (sin contraseña) */
+  recentRegistrations: RegistrationNotification[]
 
   config: AppConfig
   updateConfig: (newConfig: Partial<AppConfig>) => void
@@ -259,7 +308,16 @@ const DEFAULT_CONFIG: AppConfig = {
     'Al publicar en esta plataforma, aceptas que tu contenido será moderado antes de ser visible públicamente. Prohibido contenido ofensivo, falso o ilegal.',
 }
 
-function profileToUser(profile: { id: string; email: string; name: string | null; avatar_url: string | null; role: string; status: string }): User {
+function profileToUser(profile: {
+  id: string
+  email: string
+  name: string | null
+  avatar_url: string | null
+  role: string
+  status: string
+  suspended_until?: string | null
+  phone?: string | null
+}): User {
   return {
     id: profile.id,
     name: profile.name ?? profile.email,
@@ -267,119 +325,382 @@ function profileToUser(profile: { id: string; email: string; name: string | null
     isAdmin: profile.role === 'admin',
     isBlocked: profile.status === 'blocked',
     avatar: profile.avatar_url ?? undefined,
+    isModerator: profile.role === 'moderator',
+    suspendedUntil: profile.suspended_until ?? undefined,
+    phone: profile.phone ?? undefined,
   }
+}
+
+function adminProfileToUser(p: AdminProfile): User {
+  return {
+    id: p.id,
+    name: p.name ?? p.email,
+    email: p.email,
+    isAdmin: p.role === 'admin',
+    isBlocked: p.status === 'blocked',
+    avatar: p.avatar_url ?? undefined,
+    isModerator: p.role === 'moderator',
+    suspendedUntil: p.suspended_until ?? undefined,
+    phone: p.phone ?? undefined,
+  }
+}
+
+/** Fallback cuando la tabla profiles falla (ej. 500): arma User desde la sesión. El rol admin solo viene de profiles. */
+function userFromSession(user: { id: string; email?: string | null; user_metadata?: { name?: string } | null }): User {
+  const email = (user.email ?? '').trim().toLowerCase()
+  return {
+    id: user.id,
+    name: (user.user_metadata?.name ?? user.email ?? '').trim() || email || 'Usuario',
+    email: email ? email : (user.email ?? ''),
+    isAdmin: false,
+    isBlocked: false,
+    avatar: undefined,
+  }
+}
+
+/** Evita "Uncaught (in promise) AbortError" del cliente Supabase Auth (lock entre pestañas/requests). */
+function useSuppressSupabaseAuthAbortError() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = (event: PromiseRejectionEvent) => {
+      const r = event?.reason
+      const isAbort = r?.name === 'AbortError' || (typeof r?.message === 'string' && r.message.includes('Lock broken'))
+      if (isAbort) event.preventDefault()
+    }
+    window.addEventListener('unhandledrejection', handler)
+    return () => window.removeEventListener('unhandledrejection', handler)
+  }, [])
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [postsLoading, setPostsLoading] = useState(true)
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
+  const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
+  const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
+  const [recentRegistrations, setRecentRegistrations] = useState<RegistrationNotification[]>([])
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
 
   const supabase = useMemo(() => createClient(), [])
 
+  useSuppressSupabaseAuthAbortError()
+
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, email, name, avatar_url, role, status')
-          .eq('id', session.user.id)
-          .single()
-        if (profile && profile.status !== 'blocked') {
-          setCurrentUser(profileToUser(profile))
+    let cancelled = false
+    const loadSession = async () => {
+      try {
+        const { data: { session } } = await getSessionSafe(supabase)
+        if (cancelled) return
+        if (session?.user) {
+          const profile = await fetchProfileFromApi(session.access_token)
+          if (cancelled) return
+          if (profile && profile.status !== 'blocked') {
+            setCurrentUser(profileToUser(profile))
+          } else {
+            setCurrentUser(userFromSession(session.user))
+          }
         }
+      } catch (e) {
+        console.error('Auth load error:', e)
+      } finally {
+        if (!cancelled) setAuthLoading(false)
       }
-      setAuthLoading(false)
+    }
+    loadSession().catch(() => {})
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void (async () => {
+        try {
+          if (!session?.user) {
+            setCurrentUser(null)
+            return
+          }
+          const profile = await fetchProfileFromApi(session.access_token)
+          if (profile && profile.status !== 'blocked') {
+            setCurrentUser(profileToUser(profile))
+          } else {
+            setCurrentUser(userFromSession(session.user))
+          }
+        } catch (e) {
+          if (e instanceof Error && e.name === 'AbortError') return
+          console.error('Auth state change error:', e)
+        }
+      })()
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        setCurrentUser(null)
-        return
-      }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, role, status')
-        .eq('id', session.user.id)
-        .single()
-      if (profile && profile.status !== 'blocked') {
-        setCurrentUser(profileToUser(profile))
-      }
-    })
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [supabase])
 
-  const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+  useEffect(() => {
+    let cancelled = false
+    const loadPosts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+          .order('created_at', { ascending: false })
+        if (cancelled) return
+        if (error) {
+          setPosts(MOCK_POSTS)
+          setPostsLoading(false)
+          return
+        }
+        const mapped: Post[] = (data ?? []).map((row: unknown) => {
+          const r = row as {
+            id: string
+            title: string
+            description: string
+            category: string
+            status: string
+            whatsapp_number: string | null
+            created_at: string
+            author_id: string
+            profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+            post_media?: { url: string; position: number }[] | null
+          }
+          const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+          const media = Array.isArray(r.post_media) ? r.post_media : []
+          const images = media.sort((a, b) => a.position - b.position).map((m) => m.url)
+          return {
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            category: r.category as Category,
+            images,
+            authorId: r.author_id,
+            authorName: profile?.name ?? r.author_id.slice(0, 8),
+            authorAvatar: profile?.avatar_url ?? undefined,
+            status: r.status as PostStatus,
+            createdAt: new Date(r.created_at),
+            whatsappNumber: r.whatsapp_number ?? undefined,
+          }
+        })
+        setPosts(mapped)
+      } catch {
+        if (!cancelled) setPosts(MOCK_POSTS)
+      } finally {
+        if (!cancelled) setPostsLoading(false)
+      }
+    }
+    loadPosts()
+    return () => { cancelled = true }
+  }, [supabase])
+
+  useEffect(() => {
+    if (!currentUser?.isAdmin) return
+    let cancelled = false
+    const load = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token || cancelled) return
+      try {
+        const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${session.access_token}` } })
+        if (!res.ok || cancelled) return
+        const data: AdminProfile[] = await res.json()
+        if (!cancelled) {
+          setAdminProfiles(data)
+          setUsers(data.map(adminProfileToUser))
+        }
+      } catch (e) {
+        if (!cancelled) console.error('loadAdminProfiles error:', e)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [supabase, currentUser?.id, currentUser?.isAdmin])
+
+  const loadAdminProfiles = async () => {
+    if (!currentUser?.isAdmin) return
+    setAdminProfilesLoading(true)
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      })
-      if (error) {
-        const status = (error as { status?: number }).status
-        const msg = (error.message ?? '').toLowerCase()
-        if (status === 500) {
-          return { ok: false, error: 'Error del servidor. Intentá de nuevo en unos minutos o creá el usuario desde la app (Registrarse).' }
-        }
-        if (status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('too many')) {
-          return { ok: false, error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' }
-        }
-        if (status === 400 || msg.includes('invalid login') || msg.includes('invalid')) {
-          return { ok: false, error: 'Email o contraseña incorrectos' }
-        }
-        if (msg.includes('email not confirmed') || msg.includes('confirm')) {
-          return { ok: false, error: 'Confirmá tu email antes de iniciar sesión (revisá la bandeja de entrada)' }
-        }
-        return { ok: false, error: error.message || 'Error al iniciar sesión' }
-      }
-      if (!data?.user) return { ok: false, error: 'Error al iniciar sesión' }
-
-      let { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, role, status')
-        .eq('id', data.user.id)
-        .single()
-
-      if (!profile) {
-        await supabase.from('profiles').upsert(
-          {
-            id: data.user.id,
-            email: data.user.email ?? '',
-            name: data.user.user_metadata?.name ?? data.user.email ?? null,
-            role: 'viewer',
-            status: 'active',
-          },
-          { onConflict: 'id' }
-        )
-        const res = await supabase
-          .from('profiles')
-          .select('id, email, name, avatar_url, role, status')
-          .eq('id', data.user.id)
-          .single()
-        profile = res.data
-      }
-
-      if (profile?.status === 'blocked') {
-        await supabase.auth.signOut()
-        return { ok: false, error: 'Usuario bloqueado' }
-      }
-      if (profile) setCurrentUser(profileToUser(profile))
-      return { ok: true }
-    } catch (e) {
-      return { ok: false, error: 'Error de conexión. Revisá tu internet e intentá de nuevo.' }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return
+      const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      if (!res.ok) return
+      const data: AdminProfile[] = await res.json()
+      setAdminProfiles(data)
+      setUsers(data.map(adminProfileToUser))
+    } finally {
+      setAdminProfilesLoading(false)
     }
   }
 
+  const getAuthHeaders = async (): Promise<Record<string, string>> => {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+  }
+
+  const updateUserRole = async (userId: string, role: 'viewer' | 'moderator' | 'admin'): Promise<{ ok: boolean; error?: string }> => {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ role }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+    }
+    await loadAdminProfiles()
+    return { ok: true }
+  }
+
+  const setUserSuspended = async (userId: string, days: number | null): Promise<{ ok: boolean; error?: string }> => {
+    const headers = await getAuthHeaders()
+    const suspended_until =
+      days === null || days <= 0
+        ? null
+        : new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ suspended_until }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+    }
+    await loadAdminProfiles()
+    return { ok: true }
+  }
+
+  const blockUser = async (userId: string): Promise<{ ok: boolean; error?: string }> => {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ status: 'blocked' }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+    }
+    await loadAdminProfiles()
+    return { ok: true }
+  }
+
+  const unblockUser = async (userId: string): Promise<{ ok: boolean; error?: string }> => {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ status: 'active' }),
+    })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+    }
+    await loadAdminProfiles()
+    return { ok: true }
+  }
+
+  const deleteUser = async (userId: string): Promise<{ ok: boolean; error?: string }> => {
+    const headers = await getAuthHeaders()
+    const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', headers: { ...headers } })
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+    }
+    await loadAdminProfiles()
+    return { ok: true }
+  }
+
+  const login = async (email: string, password: string): Promise<{ ok: boolean; error?: string }> => {
+    const maxLoginRetries = 3
+    let data: { user: unknown; session: { access_token: string } } | null = null
+    let error: { message?: string; status?: number } | null = null
+
+    for (let attempt = 0; attempt < maxLoginRetries; attempt++) {
+      try {
+        const result = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        })
+        data = result.data as { user: unknown; session: { access_token: string } } | null
+        error = result.error as { message?: string; status?: number } | null
+        break
+      } catch (e) {
+        const isAbort = e instanceof Error && e.name === 'AbortError'
+        if (!isAbort) return { ok: false, error: 'Error de conexión. Revisá tu internet e intentá de nuevo.' }
+        if (attempt < maxLoginRetries - 1) await new Promise((r) => setTimeout(r, 450))
+        else return { ok: false, error: 'Intentá de nuevo (cierra otras pestañas de la app o esperá un momento).' }
+      }
+    }
+
+    if (error) {
+      const status = error.status
+      const msg = (error.message ?? '').toLowerCase()
+      if (status === 500) {
+        return { ok: false, error: 'Error del servidor. Intentá de nuevo en unos minutos o creá el usuario desde la app (Registrarse).' }
+      }
+      if (status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('too many')) {
+        return { ok: false, error: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.' }
+      }
+      if (status === 400 || msg.includes('invalid login') || msg.includes('invalid')) {
+        return { ok: false, error: 'Email o contraseña incorrectos' }
+      }
+      if (msg.includes('email not confirmed') || msg.includes('confirm')) {
+        return { ok: false, error: 'Confirmá tu email antes de iniciar sesión (revisá la bandeja de entrada)' }
+      }
+      return { ok: false, error: error.message || 'Error al iniciar sesión' }
+    }
+    if (!data?.user) return { ok: false, error: 'Error al iniciar sesión' }
+
+    const u = data.user as { id: string; email?: string | null; user_metadata?: { name?: string } | null }
+    setCurrentUser(userFromSession(u))
+
+    const token = data.session?.access_token
+    if (token) {
+      const profile = await fetchProfileFromApi(token)
+      if (profile?.status === 'blocked') {
+        await supabase.auth.signOut().catch(() => {})
+        setCurrentUser(null)
+        return { ok: false, error: 'Usuario bloqueado.' }
+      }
+      if (profile) setCurrentUser(profileToUser(profile))
+    }
+
+    return { ok: true }
+  }
+
   const loginWithGoogle = async (): Promise<boolean> => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }).catch(() => ({ error: { message: 'AbortError' } }))
     return !error
   }
 
-  const logout = () => {
-    supabase.auth.signOut()
+  const logout = async () => {
     setCurrentUser(null)
+    const maxRetries = 3
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await supabase.auth.signOut()
+        return
+      } catch (e) {
+        const isAbort = e instanceof Error && e.name === 'AbortError'
+        if (!isAbort) return
+        if (attempt < maxRetries - 1) await new Promise((r) => setTimeout(r, 400))
+      }
+    }
+  }
+
+  const refreshUser = async () => {
+    try {
+      const { data: { session } } = await getSessionSafe(supabase)
+      if (!session?.user) return
+      const profile = await fetchProfileFromApi(session.access_token)
+      if (profile && profile.status !== 'blocked') {
+        setCurrentUser(profileToUser(profile))
+      } else {
+        setCurrentUser(userFromSession(session.user))
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
+      console.error('Refresh user error:', e)
+    }
   }
 
   const register = async (data: {
@@ -405,11 +726,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             locality: data.locality.trim() || undefined,
           },
         },
+      }).catch((e) => {
+        if (e?.name === 'AbortError') return { data: null, error: { message: 'AbortError' } as Error }
+        throw e
       })
 
       if (error) {
-        const status = (error as { status?: number }).status
         const msg = (error.message ?? '').toLowerCase()
+        if (msg === 'aborterror') return { ok: false, error: 'Intentá de nuevo (sesión en uso en otra pestaña).' }
+        const status = (error as { status?: number }).status
         if (status === 429 || msg.includes('429') || msg.includes('rate limit') || msg.includes('too many')) {
           return { ok: false, error: 'Demasiados intentos de registro. Esperá unos minutos (o 1 hora para el mismo email) e intentá de nuevo.' }
         }
@@ -424,72 +749,121 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (!signUpData?.user) return { ok: false, error: 'Error al crear la cuenta' }
 
-      await new Promise((r) => setTimeout(r, 600))
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, email, name, avatar_url, role, status')
-        .eq('id', signUpData.user.id)
-        .single()
+      const uid = signUpData.user.id
+      const uEmail = signUpData.user.email ?? email
+      const displayName = (data.name.trim() || signUpData.user.email || '').trim() || uEmail
 
-      const userForContext = profile && profile.status !== 'blocked'
-        ? profileToUser(profile)
-        : {
-            id: signUpData.user.id,
-            email: signUpData.user.email!,
-            name: data.name.trim() || null,
-            isAdmin: false,
-            isBlocked: false,
-            avatar: undefined as string | undefined,
-          }
+      let userForContext: User
+      const token = signUpData.session?.access_token
+      if (token) {
+        const profile = await fetchProfileFromApi(token)
+        userForContext = profile && profile.status !== 'blocked'
+          ? profileToUser(profile)
+          : { id: uid, email: uEmail, name: displayName, isAdmin: false, isBlocked: false, avatar: undefined }
+      } else {
+        userForContext = { id: uid, email: uEmail, name: displayName, isAdmin: false, isBlocked: false, avatar: undefined }
+      }
       setCurrentUser(userForContext)
+      // Notificación para admin: quién se registró, con todos los datos excepto contraseña
+      setRecentRegistrations((prev) => [
+        {
+          id: uid,
+          email: uEmail,
+          name: data.name.trim() || uEmail,
+          birthDate: data.birthDate || '',
+          phone: data.phone.trim() || '',
+          province: data.province.trim() || '',
+          locality: data.locality.trim() || '',
+          createdAt: new Date(),
+        },
+        ...prev,
+      ])
       return { ok: true }
     } catch {
       return { ok: false, error: 'Error de conexión. Revisá tu internet e intentá de nuevo.' }
     }
   }
 
-  const addPost = (
+  const addPost = async (
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
-  ) => {
-    if (!currentUser) return
-
-    const newPost: Post = {
-      ...post,
-      id: Date.now().toString(),
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      authorAvatar: currentUser.avatar,
-      status: 'pending',
-      createdAt: new Date(),
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!currentUser) return { ok: false, error: 'Debes iniciar sesión' }
+    if (currentUser.suspendedUntil && new Date(currentUser.suspendedUntil) > new Date()) {
+      return { ok: false, error: 'Tu cuenta está suspendida. No podés publicar hasta que se cumpla la fecha indicada.' }
     }
 
-    setPosts([newPost, ...posts])
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .insert({
+          author_id: currentUser.id,
+          title: post.title.trim(),
+          description: post.description.trim(),
+          category: post.category,
+          status: 'pending',
+          whatsapp_number: post.whatsappNumber?.trim() || null,
+        })
+        .select('id, created_at')
+        .single()
+
+      if (error) {
+        return { ok: false, error: error.message ?? 'Error al guardar la publicación' }
+      }
+
+      const imageUrls = post.images ?? []
+      if (imageUrls.length > 0) {
+        const mediaResults = await Promise.all(
+          imageUrls.map((url, position) =>
+            supabase.from('post_media').insert({
+              post_id: data.id,
+              url,
+              type: 'image',
+              position,
+            })
+          )
+        )
+        const mediaError = mediaResults.find((r) => r.error)
+        if (mediaError?.error) {
+          await supabase.from('posts').delete().eq('id', data.id)
+          return { ok: false, error: mediaError.error.message ?? 'Error al guardar las imágenes' }
+        }
+      }
+
+      const newPost: Post = {
+        ...post,
+        id: data.id,
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        authorAvatar: currentUser.avatar,
+        status: 'pending',
+        createdAt: new Date(data.created_at),
+        images: imageUrls,
+      }
+      setPosts((prev) => [newPost, ...prev])
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: 'Error de conexión. Intentá de nuevo.' }
+    }
   }
 
-  const updatePostStatus = (postId: string, status: PostStatus, rejectedImages?: number[]) => {
-    setPosts(
-      posts.map((post) => {
-        if (post.id === postId) {
-          const updatedPost = { ...post, status }
-
-          if (rejectedImages && rejectedImages.length > 0) {
-            updatedPost.images = post.images.filter((_, index) => !rejectedImages.includes(index))
-          }
-
-          return updatedPost
-        }
-        return post
-      })
+  const updatePostStatus = async (postId: string, status: PostStatus, _rejectedImages?: number[]) => {
+    await supabase.from('posts').update({ status, updated_at: new Date().toISOString() }).eq('id', postId)
+    setPosts((prev) =>
+      prev.map((post) =>
+        post.id === postId ? { ...post, status } : post
+      )
     )
   }
 
-  const deletePost = (postId: string) => {
-    setPosts(posts.filter((p) => p.id !== postId))
-    setComments(comments.filter((c) => c.postId !== postId))
+  const deletePost = async (postId: string) => {
+    await supabase.from('posts').delete().eq('id', postId)
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    setComments((prev) => prev.filter((c) => c.postId !== postId))
   }
 
   const addComment = (postId: string, text: string) => {
     if (!currentUser || !config.commentsEnabled) return
+    if (currentUser.suspendedUntil && new Date(currentUser.suspendedUntil) > new Date()) return
 
     const newComment: Comment = {
       id: Date.now().toString(),
@@ -519,7 +893,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     logout,
     register,
+    refreshUser,
     posts,
+    postsLoading,
     addPost,
     updatePostStatus,
     deletePost,
@@ -527,6 +903,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addComment,
     users,
     toggleBlockUser,
+    adminProfiles,
+    adminProfilesLoading,
+    loadAdminProfiles,
+    updateUserRole,
+    setUserSuspended,
+    blockUser,
+    unblockUser,
+    deleteUser,
+    recentRegistrations,
     config,
     updateConfig,
   }

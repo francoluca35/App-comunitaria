@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, Post } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
@@ -12,12 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -28,6 +27,11 @@ export default function AdminModerationPage() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [rejectedImageIndices, setRejectedImageIndices] = useState<number[]>([])
+  const [dialogImageError, setDialogImageError] = useState(false)
+
+  useEffect(() => {
+    setDialogImageError(false)
+  }, [selectedPost?.id, currentImageIndex])
 
   if (!currentUser?.isAdmin) {
     return (
@@ -194,28 +198,34 @@ export default function AdminModerationPage() {
                     <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Rechazada</Badge>
                   )}
                 </DialogTitle>
-                <DialogDescription>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={selectedPost.authorAvatar} />
-                      <AvatarFallback className="text-xs">{selectedPost.authorName[0]}</AvatarFallback>
-                    </Avatar>
-                    <span>{selectedPost.authorName}</span>
-                    <span>·</span>
-                    <CategoryBadge category={selectedPost.category} />
-                  </div>
-                </DialogDescription>
+                <div className="text-muted-foreground text-sm flex items-center gap-2 mt-2">
+                  <Avatar className="w-6 h-6">
+                    <AvatarImage src={selectedPost.authorAvatar} />
+                    <AvatarFallback className="text-xs">{selectedPost.authorName[0]}</AvatarFallback>
+                  </Avatar>
+                  <span>{selectedPost.authorName}</span>
+                  <span>·</span>
+                  <CategoryBadge category={selectedPost.category} />
+                </div>
               </DialogHeader>
 
               <div className="space-y-4">
                 {selectedPost.images.length > 0 && (
                   <div className="relative bg-black rounded-lg overflow-hidden">
-                    <div className="aspect-video">
-                      <img
-                        src={selectedPost.images[currentImageIndex]}
-                        alt={selectedPost.title}
-                        className="w-full h-full object-contain"
-                      />
+                    <div className="aspect-video flex items-center justify-center bg-muted">
+                      {dialogImageError ? (
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground py-8">
+                          <ImageOff className="w-12 h-12" />
+                          <span className="text-sm">Imagen no disponible</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={selectedPost.images[currentImageIndex]}
+                          alt={selectedPost.title}
+                          className="w-full h-full object-contain"
+                          onError={() => setDialogImageError(true)}
+                        />
+                      )}
                     </div>
 
                     {selectedPost.images.length > 1 && (
