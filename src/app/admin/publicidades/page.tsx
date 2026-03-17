@@ -31,10 +31,12 @@ export default function AdminPublicidadesPage() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Publicidades</h1>
-        <p className="text-slate-500 dark:text-slate-400 mb-6">Acá podrás gestionar publicidades más adelante.</p>
+        <p className="text-slate-500 dark:text-slate-400 mb-6">
+          En la página <strong>Ver todas las publicidades</strong> ya se muestran publicidades demo (con imagen, texto y CTA a WhatsApp o Instagram) para el videodemo. La gestión completa de publicidades llegará más adelante.
+        </p>
         <Card>
           <CardContent className="p-6 text-center text-slate-500 dark:text-slate-400">
-            Próximamente
+            Gestión de publicidades (crear, editar, pausar) – Próximamente
           </CardContent>
         </Card>
       </div>

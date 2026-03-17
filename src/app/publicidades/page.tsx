@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { Megaphone, ArrowLeft, Filter, Search } from 'lucide-react'
+import { Megaphone, ArrowLeft, Filter, Search, MessageCircle, Instagram } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -12,32 +12,22 @@ import {
   PopoverTrigger,
 } from '@/app/components/ui/popover'
 import { CATEGORIAS_PUBLICIDAD, OPCION_TODAS } from '@/lib/categorias-publicidad'
+import { DEMO_PUBLICIDADES, type DemoPublicidad } from '@/lib/demo-publicidades'
+import { PublicidadModal } from '@/components/PublicidadModal'
 
 type SortOrder = 'reciente' | 'antiguo'
 
-interface PublicidadItem {
-  id: string
-  title: string
-  description: string
-  category: string
-  createdAt: Date
-}
-
-// Datos de ejemplo (luego vendrán de la base de datos)
-const MOCK_PUBLICIDADES: PublicidadItem[] = [
-  { id: '1', title: 'Publicidad 1', description: 'Espacio para anuncios de la comunidad. Ej: plomero, electricista.', category: 'servicios', createdAt: new Date('2025-02-01') },
-  { id: '2', title: 'Publicidad 2', description: 'Espacio para anuncios de la comunidad. Ej: mecánico, flete.', category: 'servicios', createdAt: new Date('2025-02-05') },
-  { id: '3', title: 'Publicidad 3', description: 'Espacio para anuncios de la comunidad.', category: 'ventas', createdAt: new Date('2025-02-08') },
-]
+type PublicidadItem = DemoPublicidad
 
 export default function PublicidadesPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('reciente')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchVisible, setSearchVisible] = useState(false)
+  const [selectedPublicidad, setSelectedPublicidad] = useState<DemoPublicidad | null>(null)
 
   const filteredAndSorted = useMemo(() => {
-    let list = [...MOCK_PUBLICIDADES]
+    let list = [...DEMO_PUBLICIDADES]
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
@@ -63,6 +53,11 @@ export default function PublicidadesPage() {
 
   return (
     <DashboardLayout>
+      <PublicidadModal
+        open={!!selectedPublicidad}
+        onOpenChange={(open) => !open && setSelectedPublicidad(null)}
+        publicidad={selectedPublicidad}
+      />
       <div className="max-w-2xl mx-auto p-4 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -179,20 +174,54 @@ export default function PublicidadesPage() {
             </div>
           ) : (
             filteredAndSorted.map((p) => (
-              <div
+              <button
+                type="button"
                 key={p.id}
-                className="rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 p-4 shadow-sm"
+                onClick={() => setSelectedPublicidad(p)}
+                className="w-full text-left rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
               >
-                <div className="aspect-video rounded-lg bg-slate-200 dark:bg-gray-700 mb-3 flex items-center justify-center">
-                  <Megaphone className="w-12 h-12 text-slate-400" />
+                <div className="aspect-video rounded-t-xl overflow-hidden bg-slate-200 dark:bg-gray-700">
+                  {p.imageUrl ? (
+                    <img
+                      src={p.imageUrl}
+                      alt={p.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Megaphone className="w-12 h-12 text-slate-400" />
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">
-                  {p.title}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">
-                  {p.description}
-                </p>
-              </div>
+                <div className="p-4">
+                  <p className="font-semibold text-slate-900 dark:text-white">
+                    {p.title}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                    {p.description}
+                  </p>
+                  {p.ctaUrl && p.ctaLabel && (
+                    <a
+                      href={p.ctaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className={`mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-xl font-medium text-white text-sm transition-opacity hover:opacity-95 ${
+                        p.ctaType === 'whatsapp'
+                          ? 'bg-[#25D366] hover:bg-[#20BD5A]'
+                          : 'bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4]'
+                      }`}
+                    >
+                      {p.ctaType === 'whatsapp' ? (
+                        <MessageCircle className="w-5 h-5" />
+                      ) : (
+                        <Instagram className="w-5 h-5" />
+                      )}
+                      {p.ctaLabel}
+                    </a>
+                  )}
+                </div>
+              </button>
             ))
           )}
         </div>

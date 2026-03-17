@@ -1,0 +1,104 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
+import { useApp, type NotificationPreference } from '@/app/providers'
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
+import { Label } from '@/app/components/ui/label'
+import { Switch } from '@/app/components/ui/switch'
+import { DashboardLayout } from '@/components/DashboardLayout'
+import { Bell } from 'lucide-react'
+import { toast } from 'sonner'
+import { showSystemNotification } from '@/lib/notifications'
+
+export default function ConfiguracionPage() {
+  const router = useRouter()
+  const { currentUser, authLoading, setNotificationPreference } = useApp()
+  const { theme, setTheme } = useTheme()
+  const [notificationSaving, setNotificationSaving] = useState(false)
+
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      router.replace('/login')
+    }
+  }, [authLoading, currentUser, router])
+
+  if (!currentUser) {
+    return null
+  }
+
+  const currentPreference = currentUser.notificationPreference ?? null
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-md mx-auto space-y-4">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Configuración</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Preferencias</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="dark-mode" className="flex items-center gap-2 cursor-pointer">
+                <span>Modo oscuro</span>
+              </Label>
+              <Switch
+                id="dark-mode"
+                checked={theme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-gray-700">
+              <Label className="flex items-center gap-2 mb-3">
+                <Bell className="w-4 h-4" />
+                Notificaciones
+              </Label>
+              <p className="text-sm text-slate-500 dark:text-gray-400 mb-3">
+                Qué notificaciones recibir en el celular o la PC (barra de notificaciones).
+              </p>
+              <div className="flex flex-col gap-2">
+                {(
+                  [
+                    { value: 'all' as const, label: 'Todas (publicaciones, mensajes y avisos)' },
+                    { value: 'custom' as const, label: 'Personalizado' },
+                    { value: 'messages_only' as const, label: 'Solo mensajes' },
+                  ] as { value: NotificationPreference; label: string }[]
+                ).map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-gray-700 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50 dark:has-[:checked]:bg-indigo-900/20"
+                  >
+                    <input
+                      type="radio"
+                      name="notification_preference"
+                      value={value}
+                      checked={currentPreference === value}
+                      disabled={notificationSaving}
+                      onChange={async () => {
+                        setNotificationSaving(true)
+                        const result = await setNotificationPreference(value)
+                        setNotificationSaving(false)
+                        if (result.ok) {
+                          toast.success('Preferencia guardada')
+                          await showSystemNotification({
+                            title: 'Comunidad',
+                            body: 'Notificaciones configuradas. Vas a recibir avisos aquí.',
+                            tag: 'notification-preference',
+                          })
+                        } else toast.error(result.error ?? 'Error al guardar')
+                      }}
+                      className="rounded-full border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm font-medium text-slate-900 dark:text-white">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  )
+}

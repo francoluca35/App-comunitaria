@@ -1,15 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/app/components/ui/card'
+import { Button } from '@/app/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { Clock, CheckCircle, Users, Settings, Bell, MessageCircle, Megaphone } from 'lucide-react'
+import { Clock, CheckCircle, Users, Settings, Bell, MessageCircle, Megaphone, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const { currentUser, posts, users, recentRegistrations } = useApp()
+  const { currentUser, posts, users, recentRegistrations, refreshPosts } = useApp()
+  const [seeding, setSeeding] = useState(false)
 
   if (!currentUser?.isAdmin) {
     return (
@@ -34,6 +39,33 @@ export default function AdminDashboardPage() {
   const approvedPosts = posts.filter((p) => p.status === 'approved')
   const rejectedPosts = posts.filter((p) => p.status === 'rejected')
   const blockedUsers = users.filter((u) => u.isBlocked)
+
+  const handleSeedDemoPosts = async () => {
+    setSeeding(true)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        toast.error('Sesión expirada. Volvé a iniciar sesión.')
+        return
+      }
+      const res = await fetch('/api/admin/seed-demo-posts', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al generar publicaciones')
+        return
+      }
+      await refreshPosts()
+      toast.success(`Se crearon ${data.created ?? 0} publicaciones de prueba`)
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setSeeding(false)
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -85,6 +117,20 @@ export default function AdminDashboardPage() {
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{users.length}</p>
             </div>
           </div>
+        </section>
+
+        {/* Generar publicaciones demo (videodemo) */}
+        <section className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+          <p className="text-slate-700 dark:text-slate-300 text-sm mb-2">Para videodemo: generá publicaciones de prueba con imágenes y texto coherente.</p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleSeedDemoPosts}
+            disabled={seeding}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {seeding ? 'Generando…' : 'Generar publicaciones demo'}
+          </Button>
         </section>
 
         {/* Menú de acciones: botonera cuadrada una al lado del otro */}

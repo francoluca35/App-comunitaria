@@ -26,12 +26,26 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let profile: { id: string; email: string; name: string | null; avatar_url: string | null; role: string; status: string; suspended_until?: string | null; phone?: string | null } | null = null
+    type ProfileRow = {
+      id: string
+      email: string
+      name: string | null
+      avatar_url: string | null
+      role: string
+      status: string
+      suspended_until?: string | null
+      phone?: string | null
+      province?: string | null
+      locality?: string | null
+      notification_preference?: string | null
+    }
+    let profile: ProfileRow | null = null
     let selectError: { message: string; code?: string } | null = null
+    const selectCols = 'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, notification_preference'
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, name, avatar_url, role, status, suspended_until, phone')
+      .select(selectCols)
       .eq('id', userId)
       .single()
 
@@ -42,14 +56,14 @@ export async function GET(request: NextRequest) {
         if (serviceClient) {
           const res = await serviceClient
             .from('profiles')
-            .select('id, email, name, avatar_url, role, status, suspended_until, phone')
+            .select(selectCols)
             .eq('id', userId)
             .single()
-          if (res.data) profile = res.data
+          if (res.data) profile = res.data as ProfileRow
         }
       }
     } else {
-      profile = data
+      profile = data as ProfileRow
     }
 
     if (!profile) {

@@ -8,8 +8,13 @@ alter table public.profiles
   add column if not exists locality text;
 
 -- Actualizar trigger para guardar estos datos al registrarse
+-- search_path fijo por Security Advisor
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   insert into public.profiles (id, email, name, role, status, birth_date, phone, province, locality)
   values (
@@ -25,4 +30,4 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
