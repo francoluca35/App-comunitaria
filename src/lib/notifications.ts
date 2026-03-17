@@ -51,7 +51,6 @@ export async function showSystemNotification(options: {
         data: { url: options.url ?? '/' },
         icon: iconUrl,
         badge: iconUrl,
-        vibrate: [200, 100, 200],
         requireInteraction: false,
       })
     } else {
