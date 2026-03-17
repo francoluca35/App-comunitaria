@@ -13,6 +13,7 @@ import { ArrowLeft, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { showSystemNotification } from '@/lib/notifications'
 
 interface ChatMessage {
   id: string
@@ -109,6 +110,18 @@ export default function ChatPage() {
             (row.sender_id === otherId && row.receiver_id === myId)
           if (isThisConversation) {
             setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+            const isIncoming = row.receiver_id === myId && row.sender_id !== myId
+            const wantMessages =
+              currentUser?.notificationPreference === 'messages_only' || currentUser?.notificationPreference === 'all'
+            if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
+              const adminName = support?.name?.trim() || 'Admin'
+              showSystemNotification({
+                title: 'Nuevo mensaje',
+                body: `Admin (${adminName}) te envió un mensaje`,
+                tag: `chat-${myId}-${otherId}`,
+                url: '/chat',
+              })
+            }
           }
         }
       )
@@ -117,7 +130,7 @@ export default function ChatPage() {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, otherId])
+  }, [myId, otherId, support?.name])
 
   const pollInterval = 2000
   useEffect(() => {

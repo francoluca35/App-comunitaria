@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
+import { NotificationBell } from '@/components/NotificationBell'
 
 const CATEGORIES = [
   { slug: 'todas', label: 'Todas', icon: Filter },
@@ -50,24 +51,29 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside className="flex flex-col w-64 min-h-full bg-slate-900 dark:bg-[#440813] border-r border-slate-700/50 dark:border-gray-800 shrink-0">
       {/* Logo + avatar de usuario */}
-      <div className="p-4 border-b border-slate-700/50 dark:border-gray-800">
-        <Link href="/" className="flex items-center gap-3" onClick={onNavigate}>
+      <div className="p-4 border-b border-slate-700/50 dark:border-gray-800 flex items-center justify-between gap-2">
+        <Link href="/" className="flex items-center gap-3 min-w-0 flex-1" onClick={onNavigate}>
           {currentUser ? (
-            <Avatar className="h-10 w-10 rounded-xl border-2 border-white/20 shadow-lg">
+            <Avatar className="h-10 w-10 rounded-xl border-2 border-white/20 shadow-lg shrink-0">
               <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
               <AvatarFallback className="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-semibold">
                 {currentUser.name?.[0]?.toUpperCase() ?? <Users2 className="w-5 h-5" />}
               </AvatarFallback>
             </Avatar>
           ) : (
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shrink-0">
               <Users2 className="w-5 h-5 text-white" />
             </div>
           )}
-          <div>
-            <span className="text-white font-bold tracking-tight block">CST Comunidad</span>
+          <div className="min-w-0">
+            <span className="text-white font-bold tracking-tight block truncate">CST Comunidad</span>
           </div>
         </Link>
+        {currentUser && (
+          <div className="shrink-0 [&_button]:text-white [&_button]:hover:bg-white/10 [&_.bg-indigo-500]:bg-indigo-400">
+            <NotificationBell />
+          </div>
+        )}
       </div>
 
       {/* Nav */}
@@ -108,7 +114,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               Chatear
             </Link>
           )}
-          <Link href="/profile" className={linkClass(isActive('/profile'))} onClick={onNavigate}>
+          <Link href="/configuracion" className={linkClass(isActive('/configuracion'))} onClick={onNavigate}>
             <Settings className="w-5 h-5 shrink-0" />
             Configuración
           </Link>

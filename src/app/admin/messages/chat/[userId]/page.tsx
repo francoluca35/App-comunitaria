@@ -27,6 +27,7 @@ import {
 } from '@/app/components/ui/dialog'
 import { ArrowLeft, Send, Trash2, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
+import { showSystemNotification } from '@/lib/notifications'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -99,6 +100,15 @@ export default function AdminChatPage() {
             (row.sender_id === otherId && row.receiver_id === myId)
           if (isThisConversation) {
             setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+            const isIncoming = row.receiver_id === myId && row.sender_id === otherId
+            if (isIncoming && document.visibilityState !== 'visible' && profile?.name) {
+              showSystemNotification({
+                title: 'Nuevo mensaje',
+                body: `${profile.name} te respondió el mensaje`,
+                tag: `chat-${otherId}-${myId}`,
+                url: `/admin/messages/chat/${otherId}`,
+              })
+            }
           }
         }
       )
@@ -107,7 +117,7 @@ export default function AdminChatPage() {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, otherId])
+  }, [myId, otherId, profile?.name])
 
   const pollInterval = 2000
   useEffect(() => {

@@ -19,8 +19,13 @@ create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_profiles_status on public.profiles(status);
 
 -- Trigger: crear perfil al registrarse (role = viewer por defecto)
+-- search_path fijo por Security Advisor (evita inyección de esquemas)
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   insert into public.profiles (id, email, name, role, status)
   values (
@@ -32,7 +37,7 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

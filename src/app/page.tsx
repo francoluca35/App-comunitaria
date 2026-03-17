@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useApp, Category } from './providers'
 import {
@@ -13,6 +13,8 @@ import {
   Plus,
   Sparkles,
   Upload,
+  MessageCircle,
+  Instagram,
 } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import {
@@ -24,8 +26,13 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
+import { Carousel, CarouselContent, CarouselItem } from '@/app/components/ui/carousel'
+import type { CarouselApi } from '@/app/components/ui/carousel'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { ZONA_CARRUSEL_PUBLICIDADES } from '@/lib/demo-publicidades'
+import { PublicidadModal } from '@/components/PublicidadModal'
+import type { DemoPublicidad } from '@/lib/demo-publicidades'
 
 const CATEGORIES: {
   value: Category | 'all'
@@ -45,6 +52,79 @@ const CATEGORIES: {
 function getCategoryCount(posts: { category: Category }[], value: Category | 'all') {
   if (value === 'all') return posts.length
   return posts.filter((p) => p.category === value).length
+}
+
+function ZonaPublicitariaCarousel() {
+  const [api, setApi] = useState<CarouselApi>()
+  const [selectedPublicidad, setSelectedPublicidad] = useState<DemoPublicidad | null>(null)
+
+  useEffect(() => {
+    if (!api) return
+    const t = setInterval(() => api.scrollNext(), 4000)
+    return () => clearInterval(t)
+  }, [api])
+
+  const ads = ZONA_CARRUSEL_PUBLICIDADES
+
+  return (
+    <>
+      <PublicidadModal
+        open={!!selectedPublicidad}
+        onOpenChange={(open) => !open && setSelectedPublicidad(null)}
+        publicidad={selectedPublicidad}
+      />
+    <Carousel
+      opts={{ loop: true, align: 'start' }}
+      setApi={setApi}
+      className="w-full"
+    >
+      <CarouselContent className="-ml-2">
+        {ads.map((p) => (
+          <CarouselItem key={p.id} className="pl-2 basis-1/2">
+            <button
+              type="button"
+              onClick={() => setSelectedPublicidad(p)}
+              className="w-full text-left rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 overflow-hidden shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+            >
+              <div className="aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-gray-700">
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Megaphone className="w-8 h-8 text-slate-400" />
+                  </div>
+                )}
+              </div>
+              <div className="p-2">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-2">{p.title}</p>
+                {p.ctaUrl && p.ctaLabel && (
+                  <a
+                    href={p.ctaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`mt-1.5 flex items-center justify-center gap-1 w-full py-2 rounded-lg text-[10px] font-medium text-white transition-opacity hover:opacity-95 ${
+                      p.ctaType === 'whatsapp'
+                        ? 'bg-[#25D366] hover:bg-[#20BD5A]'
+                        : 'bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4]'
+                    }`}
+                  >
+                    {p.ctaType === 'whatsapp' ? (
+                      <MessageCircle className="w-3 h-3" />
+                    ) : (
+                      <Instagram className="w-3 h-3" />
+                    )}
+                    {p.ctaLabel}
+                  </a>
+                )}
+              </div>
+            </button>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+    </Carousel>
+    </>
+  )
 }
 
 export default function HomePage() {
@@ -205,21 +285,12 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Zona publicitaria: solo móvil, abajo */}
-        <section className="lg:hidden mt-8 pt-6 border-t border-slate-200 dark:border-gray-800 px-4 pb-6">
-          <h2 className="text-sm font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+        {/* Zona publicitaria: carrusel doble (4 publicidades selectivas, 2 visibles, loop) – solo móvil */}
+        <section className="lg:hidden mt-8 pt-6 border-t border-slate-200 dark:border-gray-800 px-2 pb-6">
+          <h2 className="text-sm font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-2">
             Zona publicitaria
           </h2>
-          <div className="space-y-3">
-            <div className="rounded-xl bg-slate-100 dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 p-3">
-              <div className="aspect-[2/1] rounded-lg bg-slate-200 dark:bg-gray-700 mb-2" />
-              <p className="text-xs text-slate-500 dark:text-gray-400">Espacio publicitario</p>
-            </div>
-            <div className="rounded-xl bg-slate-100 dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 p-3">
-              <div className="aspect-[2/1] rounded-lg bg-slate-200 dark:bg-gray-700 mb-2" />
-              <p className="text-xs text-slate-500 dark:text-gray-400">Espacio publicitario</p>
-            </div>
-          </div>
+          <ZonaPublicitariaCarousel />
         </section>
       </div>
     </DashboardLayout>

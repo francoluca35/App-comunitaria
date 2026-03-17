@@ -10,6 +10,11 @@ export interface ProfileFromApi {
   avatar_url: string | null
   role: string
   status: string
+  phone?: string | null
+  province?: string | null
+  locality?: string | null
+  /** Preferencia de notificaciones: 'all' | 'custom' | 'messages_only'. Null = aún no eligió. */
+  notification_preference?: string | null
 }
 
 function isAbortError(e: unknown): boolean {

@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
+import { Input } from '@/app/components/ui/input'
+import { Label } from '@/app/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -15,19 +16,21 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { Switch } from '@/app/components/ui/switch'
-import { Label } from '@/app/components/ui/label'
-import { LogOut, Mail, Shield, Trash2, Upload } from 'lucide-react'
+import { LogOut, Mail, Shield, Trash2, Upload, Phone, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ProfilePage() {
   const router = useRouter()
   const { currentUser, authLoading, logout, refreshUser } = useApp()
-  const { theme, setTheme } = useTheme()
   const [avatarModalOpen, setAvatarModalOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editProvince, setEditProvince] = useState('')
+  const [editLocality, setEditLocality] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -35,6 +38,15 @@ export default function ProfilePage() {
       router.replace('/login')
     }
   }, [authLoading, currentUser, router])
+
+  useEffect(() => {
+    if (currentUser) {
+      setEditName(currentUser.name ?? '')
+      setEditPhone(currentUser.phone ?? '')
+      setEditProvince(currentUser.province ?? '')
+      setEditLocality(currentUser.locality ?? '')
+    }
+  }, [currentUser])
 
   if (!currentUser) {
     return null
@@ -114,6 +126,43 @@ export default function ProfilePage() {
     } finally {
       setUploading(false)
       e.target.value = ''
+    }
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      toast.error('Sesión expirada. Volvé a iniciar sesión.')
+      return
+    }
+    setSavingProfile(true)
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editName.trim() || undefined,
+          phone: editPhone.trim() || undefined,
+          province: editProvince.trim() || undefined,
+          locality: editLocality.trim() || undefined,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? 'Error al guardar')
+        return
+      }
+      await refreshUser()
+      toast.success('Datos actualizados')
+    } catch {
+      toast.error('Error de conexión. Intentá de nuevo.')
+    } finally {
+      setSavingProfile(false)
     }
   }
 
@@ -197,28 +246,78 @@ export default function ProfilePage() {
               )}
 
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
-                <Mail className="w-4 h-4" />
+                <Mail className="w-4 h-4 shrink-0" />
                 <span className="text-sm">{currentUser.email}</span>
               </div>
+              {currentUser.phone && (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-2">
+                  <Phone className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">{currentUser.phone}</span>
+                </div>
+              )}
+              {(currentUser.province || currentUser.locality) && (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <MapPin className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">
+                    {[currentUser.locality, currentUser.province].filter(Boolean).join(', ')}
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Configuración</CardTitle>
+            <CardTitle className="text-lg">Modificar datos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="dark-mode" className="flex items-center gap-2 cursor-pointer">
-                <span>Modo oscuro</span>
-              </Label>
-              <Switch
-                id="dark-mode"
-                checked={theme === 'dark'}
-                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-              />
-            </div>
+          <CardContent>
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nombre</Label>
+                <Input
+                  id="edit-name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-phone">Teléfono</Label>
+                <Input
+                  id="edit-phone"
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="Ej. +54 9 11 1234-5678"
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-province">Provincia</Label>
+                <Input
+                  id="edit-province"
+                  value={editProvince}
+                  onChange={(e) => setEditProvince(e.target.value)}
+                  placeholder="Provincia"
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-locality">Localidad</Label>
+                <Input
+                  id="edit-locality"
+                  value={editLocality}
+                  onChange={(e) => setEditLocality(e.target.value)}
+                  placeholder="Localidad"
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={savingProfile}>
+                {savingProfile ? 'Guardando…' : 'Guardar cambios'}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

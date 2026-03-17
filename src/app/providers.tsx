@@ -1,14 +1,21 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
+import { NotificationPreferenceModal } from '@/components/NotificationPreferenceModal'
+import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
+
+const NOTIFICATION_MODAL_DISMISSED_KEY = 'comunidad_notification_modal_dismissed'
 
 export type Category = 'mascotas' | 'alertas' | 'avisos' | 'objetos' | 'noticias'
 
 export type PostStatus = 'pending' | 'approved' | 'rejected'
+
+/** Preferencia de notificaciones del usuario */
+export type NotificationPreference = 'all' | 'custom' | 'messages_only'
 
 export interface User {
   id: string
@@ -20,6 +27,10 @@ export interface User {
   isModerator?: boolean
   suspendedUntil?: string | null
   phone?: string
+  province?: string
+  locality?: string
+  /** Preferencia de notificaciones. Null = aún no eligió (mostrar modal al iniciar sesión). */
+  notificationPreference?: NotificationPreference | null
 }
 
 /** Perfil completo para admin (sin contraseña). */
@@ -100,9 +111,14 @@ interface AppContextType {
   }) => Promise<{ ok: boolean; error?: string }>
   /** Vuelve a cargar el perfil desde la API (p. ej. tras subir avatar). */
   refreshUser: () => Promise<void>
+  /** Guardar preferencia de notificaciones y refrescar usuario. */
+  setNotificationPreference: (preference: NotificationPreference) => Promise<{ ok: boolean; error?: string }>
+  /** Cerrar el modal de preferencias de notificaciones (sin guardar). */
+  dismissNotificationPreferenceModal: () => void
 
   posts: Post[]
   postsLoading: boolean
+  refreshPosts: () => Promise<void>
   addPost: (
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
   ) => Promise<{ ok: boolean; error?: string }>
@@ -317,7 +333,11 @@ function profileToUser(profile: {
   status: string
   suspended_until?: string | null
   phone?: string | null
+  province?: string | null
+  locality?: string | null
+  notification_preference?: string | null
 }): User {
+  const pref = profile.notification_preference
   return {
     id: profile.id,
     name: profile.name ?? profile.email,
@@ -328,6 +348,9 @@ function profileToUser(profile: {
     isModerator: profile.role === 'moderator',
     suspendedUntil: profile.suspended_until ?? undefined,
     phone: profile.phone ?? undefined,
+    province: profile.province ?? undefined,
+    locality: profile.locality ?? undefined,
+    notificationPreference: pref === 'all' || pref === 'custom' || pref === 'messages_only' ? pref : null,
   }
 }
 
@@ -383,8 +406,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
   const [recentRegistrations, setRecentRegistrations] = useState<RegistrationNotification[]>([])
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
+  const [notificationModalDismissed, setNotificationModalDismissed] = useState(false)
+  const [notificationPreferenceLoading, setNotificationPreferenceLoading] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+
+  // Cargar "más tarde" del modal de notificaciones desde localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      setNotificationModalDismissed(window.localStorage.getItem(NOTIFICATION_MODAL_DISMISSED_KEY) === '1')
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Registrar service worker para PWA y notificaciones
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  }, [])
 
   useSuppressSupabaseAuthAbortError()
 
@@ -490,6 +531,110 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadPosts()
     return () => { cancelled = true }
   }, [supabase])
+
+  // Realtime: lista de posts en vivo para admin/moderador (sin refrescar)
+  useEffect(() => {
+    if (!currentUser?.isAdmin && !currentUser?.isModerator) return
+    const channel = supabase
+      .channel('posts-live-admin')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
+        const row = payload.new as { id: string }
+        supabase
+          .from('posts')
+          .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+          .eq('id', row.id)
+          .single()
+          .then(({ data, error }) => {
+            if (error || !data) return
+            const r = data as {
+              id: string
+              title: string
+              description: string
+              category: string
+              status: string
+              whatsapp_number: string | null
+              created_at: string
+              author_id: string
+              profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+              post_media?: { url: string; position: number }[] | null
+            }
+            const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+            const media = Array.isArray(r.post_media) ? r.post_media : []
+            const images = media.sort((a: { position: number }, b: { position: number }) => a.position - b.position).map((m: { url: string }) => m.url)
+            const newPost: Post = {
+              id: r.id,
+              title: r.title,
+              description: r.description,
+              category: r.category as Category,
+              images,
+              authorId: r.author_id,
+              authorName: profile?.name ?? r.author_id.slice(0, 8),
+              authorAvatar: profile?.avatar_url ?? undefined,
+              status: r.status as PostStatus,
+              createdAt: new Date(r.created_at),
+              whatsappNumber: r.whatsapp_number ?? undefined,
+            }
+            setPosts((prev) => [newPost, ...prev])
+          })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
+        const row = payload.new as { id: string; status: string }
+        setPosts((prev) =>
+          prev.map((p) => (p.id === row.id ? { ...p, status: row.status as PostStatus } : p))
+        )
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, (payload) => {
+        const old = payload.old as { id: string }
+        setPosts((prev) => prev.filter((p) => p.id !== old.id))
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser?.isAdmin, currentUser?.isModerator, supabase])
+
+  const refreshPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+        .order('created_at', { ascending: false })
+      if (error) return
+      const mapped: Post[] = (data ?? []).map((row: unknown) => {
+        const r = row as {
+          id: string
+          title: string
+          description: string
+          category: string
+          status: string
+          whatsapp_number: string | null
+          created_at: string
+          author_id: string
+          profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+          post_media?: { url: string; position: number }[] | null
+        }
+        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+        const media = Array.isArray(r.post_media) ? r.post_media : []
+        const images = media.sort((a, b) => a.position - b.position).map((m) => m.url)
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          category: r.category as Category,
+          images,
+          authorId: r.author_id,
+          authorName: profile?.name ?? r.author_id.slice(0, 8),
+          authorAvatar: profile?.avatar_url ?? undefined,
+          status: r.status as PostStatus,
+          createdAt: new Date(r.created_at),
+          whatsappNumber: r.whatsapp_number ?? undefined,
+        }
+      })
+      setPosts(mapped)
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     if (!currentUser?.isAdmin) return
@@ -703,6 +848,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const setNotificationPreference = useCallback(
+    async (preference: NotificationPreference): Promise<{ ok: boolean; error?: string }> => {
+      setNotificationPreferenceLoading(true)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return { ok: false, error: 'Sesión expirada' }
+        const res = await fetch('/api/profile/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ notification_preference: preference }),
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+        }
+        if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
+          await window.Notification.requestPermission()
+        }
+        await refreshUser()
+        return { ok: true }
+      } catch (e) {
+        return { ok: false, error: 'Error de conexión' }
+      } finally {
+        setNotificationPreferenceLoading(false)
+      }
+    },
+    [supabase]
+  )
+
+  const dismissNotificationPreferenceModal = useCallback(() => {
+    setNotificationModalDismissed(true)
+    try {
+      if (typeof window !== 'undefined') window.localStorage.setItem(NOTIFICATION_MODAL_DISMISSED_KEY, '1')
+    } catch {
+      // ignore
+    }
+  }, [])
+
   const register = async (data: {
     name: string
     birthDate: string
@@ -894,8 +1077,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logout,
     register,
     refreshUser,
+    setNotificationPreference,
+    dismissNotificationPreferenceModal,
     posts,
     postsLoading,
+    refreshPosts,
     addPost,
     updatePostStatus,
     deletePost,
@@ -916,7 +1102,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateConfig,
   }
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
+  const showNotificationPreferenceModal =
+    !!currentUser &&
+    (currentUser.notificationPreference === undefined || currentUser.notificationPreference === null) &&
+    !notificationModalDismissed
+
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <RealtimeNotificationSubscriptions />
+      <NotificationPreferenceModal
+        open={showNotificationPreferenceModal}
+        onSelect={async (pref) => {
+          const result = await setNotificationPreference(pref)
+          if (result.ok) dismissNotificationPreferenceModal()
+        }}
+        onDismiss={dismissNotificationPreferenceModal}
+        loading={notificationPreferenceLoading}
+      />
+    </AppContext.Provider>
+  )
 }
 
 export function useApp() {
