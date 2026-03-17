@@ -49,7 +49,10 @@ export async function showSystemNotification(options: {
       })
       n.onclick = () => {
         n.close()
-        if (options.url) window.focus() && (window.location.href = options.url)
+        if (options.url) {
+          window.focus()
+          window.location.href = options.url
+        }
       }
     }
   } catch {
