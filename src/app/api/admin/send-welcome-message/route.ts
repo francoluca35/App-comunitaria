@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, getAccessToken } from '@/lib/supabase/server'
+import { getAccessToken } from '@/lib/admin-auth'
+import { createClient } from '@/lib/supabase/server'
 
 const WELCOME_MESSAGE = `¡Hola! Bienvenido/a a la comunidad. 🎉
 
