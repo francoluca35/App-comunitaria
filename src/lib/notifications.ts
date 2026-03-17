@@ -3,6 +3,16 @@
  * Requiere que el usuario haya aceptado permisos y que la app esté instalada o en HTTPS.
  */
 
+const NOTIFICATION_ICON_PATH = '/Assets/logocst.png'
+
+/** URL absoluta del icono para que en móvil (barra de estado) se vea bien. */
+function getNotificationIconUrl(customIcon?: string): string {
+  if (typeof window === 'undefined') return customIcon ?? NOTIFICATION_ICON_PATH
+  const base = window.location.origin
+  const path = customIcon ?? NOTIFICATION_ICON_PATH
+  return path.startsWith('http') ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
 export function isNotificationSupported(): boolean {
   if (typeof window === 'undefined') return false
   return 'Notification' in window
@@ -21,7 +31,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 /**
  * Muestra una notificación en la barra del sistema (móvil/PC).
- * No hace nada si el usuario no dio permiso o no soporta Notification.
+ * Usa icono en URL absoluta para que en Android aparezca en la barra de estado.
  */
 export async function showSystemNotification(options: {
   title: string
@@ -31,6 +41,7 @@ export async function showSystemNotification(options: {
   icon?: string
 }): Promise<void> {
   if (!isNotificationSupported() || window.Notification.permission !== 'granted') return
+  const iconUrl = getNotificationIconUrl(options.icon)
   try {
     const reg = await navigator.serviceWorker?.ready
     if (reg?.showNotification) {
@@ -38,14 +49,16 @@ export async function showSystemNotification(options: {
         body: options.body,
         tag: options.tag ?? 'comunidad',
         data: { url: options.url ?? '/' },
-        icon: options.icon ?? '/Assets/logocst.png',
-        badge: options.icon ?? '/Assets/logocst.png',
+        icon: iconUrl,
+        badge: iconUrl,
+        vibrate: [200, 100, 200],
+        requireInteraction: false,
       })
     } else {
       const n = new window.Notification(options.title, {
         body: options.body,
         tag: options.tag,
-        icon: options.icon ?? '/Assets/logocst.png',
+        icon: iconUrl,
       })
       n.onclick = () => {
         n.close()

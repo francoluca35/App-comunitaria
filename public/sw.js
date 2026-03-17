@@ -1,5 +1,12 @@
 // Service worker para PWA y notificaciones push
 const CACHE_NAME = 'comunidad-v1'
+const ICON_PATH = '/Assets/logocst.png'
+
+function getFullIconUrl(path) {
+  if (!path || path.startsWith('http')) return path || ICON_PATH
+  const base = self.registration?.scope?.replace(/\/$/, '') || self.location?.origin || ''
+  return base ? base + (path.startsWith('/') ? path : '/' + path) : path
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -11,7 +18,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('push', (event) => {
   if (!event.data) return
-  let payload = { title: 'Comunidad', body: '', tag: 'comunidad' }
+  let payload = { title: 'Comunidad', body: '', tag: 'comunidad', icon: ICON_PATH }
   try {
     const data = event.data.json()
     payload = {
@@ -19,18 +26,20 @@ self.addEventListener('push', (event) => {
       body: data.body ?? data.text ?? payload.body,
       tag: data.tag ?? payload.tag,
       url: data.url,
-      icon: data.icon ?? '/Assets/logocst.png',
+      icon: data.icon ?? ICON_PATH,
     }
   } catch {
     payload.body = event.data.text()
   }
+  const iconUrl = getFullIconUrl(payload.icon)
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
       tag: payload.tag,
-      data: { url: payload.url },
-      icon: payload.icon,
-      badge: payload.icon ?? '/Assets/logocst.png',
+      data: { url: payload.url || '/' },
+      icon: iconUrl,
+      badge: iconUrl,
+      vibrate: [200, 100, 200],
       requireInteraction: false,
     })
   )
