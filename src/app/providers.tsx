@@ -813,7 +813,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const loginWithGoogle = async (): Promise<boolean> => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' }).catch(() => ({ error: { message: 'AbortError' } }))
+    const { error } = await supabase.auth
+      .signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/` },
+      })
+      .catch(() => ({ error: { message: 'AbortError' } }))
     return !error
   }
 
