@@ -2,36 +2,20 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useApp, Category } from '@/app/providers'
+import { useApp, type Category } from '@/app/providers'
 import { PostCard } from '@/components/PostCard'
 import { Button } from '@/app/components/ui/button'
 import { Filter, ArrowLeft } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
 
-const SLUG_TO_CATEGORY: Record<string, Category | 'all'> = {
-  todas: 'all',
-  mascotas: 'mascotas',
-  alertas: 'alertas',
-  avisos: 'avisos',
-  objetos: 'objetos',
-  noticias: 'noticias',
-}
-
-const CATEGORY_LABELS: Record<Category | 'all', string> = {
-  all: 'Todas',
-  mascotas: 'Mascotas',
-  alertas: 'Alertas',
-  avisos: 'Avisos',
-  objetos: 'Objetos',
-  noticias: 'Noticias',
-}
-
 export default function CategoriaPage() {
   const params = useParams<{ slug: string }>()
-  const { posts, currentUser } = useApp()
+  const { posts, currentUser, postCategories } = useApp()
 
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug
-  const category = SLUG_TO_CATEGORY[slug]
+  const isTodas = slug === 'todas'
+  const knownSlug = !isTodas && postCategories.some((c) => c.slug === slug)
+  const category: Category | 'all' | undefined = isTodas ? 'all' : knownSlug ? slug : undefined
 
   if (category === undefined) {
     return (
@@ -64,7 +48,10 @@ export default function CategoriaPage() {
   const filteredPosts = [...myPendingInCategory, ...visibleApproved].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
-  const title = CATEGORY_LABELS[category]
+  const title =
+    category === 'all'
+      ? 'Todas'
+      : postCategories.find((c) => c.slug === category)?.label ?? category
 
   return (
     <DashboardLayout>

@@ -134,33 +134,6 @@ export default function AdminSettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Categorías</CardTitle>
-            <CardDescription>Gestión de categorías de publicaciones</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span className="text-sm">🐕 Mascotas</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span className="text-sm">⚠️ Alertas</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span className="text-sm">📢 Avisos</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span className="text-sm">📦 Objetos</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded">
-                <span className="text-sm">📰 Noticias</span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">Las categorías están predefinidas</p>
-          </CardContent>
-        </Card>
-
         <Button className="w-full" size="lg" onClick={handleSave}>
           <Save className="w-4 h-4 mr-2" />
           Guardar Configuración

@@ -1,21 +1,9 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { useApp, Category } from './providers'
-import {
-  Dog,
-  AlertTriangle,
-  Megaphone,
-  Package,
-  Newspaper,
-  Filter,
-  Plus,
-  Sparkles,
-  Upload,
-  MessageCircle,
-  Instagram,
-} from 'lucide-react'
+import { useApp, type Category } from './providers'
+import { Megaphone, Plus, Sparkles, Upload } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import {
   Dialog,
@@ -30,24 +18,10 @@ import { Carousel, CarouselContent, CarouselItem } from '@/app/components/ui/car
 import type { CarouselApi } from '@/app/components/ui/carousel'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { ZONA_CARRUSEL_PUBLICIDADES } from '@/lib/demo-publicidades'
 import { PublicidadModal } from '@/components/PublicidadModal'
-import type { DemoPublicidad } from '@/lib/demo-publicidades'
-
-const CATEGORIES: {
-  value: Category | 'all'
-  slug: string
-  label: string
-  icon: React.ReactNode
-  iconClass: string
-}[] = [
-  { value: 'all', slug: 'todas', label: 'Todas', icon: <Filter className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-slate-500 to-slate-600 dark:from-slate-400 dark:to-slate-500' },
-  { value: 'mascotas', slug: 'mascotas', label: 'Mascotas', icon: <Dog className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-400 dark:to-orange-400' },
-  { value: 'alertas', slug: 'alertas', label: 'Alertas', icon: <AlertTriangle className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-rose-500 to-red-500 dark:from-rose-400 dark:to-red-400' },
-  { value: 'avisos', slug: 'avisos', label: 'Avisos', icon: <Megaphone className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-blue-500 to-indigo-500 dark:from-blue-400 dark:to-indigo-400' },
-  { value: 'objetos', slug: 'objetos', label: 'Objetos', icon: <Package className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-emerald-500 to-teal-500 dark:from-emerald-400 dark:to-teal-400' },
-  { value: 'noticias', slug: 'noticias', label: 'Noticias', icon: <Newspaper className="w-6 h-6" />, iconClass: 'bg-gradient-to-br from-violet-500 to-purple-500 dark:from-violet-400 dark:to-purple-400' },
-]
+import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
+import type { PublicidadDisplay } from '@/lib/publicidad-display'
+import { getPostCategoryVisual } from '@/lib/post-category-visuals'
 
 function getCategoryCount(posts: { category: Category }[], value: Category | 'all') {
   if (value === 'all') return posts.length
@@ -56,15 +30,54 @@ function getCategoryCount(posts: { category: Category }[], value: Category | 'al
 
 function ZonaPublicitariaCarousel() {
   const [api, setApi] = useState<CarouselApi>()
-  const [selectedPublicidad, setSelectedPublicidad] = useState<DemoPublicidad | null>(null)
+  const [selectedPublicidad, setSelectedPublicidad] = useState<PublicidadDisplay | null>(null)
+  const [ads, setAds] = useState<PublicidadDisplay[]>([])
+  const [adsLoading, setAdsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/publicidad/activos?lateral=1')
+      .then(async (res) => {
+        if (!res.ok) return []
+        const data = (await res.json().catch(() => [])) as unknown
+        if (!Array.isArray(data)) return []
+        return data as Record<string, unknown>[]
+      })
+      .then((rows) => {
+        if (cancelled) return
+        const mapped: PublicidadDisplay[] = rows.map((r) => ({
+          id: String(r.id ?? ''),
+          title: String(r.title ?? ''),
+          description: String(r.description ?? ''),
+          category: String(r.category ?? ''),
+          createdAt: new Date(
+            typeof r.createdAt === 'string' || typeof r.createdAt === 'number' ? r.createdAt : Date.now()
+          ),
+          imageUrl: typeof r.imageUrl === 'string' ? r.imageUrl : undefined,
+          images: Array.isArray(r.images)
+            ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
+            : undefined,
+          whatsappUrl: typeof r.whatsappUrl === 'string' ? r.whatsappUrl : undefined,
+          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : undefined,
+        }))
+        setAds(mapped)
+      })
+      .catch(() => {
+        if (!cancelled) setAds([])
+      })
+      .finally(() => {
+        if (!cancelled) setAdsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!api) return
     const t = setInterval(() => api.scrollNext(), 4000)
     return () => clearInterval(t)
   }, [api])
-
-  const ads = ZONA_CARRUSEL_PUBLICIDADES
 
   return (
     <>
@@ -73,63 +86,86 @@ function ZonaPublicitariaCarousel() {
         onOpenChange={(open) => !open && setSelectedPublicidad(null)}
         publicidad={selectedPublicidad}
       />
-    <Carousel
-      opts={{ loop: true, align: 'start' }}
-      setApi={setApi}
-      className="w-full"
-    >
-      <CarouselContent className="-ml-2">
-        {ads.map((p) => (
-          <CarouselItem key={p.id} className="pl-2 basis-1/2">
-            <button
-              type="button"
-              onClick={() => setSelectedPublicidad(p)}
-              className="w-full text-left rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 overflow-hidden shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            >
-              <div className="aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-gray-700">
-                {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Megaphone className="w-8 h-8 text-slate-400" />
-                  </div>
-                )}
-              </div>
-              <div className="p-2">
-                <p className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-2">{p.title}</p>
-                {p.ctaUrl && p.ctaLabel && (
-                  <a
-                    href={p.ctaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className={`mt-1.5 flex items-center justify-center gap-1 w-full py-2 rounded-lg text-[10px] font-medium text-white transition-opacity hover:opacity-95 ${
-                      p.ctaType === 'whatsapp'
-                        ? 'bg-[#25D366] hover:bg-[#20BD5A]'
-                        : 'bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4]'
-                    }`}
-                  >
-                    {p.ctaType === 'whatsapp' ? (
-                      <MessageCircle className="w-3 h-3" />
+      {adsLoading ? (
+        <div className="text-sm text-slate-500 dark:text-gray-400 py-6 text-center">Cargando publicidades…</div>
+      ) : ads.length === 0 ? (
+        <p className="text-xs text-slate-500 dark:text-gray-400 px-2 py-4 text-center">
+          No hay publicidades con la opción de barra lateral activas. Podés ver todas en{' '}
+          <Link href="/publicidades" className="text-indigo-600 dark:text-indigo-400 font-medium underline">
+            Publicidades
+          </Link>
+          .
+        </p>
+      ) : (
+        <Carousel
+          opts={{ loop: ads.length > 1, align: 'start' }}
+          setApi={setApi}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-2">
+            {ads.map((p) => (
+              <CarouselItem key={p.id} className="pl-2 basis-1/2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPublicidad(p)}
+                  className="w-full text-left rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 overflow-hidden shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                >
+                  <div className="aspect-[4/3] overflow-hidden bg-slate-200 dark:bg-gray-700">
+                    {p.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" />
                     ) : (
-                      <Instagram className="w-3 h-3" />
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Megaphone className="w-8 h-8 text-slate-400" />
+                      </div>
                     )}
-                    {p.ctaLabel}
-                  </a>
-                )}
-              </div>
-            </button>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-    </Carousel>
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white line-clamp-2">{p.title}</p>
+                    <PublicidadContactLinks
+                      whatsappUrl={p.whatsappUrl}
+                      instagramUrl={p.instagramUrl}
+                      size="compact"
+                      stopPropagationOnClick
+                    />
+                  </div>
+                </button>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      )}
     </>
   )
 }
 
 export default function HomePage() {
-  const { posts, currentUser, refreshUser, authLoading } = useApp()
+  const { posts, currentUser, refreshUser, authLoading, postCategories } = useApp()
   const approvedPosts = posts.filter((p) => p.status === 'approved')
+
+  const categoryNavItems = useMemo(() => {
+    const todasVisual = getPostCategoryVisual('todas')
+    const head = [
+      {
+        value: 'all' as const,
+        slug: 'todas',
+        label: 'Todas',
+        icon: todasVisual.icon,
+        iconClass: todasVisual.iconClass,
+      },
+    ]
+    const rest = postCategories.map((cat) => {
+      const v = getPostCategoryVisual(cat.slug)
+      return {
+        value: cat.slug as Category,
+        slug: cat.slug,
+        label: cat.label,
+        icon: v.icon,
+        iconClass: v.iconClass,
+      }
+    })
+    return [...head, ...rest]
+  }, [postCategories])
   const [avatarDismissed, setAvatarDismissed] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -240,6 +276,24 @@ export default function HomePage() {
           <Sparkles className="w-5 h-5 text-white/80 group-hover:animate-pulse" />
         </Link>
 
+        {currentUser && (
+          <Link
+            href="/publicidades/crear"
+            className="group flex items-center justify-between gap-4 rounded-2xl p-4 sm:p-5 mb-6 border-2 border-indigo-200 dark:border-indigo-800 bg-white dark:bg-gray-800/80 text-slate-900 dark:text-white shadow-sm hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-md transition-all duration-300"
+          >
+            <div className="flex items-center gap-4">
+              <span className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 group-hover:scale-105 transition-transform">
+                <Megaphone className="w-6 h-6" />
+              </span>
+              <div>
+                <span className="text-xl font-bold block">Crear publicidad</span>
+                <span className="text-sm text-slate-500 dark:text-gray-400">Gestionar anuncios de la comunidad</span>
+              </div>
+            </div>
+            <Sparkles className="w-5 h-5 text-indigo-400 group-hover:animate-pulse" />
+          </Link>
+        )}
+
         {/* Resumen: acceso rápido por categoría */}
         <section>
           <h2 className="text-sm font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider mb-3">
@@ -249,7 +303,7 @@ export default function HomePage() {
             Elegí una categoría en el menú o tocá una tarjeta.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-            {CATEGORIES.map((cat) => {
+            {categoryNavItems.map((cat) => {
               const count = getCategoryCount(approvedPosts, cat.value)
               return (
                 <Link

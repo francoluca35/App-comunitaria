@@ -4,5 +4,9 @@ dist
 out
 .env
 .env.local
+.env.example
 .env.production
 coverage
+/.history
+.history/
+**/.history/

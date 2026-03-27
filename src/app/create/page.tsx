@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useApp, Category } from '@/app/providers'
+import { useApp, type Category } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -11,31 +12,31 @@ import { Textarea } from '@/app/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { ArrowLeft, AlertCircle, Upload, X } from 'lucide-react'
+import { ArrowLeft, AlertCircle, Megaphone, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 const BUCKET = 'publicaciones'
 const MAX_IMAGES = 5
 const MAX_FILE_MB = 5
 
-const CATEGORIES: { value: Category; label: string }[] = [
-  { value: 'mascotas', label: 'Mascotas' },
-  { value: 'alertas', label: 'Alertas' },
-  { value: 'avisos', label: 'Avisos' },
-  { value: 'objetos', label: 'Objetos' },
-  { value: 'noticias', label: 'Noticias' },
-]
-
 export default function CreatePostPage() {
   const router = useRouter()
-  const { addPost, currentUser, config } = useApp()
+  const { addPost, currentUser, config, postCategories } = useApp()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<Category>('noticias')
+  const [category, setCategory] = useState<Category>('')
   const [whatsappNumber, setWhatsappNumber] = useState('')
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    if (postCategories.length === 0) return
+    setCategory((prev) => {
+      if (prev && postCategories.some((c) => c.slug === prev)) return prev
+      return postCategories[0].slug
+    })
+  }, [postCategories])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -100,6 +101,10 @@ export default function CreatePostPage() {
 
     if (!title.trim() || !description.trim()) {
       toast.error('Completa título y descripción')
+      return
+    }
+    if (!category || !postCategories.some((c) => c.slug === category)) {
+      toast.error('Elegí una categoría válida')
       return
     }
 
@@ -180,13 +185,13 @@ export default function CreatePostPage() {
             <Label htmlFor="category">
               Categoría <span className="text-red-500">*</span>
             </Label>
-            <Select value={category} onValueChange={(value) => setCategory(value as Category)}>
+            <Select value={category || undefined} onValueChange={(value) => setCategory(value as Category)}>
               <SelectTrigger id="category">
-                <SelectValue />
+                <SelectValue placeholder="Elegí categoría" />
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
+                {postCategories.map((cat) => (
+                  <SelectItem key={cat.slug} value={cat.slug}>
                     {cat.label}
                   </SelectItem>
                 ))}
@@ -263,6 +268,17 @@ export default function CreatePostPage() {
             {sending ? 'Enviando…' : 'Enviar publicación'}
           </Button>
         </form>
+
+        {currentUser && (
+          <div className="mt-4">
+            <Button variant="outline" className="w-full" size="lg" asChild>
+              <Link href="/publicidades/crear">
+                <Megaphone className="w-4 h-4 mr-2" />
+                Crear publicidad
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

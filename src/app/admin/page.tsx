@@ -1,20 +1,25 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
-import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/app/components/ui/card'
-import { Button } from '@/app/components/ui/button'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { Clock, CheckCircle, Users, Settings, Bell, MessageCircle, Megaphone, Sparkles } from 'lucide-react'
-import { toast } from 'sonner'
-
+import {
+  Clock,
+  CheckCircle,
+  Users,
+  Settings,
+  Bell,
+  MessageCircle,
+  Megaphone,
+  Tags,
+  Layers,
+  Banknote,
+} from 'lucide-react'
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const { currentUser, posts, users, recentRegistrations, refreshPosts } = useApp()
-  const [seeding, setSeeding] = useState(false)
+  const { currentUser, posts, users, recentRegistrations } = useApp()
 
   if (!currentUser?.isAdmin) {
     return (
@@ -39,33 +44,6 @@ export default function AdminDashboardPage() {
   const approvedPosts = posts.filter((p) => p.status === 'approved')
   const rejectedPosts = posts.filter((p) => p.status === 'rejected')
   const blockedUsers = users.filter((u) => u.isBlocked)
-
-  const handleSeedDemoPosts = async () => {
-    setSeeding(true)
-    try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        toast.error('Sesión expirada. Volvé a iniciar sesión.')
-        return
-      }
-      const res = await fetch('/api/admin/seed-demo-posts', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        toast.error(data.error ?? 'Error al generar publicaciones')
-        return
-      }
-      await refreshPosts()
-      toast.success(`Se crearon ${data.created ?? 0} publicaciones de prueba`)
-    } catch {
-      toast.error('Error de conexión')
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   return (
     <DashboardLayout>
@@ -119,23 +97,11 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        {/* Generar publicaciones demo (videodemo) */}
-        <section className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
-          <p className="text-slate-700 dark:text-slate-300 text-sm mb-2">Para videodemo: generá publicaciones de prueba con imágenes y texto coherente.</p>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleSeedDemoPosts}
-            disabled={seeding}
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {seeding ? 'Generando…' : 'Generar publicaciones demo'}
-          </Button>
-        </section>
-
-        {/* Menú de acciones: botonera cuadrada una al lado del otro */}
+        {/* Acciones del día a día (comunidad / moderación) */}
         <section>
-          <h2 className="text-base font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Acciones</h2>
+          <h2 className="text-base font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">
+            Acciones normales
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Link
               href="/admin/moderation"
@@ -170,16 +136,6 @@ export default function AdminDashboardPage() {
             </Link>
 
             <Link
-              href="/admin/publicidades"
-              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
-            >
-              <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">
-                <Megaphone className="w-6 h-6 text-violet-700 dark:text-violet-400" />
-              </div>
-              <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Publicidades</span>
-            </Link>
-
-            <Link
               href="/admin/registros"
               className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
             >
@@ -191,6 +147,18 @@ export default function AdminDashboardPage() {
             </Link>
 
             <Link
+              href="/admin/categorias-publicaciones"
+              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
+            >
+              <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center shrink-0">
+                <Layers className="w-6 h-6 text-orange-700 dark:text-orange-400" />
+              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-white text-center leading-tight px-1">
+                Categorías publicaciones
+              </span>
+            </Link>
+
+            <Link
               href="/admin/settings"
               className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
             >
@@ -198,6 +166,51 @@ export default function AdminDashboardPage() {
                 <Settings className="w-6 h-6 text-slate-700 dark:text-slate-200" />
               </div>
               <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Configuración</span>
+            </Link>
+          </div>
+        </section>
+
+        {/* Publicidad: anuncios, precios y categorías de avisos */}
+        <section className="rounded-2xl border border-violet-200/80 dark:border-violet-900/50 bg-violet-50/40 dark:bg-violet-950/20 p-4 sm:p-5">
+          <h2 className="text-base font-medium text-violet-800 dark:text-violet-300 uppercase tracking-wide mb-1">
+            Acciones publicitarias
+          </h2>
+          <p className="text-sm text-violet-700/90 dark:text-violet-400/90 mb-3">
+            Todo lo relacionado con espacios y clasificación de publicidades.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <Link
+              href="/admin/publicidades"
+              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-violet-100 dark:border-violet-900/40 hover:bg-violet-50/80 dark:hover:bg-slate-700/80 active:bg-violet-100/50 dark:active:bg-slate-700"
+            >
+              <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">
+                <Megaphone className="w-6 h-6 text-violet-700 dark:text-violet-400" />
+              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Publicidades</span>
+            </Link>
+
+            <Link
+              href="/admin/gestion-publicitaria"
+              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-violet-100 dark:border-violet-900/40 hover:bg-violet-50/80 dark:hover:bg-slate-700/80 active:bg-violet-100/50 dark:active:bg-slate-700"
+            >
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                <Banknote className="w-6 h-6 text-emerald-700 dark:text-emerald-400" />
+              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-white text-center leading-tight px-1">
+                Gestión publicitaria
+              </span>
+            </Link>
+
+            <Link
+              href="/admin/categorias-publicidad"
+              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-violet-100 dark:border-violet-900/40 hover:bg-violet-50/80 dark:hover:bg-slate-700/80 active:bg-violet-100/50 dark:active:bg-slate-700"
+            >
+              <div className="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-900/50 flex items-center justify-center shrink-0">
+                <Tags className="w-6 h-6 text-cyan-700 dark:text-cyan-400" />
+              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-white text-center leading-tight px-1">
+                Categorías publicidad
+              </span>
             </Link>
           </div>
         </section>
