@@ -28,6 +28,8 @@ type Props = {
   size?: Size
   /** Ej.: evitar que el click cierre un card que es <button> */
   stopPropagationOnClick?: boolean
+  /** Anillo pulsante en los botones (p. ej. feed principal) */
+  pulse?: boolean
 }
 
 export function PublicidadContactLinks({
@@ -35,6 +37,7 @@ export function PublicidadContactLinks({
   instagramUrl,
   size = 'default',
   stopPropagationOnClick,
+  pulse = false,
 }: Props) {
   if (!whatsappUrl && !instagramUrl) return null
 
@@ -54,7 +57,7 @@ export function PublicidadContactLinks({
           target="_blank"
           rel="noopener noreferrer"
           onClick={onClick}
-          className={`${s.btn} bg-[#25D366] hover:bg-[#20BD5A]`}
+          className={`${s.btn} bg-[#25D366] hover:bg-[#20BD5A] ${pulse ? 'publicidad-cta-pulse-wa' : ''}`}
         >
           <MessageCircle className={s.icon} aria-hidden />
           WhatsApp
@@ -66,7 +69,7 @@ export function PublicidadContactLinks({
           target="_blank"
           rel="noopener noreferrer"
           onClick={onClick}
-          className={`${s.btn} bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4]`}
+          className={`${s.btn} bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4] ${pulse ? 'publicidad-cta-pulse-ig' : ''}`}
         >
           <Instagram className={s.icon} aria-hidden />
           Instagram

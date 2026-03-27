@@ -1,0 +1,18 @@
+[33m35c2550[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32msemana4/anuncion-publicitarios[m[33m)[m cambios en gitignore.
+[33m1fe5178[m publicidad con categorías, APIs y migraciones Supabase
+[33m45aea42[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m Merge pull request #6 from francoluca35/semana3/registro-con-google
+[33md1d1e70[m[33m ([m[1;31morigin/semana3/registro-con-google[m[33m, [m[1;32msemana3/registro-con-google[m[33m)[m registro y inicio de sesion con google
+[33mcbc2295[m nuevas actualizaciones de notificacion
+[33m82c9078[m nuevas actualizaciones de notificacion
+[33mae8405c[m Merge pull request #5 from francoluca35/semana2/1-notificaciones
+[33m9059628[m[33m ([m[1;31morigin/semana2/1-notificaciones[m[33m, [m[1;32msemana2/1-notificaciones[m[33m)[m notificaciones
+[33m2ef2060[m Merge pull request #4 from francoluca35/semana2/1-notificaciones
+[33m15ca531[m notificaciones
+[33m9210977[m Merge pull request #3 from francoluca35/semana2/1-notificaciones
+[33m4bc4696[m notificaciones
+[33m5c9dce9[m arreglo de if para comprobar input
+[33mce46f49[m Merge pull request #2 from francoluca35/semana1/1-Sistema-de-Roles-login
+[33mf7b4baf[m[33m ([m[1;31morigin/semana1/1-Sistema-de-Roles-login[m[33m, [m[1;32msemana1/1-Sistema-de-Roles-login[m[33m)[m Sidebar fijo en desktop (layout y margen).
+[33mbe60abd[m Merge pull request #1 from francoluca35/semana1/1-Sistema-de-Roles-login
+[33m121bfd1[m se modifico el login y register.
+[33m5478f9e[m[33m ([m[1;32mApp-descargable/1er-intento[m[33m)[m Initial clean commit

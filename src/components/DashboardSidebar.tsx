@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Users2,
   Home,
-  User,
   FileText,
   Filter,
   Dog,
@@ -18,12 +17,12 @@ import {
   Settings,
   LogOut,
   LayoutDashboard,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
-import { NotificationBell } from '@/components/NotificationBell'
 
 const ICON_BY_SLUG: Record<string, LucideIcon> = {
   todas: Filter,
@@ -34,10 +33,57 @@ const ICON_BY_SLUG: Record<string, LucideIcon> = {
   noticias: Newspaper,
 }
 
+const orange = '#C06C3B'
+const sage = '#8EA07E'
+const creamPanel = '#FFFCF8'
+
+function getCategoryCount(
+  posts: { category: string; status: string }[],
+  slug: string
+) {
+  const approved = posts.filter((p) => p.status === 'approved')
+  if (slug === 'todas') return approved.length
+  return approved.filter((p) => p.category === slug).length
+}
+
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, logout, postCategories } = useApp()
+  const { currentUser, logout, postCategories, posts } = useApp()
+  const [publicidadTotal, setPublicidadTotal] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!currentUser) {
+      setPublicidadTotal(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const supabase = (await import('@/lib/supabase/client')).createClient()
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData.session?.access_token
+        if (!token) return
+        const res = await fetch('/api/publicidad/mis', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const data = (await res.json().catch(() => ({}))) as {
+          active?: unknown[]
+          inactive?: unknown[]
+        }
+        const n =
+          (Array.isArray(data.active) ? data.active.length : 0) +
+          (Array.isArray(data.inactive) ? data.inactive.length : 0)
+        if (!cancelled) setPublicidadTotal(n)
+      } catch {
+        if (!cancelled) setPublicidadTotal(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser?.id])
 
   const categoryLinks = useMemo(() => {
     const head = [{ slug: 'todas', label: 'Todas', icon: Filter }]
@@ -49,122 +95,221 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     return [...head, ...rest]
   }, [postCategories])
 
-  const isActive = (path: string) => {
+  const myPostsCount = useMemo(() => {
+    if (!currentUser) return 0
+    return posts.filter((p) => p.authorId === currentUser.id).length
+  }, [currentUser, posts])
+
+  const isActivePath = (path: string) => {
     if (path === '/') return pathname === '/'
     return pathname.startsWith(path)
   }
 
-  const linkClass = (active: boolean) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-      active
-        ? 'bg-indigo-500/20 text-indigo-300 dark:text-indigo-200'
-        : 'text-slate-300 dark:text-gray-400 hover:bg-white/5 hover:text-white dark:hover:text-gray-200'
-    }`
+  const subline = currentUser?.locality
+    ? `Vecino/a • ${currentUser.locality}`
+    : 'Tu espacio en la comunidad'
 
   return (
-    <aside className="flex flex-col w-64 min-h-full bg-slate-900 dark:bg-[#440813] border-r border-slate-700/50 dark:border-gray-800 shrink-0">
-      {/* Logo + avatar de usuario */}
-      <div className="p-4 border-b border-slate-700/50 dark:border-gray-800 flex items-center justify-between gap-2">
-        <Link href="/" className="flex items-center gap-3 min-w-0 flex-1" onClick={onNavigate}>
-          {currentUser ? (
-            <Avatar className="h-10 w-10 rounded-xl border-2 border-white/20 shadow-lg shrink-0">
+    <aside
+      className="flex h-full min-h-screen w-64 shrink-0 flex-col border-r border-[#E8E0D5]"
+      style={{ backgroundColor: creamPanel }}
+    >
+      <div className="border-b border-[#E8E0D5] p-4">
+        {currentUser ? (
+          <div className="flex flex-col items-center text-center">
+            <Avatar className="mb-3 h-[4.5rem] w-[4.5rem] border-4 border-white shadow-md">
               <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-              <AvatarFallback className="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-semibold">
-                {currentUser.name?.[0]?.toUpperCase() ?? <Users2 className="w-5 h-5" />}
+              <AvatarFallback
+                className="text-lg font-bold text-white"
+                style={{ background: `linear-gradient(135deg, ${orange}, ${sage})` }}
+              >
+                {currentUser.name?.[0]?.toUpperCase() ?? '?'}
               </AvatarFallback>
             </Avatar>
-          ) : (
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shrink-0">
-              <Users2 className="w-5 h-5 text-white" />
-            </div>
-          )}
-          <div className="min-w-0">
-            <span className="text-white font-bold tracking-tight block truncate">CST Comunidad</span>
+            <p className="w-full truncate font-bold text-[#2C241C]">{currentUser.name}</p>
+            <p className="mt-0.5 text-xs text-[#6B5F54]">{subline}</p>
+            <Link
+              href="/profile"
+              onClick={onNavigate}
+              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+              style={{ color: orange }}
+            >
+              Ver perfil
+              <ChevronRight className="h-4 w-4" />
+            </Link>
           </div>
-        </Link>
-        {currentUser && (
-          <div className="shrink-0 [&_button]:text-white [&_button]:hover:bg-white/10 [&_.bg-indigo-500]:bg-indigo-400">
-            <NotificationBell />
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full text-white shadow-md"
+              style={{ background: `linear-gradient(135deg, ${orange}, ${sage})` }}
+            >
+              <Users2 className="h-8 w-8" />
+            </div>
+            <p className="text-sm font-semibold text-[#2C241C]">CST Comunidad</p>
+            <Link
+              href="/login"
+              onClick={onNavigate}
+              className="mt-1 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm"
+              style={{ backgroundColor: orange }}
+            >
+              Iniciar sesión
+            </Link>
           </div>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-        <Link href="/" className={linkClass(pathname === '/')} onClick={onNavigate}>
-          <Home className="w-5 h-5 shrink-0" />
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+            pathname === '/'
+              ? 'text-white shadow-md'
+              : 'text-[#3D3429] hover:bg-white/80'
+          }`}
+          style={pathname === '/' ? { backgroundColor: orange } : undefined}
+        >
+          <Home className="h-5 w-5 shrink-0" />
           Inicio
         </Link>
-        <Link href="/profile" className={linkClass(isActive('/profile'))} onClick={onNavigate}>
-          <User className="w-5 h-5 shrink-0" />
-          Perfil
-        </Link>
-        <Link href="/mis-publicaciones" className={linkClass(isActive('/mis-publicaciones'))} onClick={onNavigate}>
-          <FileText className="w-5 h-5 shrink-0" />
-          Mis publicaciones
+
+        <Link
+          href="/mis-publicaciones"
+          onClick={onNavigate}
+          className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+            isActivePath('/mis-publicaciones') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+          }`}
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <FileText className="h-5 w-5 shrink-0 text-[#6B5F54]" />
+            <span className="truncate">Mis publicaciones</span>
+          </span>
+          {currentUser != null && (
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white shrink-0" style={{ backgroundColor: sage }}>
+              {myPostsCount > 99 ? '99+' : myPostsCount}
+            </span>
+          )}
         </Link>
 
         <Link
           href="/mis-publicidades"
-          className={linkClass(isActive('/mis-publicidades'))}
           onClick={onNavigate}
+          className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+            isActivePath('/mis-publicidades') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+          }`}
         >
-          <Megaphone className="w-5 h-5 shrink-0" />
-          Mis publicidades
+          <span className="flex items-center gap-3 min-w-0">
+            <Megaphone className="h-5 w-5 shrink-0 text-[#6B5F54]" />
+            <span className="truncate">Mis publicidades</span>
+          </span>
+          {currentUser != null && publicidadTotal !== null && (
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white shrink-0" style={{ backgroundColor: sage }}>
+              {publicidadTotal > 99 ? '99+' : publicidadTotal}
+            </span>
+          )}
         </Link>
 
         <div className="pt-4 pb-2">
-          <p className="px-3 text-xs font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-wider">
-            Categorías
-          </p>
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-[#9A8F84]">Categorías</p>
         </div>
+
         {categoryLinks.map(({ slug, label, icon: Icon }) => {
           const href = `/categoria/${slug}`
           const active = pathname === href
+          const count = getCategoryCount(posts, slug)
+          const showDot = (slug === 'mascotas' || slug === 'alertas') && count > 0
           return (
-            <Link key={slug} href={href} className={linkClass(active)} onClick={onNavigate}>
-              <Icon className="w-5 h-5 shrink-0" />
-              {label}
+            <Link
+              key={slug}
+              href={href}
+              onClick={onNavigate}
+              className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition-colors ${
+                active ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+              }`}
+            >
+              <span className="flex items-center gap-3 min-w-0">
+                <Icon className="h-5 w-5 shrink-0 text-[#6B5F54]" />
+                <span className="truncate">{label}</span>
+              </span>
+              <span className="flex items-center gap-1.5 shrink-0 text-xs font-semibold text-[#6B5F54]">
+                {showDot && <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: orange }} aria-hidden />}
+                {count}
+              </span>
             </Link>
           )
         })}
 
-        <div className="pt-4 border-t border-slate-700/50 dark:border-gray-800 mt-4">
+        <Link
+          href="/publicidades"
+          onClick={onNavigate}
+          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold text-white shadow-md transition-all hover:brightness-105 active:scale-[0.98] ${
+            isActivePath('/publicidades') ? 'ring-2 ring-[#5a6d4e] ring-offset-2 ring-offset-[#FFFCF8]' : ''
+          }`}
+          style={{
+            background: `linear-gradient(145deg, ${sage} 0%, #6d8a5e 55%, #5c7550 100%)`,
+            boxShadow: '0 4px 16px rgba(109, 138, 94, 0.42)',
+          }}
+        >
+          <Megaphone className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+          Publicidades
+        </Link>
+
+        <div className="mt-4 border-t border-[#E8E0D5] pt-4">
           {currentUser && !currentUser.isAdmin && (
-            <Link href="/chat" className={linkClass(isActive('/chat'))} onClick={onNavigate}>
-              <MessageCircle className="w-5 h-5 shrink-0" />
+            <Link
+              href="/chat"
+              onClick={onNavigate}
+              className={`mb-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActivePath('/chat') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+              }`}
+            >
+              <MessageCircle className="h-5 w-5 shrink-0 text-[#6B5F54]" />
               Chatear
             </Link>
           )}
-          <Link href="/configuracion" className={linkClass(isActive('/configuracion'))} onClick={onNavigate}>
-            <Settings className="w-5 h-5 shrink-0" />
+          <Link
+            href="/configuracion"
+            onClick={onNavigate}
+            className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              isActivePath('/configuracion') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+            }`}
+          >
+            <Settings className="h-5 w-5 shrink-0 text-[#6B5F54]" />
             Configuración
           </Link>
         </div>
 
         {currentUser?.isAdmin && (
-          <Link href="/admin" className={linkClass(isActive('/admin'))} onClick={onNavigate}>
-            <LayoutDashboard className="w-5 h-5 shrink-0" />
-            Acceso Admin
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            className={`mt-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              isActivePath('/admin') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+            }`}
+          >
+            <LayoutDashboard className="h-5 w-5 shrink-0 text-[#6B5F54]" />
+            Acceso admin
           </Link>
         )}
       </nav>
 
-      {/* Cerrar sesión */}
-      <div className="p-3 border-t border-slate-700/50 dark:border-gray-800">
-        <button
-          type="button"
-          onClick={async () => {
-            await logout()
-            onNavigate?.()
-            router.push('/login')
-          }}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors"
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          Cerrar sesión
-        </button>
-      </div>
+      {currentUser && (
+        <div className="border-t border-[#E8E0D5] p-3">
+          <button
+            type="button"
+            onClick={async () => {
+              await logout()
+              onNavigate?.()
+              router.push('/login')
+            }}
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            Cerrar sesión
+          </button>
+        </div>
+      )}
     </aside>
   )
 }
