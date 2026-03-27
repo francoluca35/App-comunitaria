@@ -1,6 +1,9 @@
+'use client'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { MessageCircle, ExternalLink, ImageOff } from 'lucide-react'
+import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { Post } from '@/app/providers'
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
@@ -89,8 +92,9 @@ export function PostCard({ post, showStatus = false }: PostCardProps) {
         </Link>
       </CardContent>
 
-      <CardFooter className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700/50 flex gap-2">
-        <Button variant="outline" size="sm" asChild className="flex-1">
+      <CardFooter className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700/50 flex flex-wrap gap-2">
+        <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="sm" className="shrink-0" />
+        <Button variant="outline" size="sm" asChild className="min-w-0 flex-1">
           <Link href={`/post/${post.id}`}>
             <MessageCircle className="w-4 h-4 mr-2" />
             Comentar

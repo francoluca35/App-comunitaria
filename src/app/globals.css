@@ -130,6 +130,7 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
   }
 
   html {
@@ -199,4 +200,33 @@
   body {
     padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
+}
+
+/* Pulso suave en CTAs de publicidad (WhatsApp / Instagram) */
+@keyframes publicidad-cta-pulse-wa {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(37 211 102 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgb(37 211 102 / 0);
+  }
+}
+
+@keyframes publicidad-cta-pulse-ig {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(225 48 108 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgb(225 48 108 / 0);
+  }
+}
+
+.publicidad-cta-pulse-wa {
+  animation: publicidad-cta-pulse-wa 2s ease-out infinite;
+}
+
+.publicidad-cta-pulse-ig {
+  animation: publicidad-cta-pulse-ig 2s ease-out infinite;
 }

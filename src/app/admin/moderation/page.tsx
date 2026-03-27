@@ -67,11 +67,14 @@ export default function AdminModerationPage() {
     setRejectedImageIndices([])
   }
 
-  const handleDeletePost = (post: Post) => {
-    if (confirm('¿Estás seguro de eliminar esta publicación permanentemente?')) {
-      deletePost(post.id)
+  const handleDeletePost = async (post: Post) => {
+    if (!confirm('¿Estás seguro de eliminar esta publicación permanentemente?')) return
+    const result = await deletePost(post.id)
+    if (result.ok) {
       toast.success('Publicación eliminada')
       setSelectedPost(null)
+    } else {
+      toast.error(result.error ?? 'No se pudo eliminar')
     }
   }
 

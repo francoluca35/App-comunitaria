@@ -16,6 +16,9 @@ import { ScrollArea } from '@/app/components/ui/scroll-area'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 
+const defaultTriggerClass =
+  'relative p-2 rounded-xl text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors'
+
 export interface AppNotification {
   id: string
   type: string
@@ -51,7 +54,13 @@ function formatNotificationTime(dateStr: string): string {
   return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  triggerClassName,
+  badgeClassName,
+}: {
+  triggerClassName?: string
+  badgeClassName?: string
+} = {}) {
   const { currentUser } = useApp()
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -225,12 +234,17 @@ export function NotificationBell() {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="relative p-2 rounded-xl text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors"
+          className={cn(defaultTriggerClass, triggerClassName)}
           aria-label="Notificaciones"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white">
+            <span
+              className={cn(
+                'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white',
+                badgeClassName
+              )}
+            >
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}

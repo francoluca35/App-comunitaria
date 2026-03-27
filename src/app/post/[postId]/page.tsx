@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 
 export default function PostDetailPage() {
   const params = useParams<{ postId: string }>()
@@ -95,9 +96,10 @@ export default function PostDetailPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
+          <h1 className="min-w-0 flex-1 text-lg font-semibold text-slate-900 dark:text-white truncate">
             Detalle
           </h1>
+          <DeleteOwnPostButton postId={post.id} authorId={post.authorId} redirectTo="/" size="icon" />
         </div>
 
         {/* Imagen(es) */}

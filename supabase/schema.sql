@@ -151,6 +151,9 @@ create policy "Admins can delete posts" on public.posts
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+create policy "Authors can delete own posts" on public.posts
+  for delete using (auth.uid() = author_id);
+
 -- Post media
 create policy "Read media of visible posts" on public.post_media
   for select using (
@@ -172,6 +175,14 @@ create policy "Admins can delete any media" on public.post_media
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
   );
 
+create policy "Authors can delete media of own posts" on public.post_media
+  for delete using (
+    exists (
+      select 1 from public.posts po
+      where po.id = post_media.post_id and po.author_id = auth.uid()
+    )
+  );
+
 -- Comments
 create policy "Anyone can read comments of approved posts" on public.comments
   for select using (
@@ -184,6 +195,14 @@ create policy "Authenticated can comment" on public.comments
 create policy "Admins can delete any comment" on public.comments
   for delete using (
     exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+  );
+
+create policy "Post authors can delete comments on their posts" on public.comments
+  for delete using (
+    exists (
+      select 1 from public.posts po
+      where po.id = comments.post_id and po.author_id = auth.uid()
+    )
   );
 
 -- App config: todos lectura; solo admin escritura (si quieres, añade policy de update)

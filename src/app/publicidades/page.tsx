@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { Megaphone, ArrowLeft, Filter, Search } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { matchesPublicidadSearch } from '@/lib/community-search'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import {
@@ -22,6 +23,7 @@ type SortOrder = 'reciente' | 'antiguo'
 export default function PublicidadesPage() {
   const { publicidadCategories, refreshPublicidadCategories } = useApp()
   const [publicidades, setPublicidades] = useState<PublicidadDisplay[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('reciente')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
@@ -61,21 +63,19 @@ export default function PublicidadesPage() {
     ],
     [publicidadCategories]
   )
-  const [searchQuery, setSearchQuery] = useState('')
   const [searchVisible, setSearchVisible] = useState(false)
   const [selectedPublicidad, setSelectedPublicidad] = useState<PublicidadDisplay | null>(null)
 
   const filteredAndSorted = useMemo(() => {
     let list = [...publicidades]
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase()
-      list = list.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q)
+    list = list.filter((p) =>
+      matchesPublicidadSearch(
+        p,
+        searchQuery,
+        publicidadCategories.find((c) => c.slug === p.category)?.label
       )
-    }
+    )
 
     if (categoryFilter !== 'all') {
       list = list.filter((p) => p.category === categoryFilter)
@@ -88,7 +88,7 @@ export default function PublicidadesPage() {
     })
 
     return list
-  }, [searchQuery, categoryFilter, sortOrder, publicidades])
+  }, [searchQuery, categoryFilter, sortOrder, publicidades, publicidadCategories])
 
   return (
     <DashboardLayout>

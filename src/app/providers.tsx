@@ -132,7 +132,7 @@ interface AppContextType {
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
   ) => Promise<{ ok: boolean; error?: string }>
   updatePostStatus: (postId: string, status: PostStatus, rejectedImages?: number[]) => void
-  deletePost: (postId: string) => void
+  deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
 
   comments: Comment[]
   addComment: (postId: string, text: string) => void
@@ -1092,9 +1092,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const deletePost = async (postId: string) => {
-    await supabase.from('posts').delete().eq('id', postId)
+    const { error } = await supabase.from('posts').delete().eq('id', postId)
+    if (error) return { ok: false, error: error.message }
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     setComments((prev) => prev.filter((c) => c.postId !== postId))
+    return { ok: true }
   }
 
   const addComment = (postId: string, text: string) => {

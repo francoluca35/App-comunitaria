@@ -1,24 +1,31 @@
 import './globals.css'
 import { Providers } from './providers'
+import { Plus_Jakarta_Sans } from 'next/font/google'
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-plus-jakarta',
+  display: 'swap',
+})
 
 export const metadata = {
-  title: 'Comunidad',
+  title: 'CST Comunidad',
   description: 'Plataforma de difusión comunitaria',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, title: 'Comunidad' },
-  themeColor: '#4f46e5',
+  appleWebApp: { capable: true, title: 'CST Comunidad' },
+  themeColor: '#C06C3B',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className={plusJakarta.variable}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#4f46e5" />
+        <meta name="theme-color" content="#C06C3B" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
