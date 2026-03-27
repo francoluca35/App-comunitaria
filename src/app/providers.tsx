@@ -7,10 +7,19 @@ import { createClient } from '@/lib/supabase/client'
 import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
 import { NotificationPreferenceModal } from '@/components/NotificationPreferenceModal'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
+import {
+  DEFAULT_POST_CATEGORIES,
+  DEFAULT_PUBLICIDAD_CATEGORIES,
+  type NamedCategoryRow,
+} from '@/lib/category-defaults'
 
 const NOTIFICATION_MODAL_DISMISSED_KEY = 'comunidad_notification_modal_dismissed'
 
-export type Category = 'mascotas' | 'alertas' | 'avisos' | 'objetos' | 'noticias'
+/** Slug en `post_categories` (feed y /categoria/…). No confundir con publicidad_categories. */
+export type Category = string
+
+/** Slug en `publicidad_categories` (filtros en /publicidades). */
+export type PublicidadCategorySlug = string
 
 export type PostStatus = 'pending' | 'approved' | 'rejected'
 
@@ -146,6 +155,13 @@ interface AppContextType {
 
   config: AppConfig
   updateConfig: (newConfig: Partial<AppConfig>) => void
+
+  /** Categorías de publicaciones (desde API / Supabase). */
+  postCategories: NamedCategoryRow[]
+  /** Categorías de publicidad (filtros en /publicidades). */
+  publicidadCategories: NamedCategoryRow[]
+  refreshPostCategories: () => Promise<void>
+  refreshPublicidadCategories: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -400,6 +416,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [posts, setPosts] = useState<Post[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
+  const [postCategories, setPostCategories] = useState<NamedCategoryRow[]>(DEFAULT_POST_CATEGORIES)
+  const [publicidadCategories, setPublicidadCategories] =
+    useState<NamedCategoryRow[]>(DEFAULT_PUBLICIDAD_CATEGORIES)
+
+  const refreshPostCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/categories/posts')
+      if (!res.ok) return
+      const data = (await res.json()) as NamedCategoryRow[]
+      if (Array.isArray(data) && data.length > 0) setPostCategories(data)
+    } catch {
+      // mantener defaults
+    }
+  }, [])
+
+  const refreshPublicidadCategories = useCallback(async () => {
+    try {
+      const res = await fetch('/api/categories/publicidad')
+      if (!res.ok) return
+      const data = (await res.json()) as NamedCategoryRow[]
+      if (Array.isArray(data) && data.length > 0) setPublicidadCategories(data)
+    } catch {
+      // mantener defaults
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshPostCategories()
+    void refreshPublicidadCategories()
+  }, [refreshPostCategories, refreshPublicidadCategories])
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
@@ -511,7 +557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             id: r.id,
             title: r.title,
             description: r.description,
-            category: r.category as Category,
+            category: r.category,
             images,
             authorId: r.author_id,
             authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -565,7 +611,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               id: r.id,
               title: r.title,
               description: r.description,
-              category: r.category as Category,
+              category: r.category,
               images,
               authorId: r.author_id,
               authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -620,7 +666,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: r.id,
           title: r.title,
           description: r.description,
-          category: r.category as Category,
+              category: r.category,
           images,
           authorId: r.author_id,
           authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -980,6 +1026,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: 'Tu cuenta está suspendida. No podés publicar hasta que se cumpla la fecha indicada.' }
     }
 
+    const status: PostStatus = currentUser.isAdmin ? 'approved' : 'pending'
+
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -988,7 +1036,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           title: post.title.trim(),
           description: post.description.trim(),
           category: post.category,
-          status: 'pending',
+          status,
           whatsapp_number: post.whatsappNumber?.trim() || null,
         })
         .select('id, created_at')
@@ -1023,7 +1071,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         authorId: currentUser.id,
         authorName: currentUser.name,
         authorAvatar: currentUser.avatar,
-        status: 'pending',
+        status,
         createdAt: new Date(data.created_at),
         images: imageUrls,
       }
@@ -1105,6 +1153,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     recentRegistrations,
     config,
     updateConfig,
+    postCategories,
+    publicidadCategories,
+    refreshPostCategories,
+    refreshPublicidadCategories,
   }
 
   const showNotificationPreferenceModal =

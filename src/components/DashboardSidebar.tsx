@@ -13,28 +13,41 @@ import {
   Megaphone,
   Package,
   Newspaper,
+  Tag,
   MessageCircle,
   Settings,
   LogOut,
   LayoutDashboard,
+  type LucideIcon,
 } from 'lucide-react'
+import { useMemo } from 'react'
 import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
 
-const CATEGORIES = [
-  { slug: 'todas', label: 'Todas', icon: Filter },
-  { slug: 'mascotas', label: 'Mascotas', icon: Dog },
-  { slug: 'alertas', label: 'Alertas', icon: AlertTriangle },
-  { slug: 'avisos', label: 'Avisos', icon: Megaphone },
-  { slug: 'objetos', label: 'Objetos', icon: Package },
-  { slug: 'noticias', label: 'Noticias', icon: Newspaper },
-] as const
+const ICON_BY_SLUG: Record<string, LucideIcon> = {
+  todas: Filter,
+  mascotas: Dog,
+  alertas: AlertTriangle,
+  avisos: Megaphone,
+  objetos: Package,
+  noticias: Newspaper,
+}
 
 export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { currentUser, logout } = useApp()
+  const { currentUser, logout, postCategories } = useApp()
+
+  const categoryLinks = useMemo(() => {
+    const head = [{ slug: 'todas', label: 'Todas', icon: Filter }]
+    const rest = postCategories.map((c) => ({
+      slug: c.slug,
+      label: c.label,
+      icon: ICON_BY_SLUG[c.slug] ?? Tag,
+    }))
+    return [...head, ...rest]
+  }, [postCategories])
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/'
@@ -91,12 +104,21 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           Mis publicaciones
         </Link>
 
+        <Link
+          href="/mis-publicidades"
+          className={linkClass(isActive('/mis-publicidades'))}
+          onClick={onNavigate}
+        >
+          <Megaphone className="w-5 h-5 shrink-0" />
+          Mis publicidades
+        </Link>
+
         <div className="pt-4 pb-2">
           <p className="px-3 text-xs font-semibold text-slate-500 dark:text-gray-500 uppercase tracking-wider">
             Categorías
           </p>
         </div>
-        {CATEGORIES.map(({ slug, label, icon: Icon }) => {
+        {categoryLinks.map(({ slug, label, icon: Icon }) => {
           const href = `/categoria/${slug}`
           const active = pathname === href
           return (
