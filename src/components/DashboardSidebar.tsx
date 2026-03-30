@@ -258,10 +258,10 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-4 border-t border-[#E8E0D5] pt-4">
           {currentUser && !currentUser.isAdmin && (
             <Link
-              href="/chat"
+              href="/message"
               onClick={onNavigate}
               className={`mb-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                isActivePath('/chat') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
+                isActivePath('/message') ? 'bg-white shadow-sm text-[#2C241C]' : 'text-[#3D3429] hover:bg-white/80'
               }`}
             >
               <MessageCircle className="h-5 w-5 shrink-0 text-[#6B5F54]" />

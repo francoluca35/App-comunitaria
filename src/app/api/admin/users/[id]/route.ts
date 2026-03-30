@@ -33,13 +33,33 @@ export async function PATCH(
   if (body.suspended_until !== undefined) {
     updates.suspended_until = body.suspended_until === null || body.suspended_until === '' ? null : body.suspended_until
   }
+
+  // Primero verificamos que el perfil exista.
+  // Si el update falla por RLS, el `maybeSingle()` del update puede devolver null sin error,
+  // y el mensaje "Perfil no encontrado" confunde.
+  const { data: existsProfile, error: existsError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (existsError) return NextResponse.json({ error: existsError.message }, { status: 500 })
+  if (!existsProfile) return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 })
+
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
     .eq('id', id)
     .select()
-    .single()
+    .maybeSingle()
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) {
+    return NextResponse.json(
+      { error: 'No se pudo actualizar el perfil (posible bloqueo por permisos RLS)' },
+      { status: 403 }
+    )
+  }
   return NextResponse.json(data)
 }
 

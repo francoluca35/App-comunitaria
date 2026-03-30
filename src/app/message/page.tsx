@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
-import { useMarioAdmin, MARIO_EMAILS, type SupportProfile } from '@/hooks/useMarioAdmin'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
@@ -15,6 +14,7 @@ import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { showSystemNotification } from '@/lib/notifications'
+import { MARIO_EMAILS } from '@/hooks/useMarioAdmin'
 
 interface ChatMessage {
   id: string
@@ -24,20 +24,56 @@ interface ChatMessage {
   created_at: string
 }
 
-export default function ChatPage() {
+interface MarioProfile {
+  id: string
+  name: string | null
+  avatar_url: string | null
+}
+
+const MARIO_CHAT_URL = '/message'
+
+export default function MessagePage() {
   const router = useRouter()
   const { currentUser } = useApp()
-  const { mario: support, loading: supportLoading, error: supportError } = useMarioAdmin()
-  const isMario = MARIO_EMAILS.includes((currentUser?.email ?? '').trim().toLowerCase())
+  const [mario, setMario] = useState<MarioProfile | null>(null)
+  const [marioLoading, setMarioLoading] = useState(true)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
   const supabase = useMemo(() => createClient(), [])
 
   const myId = currentUser?.id ?? ''
-  const otherId = support?.id ?? ''
+  const otherId = mario?.id ?? ''
+
+  useEffect(() => {
+    if (!currentUser) return
+    let cancelled = false
+    const loadMario = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+        const res = await fetch('/api/message/mario', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (!res.ok || cancelled) {
+          return
+        }
+        const data = (await res.json()) as MarioProfile
+        if (!cancelled) setMario(data)
+      } catch {
+        // ignore (UI fallback abajo)
+      } finally {
+        if (!cancelled) setMarioLoading(false)
+      }
+    }
+    void loadMario()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser, supabase])
 
   const loadMessages = async () => {
     if (!myId || !otherId) return
@@ -57,7 +93,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!myId || !otherId) return
-    loadMessages()
+    void loadMessages()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myId, otherId])
 
@@ -77,29 +113,29 @@ export default function ChatPage() {
           const isThisConversation =
             (row.sender_id === myId && row.receiver_id === otherId) ||
             (row.sender_id === otherId && row.receiver_id === myId)
-          if (isThisConversation) {
-            setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
-            const isIncoming = row.receiver_id === myId && row.sender_id !== myId
-            const wantMessages =
-              currentUser?.notificationPreference === 'messages_only' || currentUser?.notificationPreference === 'all'
-            if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
-              const adminName = support?.name?.trim() || 'Admin'
-              showSystemNotification({
-                title: 'Nuevo mensaje',
-                body: `Admin (${adminName}) te envió un mensaje`,
-                tag: `chat-${myId}-${otherId}`,
-                url: '/message',
-              })
-            }
+          if (!isThisConversation) return
+          setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+
+          const isIncoming = row.receiver_id === myId && row.sender_id !== myId
+          const wantMessages =
+            currentUser?.notificationPreference === 'messages_only' || currentUser?.notificationPreference === 'all'
+          if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
+            showSystemNotification({
+              title: 'Nuevo mensaje',
+              body: `Mario te envió un mensaje`,
+              tag: `chat-${myId}-${otherId}`,
+              url: MARIO_CHAT_URL,
+            })
           }
         }
       )
       .subscribe()
+
     return () => {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, otherId, support?.name])
+  }, [myId, otherId, supabase])
 
   const pollInterval = 2000
   useEffect(() => {
@@ -124,7 +160,7 @@ export default function ChatPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Iniciá sesión para chatear con soporte.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Iniciá sesión para chatear con Mario.</p>
             <Button onClick={() => router.push('/login')}>Ir a iniciar sesión</Button>
           </CardContent>
         </Card>
@@ -132,19 +168,7 @@ export default function ChatPage() {
     )
   }
 
-  // En vez de redirigir por rol/email (que puede fallar por formatos),
-  // dejamos que el backend decida. Si el backend rechaza con "Acceso restringido",
-  // mandamos al panel de admin.
-  useEffect(() => {
-    if (supportLoading) return
-    if (!supportError) return
-    const msg = String(supportError).toLowerCase()
-    if (msg.includes('acceso restringido')) {
-      router.replace('/admin/messages')
-    }
-  }, [supportLoading, supportError, router])
-
-  if (supportLoading) {
+  if (marioLoading) {
     return (
       <DashboardLayout>
         <div className="w-full max-w-2xl mx-auto flex items-center justify-center py-20">
@@ -154,14 +178,14 @@ export default function ChatPage() {
     )
   }
 
-  if (!support) {
+  if (!mario) {
     return (
       <DashboardLayout>
         <div className="w-full max-w-2xl mx-auto p-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <p className="text-slate-500 dark:text-slate-400 mt-4">No hay soporte disponible en este momento. Volvé más tarde.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-4">No hay soporte disponible en este momento.</p>
         </div>
       </DashboardLayout>
     )
@@ -186,7 +210,10 @@ export default function ChatPage() {
     setMessage('')
   }
 
-  const displayName = support.name ?? 'Soporte'
+  const displayName = mario.name ?? 'Mario'
+
+  const isMarioUser = MARIO_EMAILS.includes((currentUser.email ?? '').trim().toLowerCase())
+  const headerText = isMarioUser ? 'Chat con la comunidad (Mario)' : 'Chat con Mario'
 
   return (
     <DashboardLayout>
@@ -196,12 +223,12 @@ export default function ChatPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Avatar className="w-10 h-10">
-            <AvatarImage src={support.avatar_url ?? undefined} />
-            <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? 'S'}</AvatarFallback>
+            <AvatarImage src={mario.avatar_url ?? undefined} />
+            <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? 'M'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-slate-900 dark:text-white truncate">{displayName}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Chat con soporte</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{headerText}</p>
           </div>
         </div>
 
@@ -209,16 +236,15 @@ export default function ChatPage() {
           {loading ? (
             <p className="text-center text-slate-500 dark:text-slate-400 py-4">Cargando mensajes...</p>
           ) : messages.length === 0 ? (
-            <p className="text-center text-slate-500 dark:text-slate-400 py-4">No hay mensajes todavía. Escribí algo para iniciar la conversación con soporte.</p>
+            <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+              No hay mensajes todavía. Escribí algo para iniciar la conversación con Mario.
+            </p>
           ) : (
             <div className="flex flex-col gap-3">
               {messages.map((msg) => {
                 const isMine = msg.sender_id === myId
                 return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                  >
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                         isMine
@@ -257,3 +283,4 @@ export default function ChatPage() {
     </DashboardLayout>
   )
 }
+

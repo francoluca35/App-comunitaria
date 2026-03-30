@@ -136,7 +136,7 @@ export function NotificationBell({
             type: 'message',
             title: 'Nuevo mensaje',
             body: (row.content ?? '').slice(0, 80) + (row.content && row.content.length > 80 ? '…' : ''),
-            link_url: '/chat',
+            link_url: '/message',
             related_id: row.id,
             read_at: null,
             created_at: new Date().toISOString(),
@@ -146,7 +146,7 @@ export function NotificationBell({
             title: 'Nuevo mensaje',
             body: optimistic.body ?? 'Te enviaron un mensaje',
             tag: `chat-msg-${row.id}`,
-            url: '/chat',
+            url: '/message',
           })
         }
       )

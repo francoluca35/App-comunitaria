@@ -1,11 +1,18 @@
 import './globals.css'
 import { Providers } from './providers'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Plus_Jakarta_Sans, Oswald } from 'next/font/google'
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-plus-jakarta',
   display: 'swap',
+})
+
+const oswald = Oswald({
+  subsets: ['latin'],
+  variable: '--font-oswald',
+  display: 'swap',
+  weight: ['600', '700'],
 })
 
 export const metadata = {
@@ -18,7 +25,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={plusJakarta.variable}>
+    <html lang="es" className={`${plusJakarta.variable} ${oswald.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#C06C3B" />

@@ -94,6 +94,9 @@ function interleavePostsWithPublicidades(posts: Post[], publicidades: Publicidad
 const orange = '#C06C3B'
 const sage = '#8EA07E'
 
+/** Imagen fija del referente en el banner si no hay URL en configuración (`public/Assets/mario.png`). */
+const HERO_REFERENT_IMAGE = '/Assets/mario.png'
+
 function getCategoryCount(posts: { category: Category }[], value: Category | 'all') {
   if (value === 'all') return posts.length
   return posts.filter((p) => p.category === value).length
@@ -229,8 +232,16 @@ export default function HomePage() {
 }
 
 function HomePageContent() {
-  const { posts, currentUser, refreshUser, authLoading, postCategories, publicidadCategories, refreshPublicidadCategories } =
-    useApp()
+  const {
+    posts,
+    currentUser,
+    refreshUser,
+    authLoading,
+    postCategories,
+    publicidadCategories,
+    refreshPublicidadCategories,
+    config,
+  } = useApp()
   const { query: searchQuery } = useFeedSearch()
   const approvedPosts = posts.filter((p) => p.status === 'approved')
 
@@ -424,36 +435,73 @@ function HomePageContent() {
       </Dialog>
 
       <div className="relative w-full pb-28">
-        {/* Banner bienvenida */}
-        <div
-          className="mb-6 flex flex-col gap-4 rounded-[1.25rem] p-5 text-white shadow-md sm:flex-row sm:items-center sm:justify-between sm:p-6"
-          style={{
-            background: `linear-gradient(105deg, ${orange} 0%, ${sage} 100%)`,
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <Sparkles className="h-6 w-6" />
-            </span>
-            <div>
-              <h2 className="text-lg font-bold sm:text-xl">
-                {currentUser
-                  ? `¡Bienvenido/a, ${firstName(currentUser.name)}!`
-                  : '¡Bienvenido/a a la comunidad!'}
-              </h2>
-              <p className="mt-1 text-sm text-white/90">
-                {newPostsCount === 0
-                  ? 'No hay publicaciones nuevas en las últimas 48 h.'
-                  : newPostsCount === 1
-                    ? 'Hay 1 nueva publicación en tu comunidad.'
-                    : `Hay ${newPostsCount} nuevas publicaciones en tu comunidad.`}
-              </p>
+        {/* Banner identidad (estilo hero tipo marketplace): comunidad + referente oficial */}
+        <div className="mb-6 overflow-hidden rounded-[1.25rem] shadow-md ring-1 ring-black/5">
+          <div
+            className="relative bg-gradient-to-br from-[#F8DCC8] via-[#F0C4AE] to-[#E5A88E] px-5 py-5 sm:px-6 sm:py-6"
+            style={{
+              backgroundImage:
+                'radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255,255,255,0.35) 0%, transparent 50%)',
+            }}
+          >
+            <div
+              className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#C06C3B]/10 blur-2xl"
+              aria-hidden
+            />
+            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="min-w-0 flex-1">
+                <p className="font-hero-display text-[1.35rem] leading-tight text-[#4A2E1F] sm:text-[1.75rem]">
+                  {config.heroTitle}
+                </p>
+                <p
+                  className="mt-2 max-w-xl text-sm font-semibold leading-snug text-black sm:text-base"
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
+                >
+                  {config.heroSubtitle}
+                </p>
+                <p className="mt-3 text-xs leading-relaxed text-[#5C3D2E]/95 sm:text-sm">
+                  {currentUser ? (
+                    <>
+                      Hola, <span className="font-semibold">{firstName(currentUser.name)}</span>.{' '}
+                    </>
+                  ) : null}
+                  {newPostsCount === 0
+                    ? 'No hay publicaciones nuevas en las últimas 48 h.'
+                    : newPostsCount === 1
+                      ? 'Hay 1 nueva publicación en la comunidad.'
+                      : `Hay ${newPostsCount} nuevas publicaciones en la comunidad.`}
+                </p>
+                <Link
+                  href="/message"
+                  className="mt-4 inline-flex items-center rounded-full bg-[#C06C3B] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition hover:opacity-95 active:scale-[0.98]"
+                >
+                  Habla con Mario!
+                  <span className="ml-1" aria-hidden>
+                    ›
+                  </span>
+                </Link>
+              </div>
+              <div className="flex shrink-0 flex-row items-center gap-4 self-center sm:flex-col sm:gap-2">
+                <Avatar className="h-[5.5rem] w-[5.5rem] border-4 border-white shadow-lg sm:h-28 sm:w-28">
+                  <AvatarImage
+                    src={config.heroReferentPhotoUrl.trim() || HERO_REFERENT_IMAGE}
+                    alt={config.heroReferentName}
+                  />
+                  <AvatarFallback
+                    className="text-xl font-bold sm:text-2xl"
+                    style={{ backgroundColor: orange, color: 'white' }}
+                  >
+                    {authorInitials(config.heroReferentName || 'MS')}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-center sm:max-w-[8rem]">
+                  <p className="text-sm font-bold leading-tight text-[#3D2818]">{config.heroReferentName}</p>
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#6B4A38]/80">
+                    Referente oficial
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center justify-center self-end sm:self-auto">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
-              <TrendingUp className="h-6 w-6" />
-            </span>
           </div>
         </div>
 
