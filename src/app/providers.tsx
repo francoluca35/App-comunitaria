@@ -14,6 +14,7 @@ import {
 } from '@/lib/category-defaults'
 
 const NOTIFICATION_MODAL_DISMISSED_KEY = 'comunidad_notification_modal_dismissed'
+const APP_CONFIG_STORAGE_KEY = 'comunidad_app_config_v1'
 
 /** Slug en `post_categories` (feed y /categoria/…). No confundir con publicidad_categories. */
 export type Category = string
@@ -89,6 +90,18 @@ export interface AppConfig {
   maxPostsPerUser: number
   maxImagesPerPost: number
   termsOfService: string
+  /**
+   * Banner principal del inicio (identidad comunidad + referente).
+   * Ayuda a distinguir la app oficial de grupos copia en redes.
+   * Se muestra en tipografía display (Oswald, mayúsculas).
+   */
+  heroTitle: string
+  /** Línea secundaria en mayúsculas / destacada (ej. avisos oficiales). */
+  heroSubtitle: string
+  /** Nombre visible junto a la foto del referente. */
+  heroReferentName: string
+  /** URL pública de la foto (vacío = solo iniciales). */
+  heroReferentPhotoUrl: string
 }
 
 /** Notificación de registro para admin (todos los datos excepto contraseña) */
@@ -338,6 +351,22 @@ const DEFAULT_CONFIG: AppConfig = {
   maxImagesPerPost: 5,
   termsOfService:
     'Al publicar en esta plataforma, aceptas que tu contenido será moderado antes de ser visible públicamente. Prohibido contenido ofensivo, falso o ilegal.',
+  heroTitle: 'Comunidad de Santo Tome Mario stebler',
+  heroSubtitle: 'Bienvenido a nuestra comunidad',
+  heroReferentName: 'Mario Stebler',
+  heroReferentPhotoUrl: '',
+}
+
+function loadAppConfigFromStorage(): AppConfig {
+  if (typeof window === 'undefined') return DEFAULT_CONFIG
+  try {
+    const raw = window.localStorage.getItem(APP_CONFIG_STORAGE_KEY)
+    if (!raw) return DEFAULT_CONFIG
+    const parsed = JSON.parse(raw) as Partial<AppConfig>
+    return { ...DEFAULT_CONFIG, ...parsed }
+  } catch {
+    return DEFAULT_CONFIG
+  }
 }
 
 function profileToUser(profile: {
@@ -456,6 +485,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notificationPreferenceLoading, setNotificationPreferenceLoading] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+
+  // Restaurar configuración de app (admin + banner de identidad) desde localStorage
+  useEffect(() => {
+    setConfig(loadAppConfigFromStorage())
+  }, [])
 
   // Cargar "más tarde" del modal de notificaciones desde localStorage
   useEffect(() => {
@@ -1121,7 +1155,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   const updateConfig = (newConfig: Partial<AppConfig>) => {
-    setConfig({ ...config, ...newConfig })
+    setConfig((prev) => {
+      const next = { ...prev, ...newConfig }
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(APP_CONFIG_STORAGE_KEY, JSON.stringify(next))
+        } catch {
+          // ignore
+        }
+      }
+      return next
+    })
   }
 
   const value: AppContextType = {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
@@ -21,6 +21,22 @@ export default function AdminSettingsPage() {
   const [maxPostsPerUser, setMaxPostsPerUser] = useState(config.maxPostsPerUser)
   const [maxImagesPerPost, setMaxImagesPerPost] = useState(config.maxImagesPerPost)
   const [termsOfService, setTermsOfService] = useState(config.termsOfService)
+  const [heroTitle, setHeroTitle] = useState(config.heroTitle)
+  const [heroSubtitle, setHeroSubtitle] = useState(config.heroSubtitle)
+  const [heroReferentName, setHeroReferentName] = useState(config.heroReferentName)
+  const [heroReferentPhotoUrl, setHeroReferentPhotoUrl] = useState(config.heroReferentPhotoUrl)
+
+  useEffect(() => {
+    setCommentsEnabled(config.commentsEnabled)
+    setWhatsappEnabled(config.whatsappEnabled)
+    setMaxPostsPerUser(config.maxPostsPerUser)
+    setMaxImagesPerPost(config.maxImagesPerPost)
+    setTermsOfService(config.termsOfService)
+    setHeroTitle(config.heroTitle)
+    setHeroSubtitle(config.heroSubtitle)
+    setHeroReferentName(config.heroReferentName)
+    setHeroReferentPhotoUrl(config.heroReferentPhotoUrl)
+  }, [config])
 
   if (!currentUser?.isAdmin) {
     return (
@@ -42,6 +58,10 @@ export default function AdminSettingsPage() {
       maxPostsPerUser,
       maxImagesPerPost,
       termsOfService,
+      heroTitle: heroTitle.trim(),
+      heroSubtitle: heroSubtitle.trim(),
+      heroReferentName: heroReferentName.trim(),
+      heroReferentPhotoUrl: heroReferentPhotoUrl.trim(),
     })
     toast.success('Configuración guardada')
   }
@@ -60,6 +80,56 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-4 space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Identidad en el inicio</CardTitle>
+            <CardDescription>
+              Banner principal del feed: ayuda a que no confundan grupos copia de Facebook con esta app. Si dejás vacía la
+              URL de foto, se usa la imagen fija <code className="text-xs">/Assets/mario.png</code>. Opcionalmente podés
+              poner otra URL pública.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="heroTitle">Título principal (tipografía sólida en el banner)</Label>
+              <Input
+                id="heroTitle"
+                value={heroTitle}
+                onChange={(e) => setHeroTitle(e.target.value)}
+                placeholder="Comunidad de Santo Tome Mario stebler"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="heroSubtitle">Subtítulo destacado</Label>
+              <Input
+                id="heroSubtitle"
+                value={heroSubtitle}
+                onChange={(e) => setHeroSubtitle(e.target.value)}
+                placeholder="Bienvenido a nuestra comunidad"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="heroReferentName">Nombre del referente</Label>
+              <Input
+                id="heroReferentName"
+                value={heroReferentName}
+                onChange={(e) => setHeroReferentName(e.target.value)}
+                placeholder="Mario Stebler"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="heroReferentPhotoUrl">URL de la foto del referente (opcional)</Label>
+              <Input
+                id="heroReferentPhotoUrl"
+                type="url"
+                value={heroReferentPhotoUrl}
+                onChange={(e) => setHeroReferentPhotoUrl(e.target.value)}
+                placeholder="Vacío = imagen fija mario.png"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Funcionalidades</CardTitle>

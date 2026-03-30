@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Título del banner de identidad: Oswald, sólida y legible */
+.font-hero-display {
+  font-family: var(--font-oswald), system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 :root {
   --font-size: 16px;
   --background: #ffffff;
