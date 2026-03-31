@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { MessageCircle, ExternalLink, ImageOff } from 'lucide-react'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { Post } from '@/app/providers'
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card'
-import { Button } from '@/app/components/ui/button'
+import { PostPublicationActions } from '@/components/PostPublicationActions'
+import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CategoryBadge } from './CategoryBadge'
 import { Badge } from '@/app/components/ui/badge'
@@ -19,7 +18,6 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, showStatus = false }: PostCardProps) {
-  const [imageError, setImageError] = useState(false)
   const getStatusBadge = () => {
     if (post.status === 'pending') {
       return (
@@ -48,35 +46,18 @@ export function PostCard({ post, showStatus = false }: PostCardProps) {
   const createdAtLabel = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
 
   return (
-    <Card className="overflow-hidden">
-      {post.images.length > 0 && (
-        <Link href={`/post/${post.id}`}>
-          <div className="aspect-video bg-slate-100 dark:bg-gray-800 overflow-hidden flex items-center justify-center">
-            {imageError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
-                <ImageOff className="w-12 h-12" />
-                <span className="text-sm">Imagen no disponible</span>
-              </div>
-            ) : (
-              <img
-                src={post.images[0]}
-                alt={post.title}
-                className="w-full h-full object-cover hover:opacity-95 transition-opacity"
-                onError={() => setImageError(true)}
-              />
-            )}
-          </div>
-        </Link>
-      )}
+    <Card className="overflow-hidden border border-[#D8D2CC] shadow-sm bg-white transition-shadow hover:shadow-md hover:shadow-[#5A000E]/08">
       <CardContent className="p-4">
         <div className="flex items-start gap-3 mb-3">
           <Avatar className="w-10 h-10 shrink-0">
             <AvatarImage src={post.authorAvatar} />
-            <AvatarFallback className="text-sm">{post.authorName[0]?.toUpperCase() ?? '?'}</AvatarFallback>
+            <AvatarFallback className="text-sm font-semibold text-[#2B2B2B] bg-[#E8E4E0]">
+              {post.authorName[0]?.toUpperCase() ?? '?'}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-slate-900 dark:text-white">{post.authorName}</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{createdAtLabel}</p>
+            <p className="font-medium text-[#2B2B2B]">{post.authorName}</p>
+            <p className="text-sm text-[#7A5C52]">{createdAtLabel}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <CategoryBadge category={post.category} />
@@ -85,36 +66,27 @@ export function PostCard({ post, showStatus = false }: PostCardProps) {
         </div>
 
         <Link href={`/post/${post.id}`} className="block">
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-1 line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+          <h3 className="font-montserrat-only font-semibold text-[#2B2B2B] mb-1 line-clamp-2 hover:text-[#8B0015] transition-colors">
             {post.title}
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-3">{post.description}</p>
+          {post.description ? (
+            <p className="text-sm text-[#2B2B2B] line-clamp-3">{post.description}</p>
+          ) : null}
         </Link>
       </CardContent>
 
-      <CardFooter className="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700/50 flex flex-wrap gap-2">
-        <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="sm" className="shrink-0" />
-        <Button variant="outline" size="sm" asChild className="min-w-0 flex-1">
-          <Link href={`/post/${post.id}`}>
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Comentar
-          </Link>
-        </Button>
-        {post.whatsappNumber ? (
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="flex-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 border-green-200 dark:border-green-800"
-          >
-            <a href={`https://wa.me/${post.whatsappNumber.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              WhatsApp
-            </a>
-          </Button>
-        ) : (
-          <div className="flex-1" />
-        )}
+      {post.images.length > 0 ? (
+        <PostImageWithLightbox images={post.images} alt={post.title} variant="feed" />
+      ) : null}
+
+      <CardFooter className="flex flex-col gap-3 border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">
+        <DeleteOwnPostButton
+          postId={post.id}
+          authorId={post.authorId}
+          size="sm"
+          className="min-h-12 w-full shrink-0 justify-center border-2 border-[#D8D2CC] bg-white text-base font-semibold text-red-700 hover:bg-red-50 sm:w-auto sm:justify-start"
+        />
+        <PostPublicationActions postId={post.id} whatsappNumber={post.whatsappNumber} />
       </CardFooter>
     </Card>
   )

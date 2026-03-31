@@ -1,143 +1,49 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useApp, type Category } from '@/app/providers'
-import { createClient } from '@/lib/supabase/client'
+import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
-import { Input } from '@/app/components/ui/input'
-import { Label } from '@/app/components/ui/label'
-import { Textarea } from '@/app/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { ArrowLeft, AlertCircle, Megaphone, Upload, X } from 'lucide-react'
-import { toast } from 'sonner'
+import {
+  ArrowLeft,
+  AlertTriangle,
+  Dog,
+  LayoutGrid,
+  Megaphone,
+  Newspaper,
+  Package,
+  PenLine,
+} from 'lucide-react'
+import { CST } from '@/lib/cst-theme'
 
-const BUCKET = 'publicaciones'
-const MAX_IMAGES = 5
-const MAX_FILE_MB = 5
+const ICON_CATEGORIES: { slug: string; label: string; Icon: typeof Dog }[] = [
+  { slug: 'alertas', label: 'Alertas', Icon: AlertTriangle },
+  { slug: 'avisos', label: 'Avisos', Icon: Megaphone },
+  { slug: 'objetos', label: 'Objetos', Icon: Package },
+  { slug: 'noticias', label: 'Noticias', Icon: Newspaper },
+]
 
-export default function CreatePostPage() {
+export default function CreateHubPage() {
   const router = useRouter()
-  const { addPost, currentUser, config, postCategories } = useApp()
+  const { currentUser, postCategories } = useApp()
 
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [category, setCategory] = useState<Category>('')
-  const [whatsappNumber, setWhatsappNumber] = useState('')
-  const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [sending, setSending] = useState(false)
+  const slugToLabel = (slug: string) => postCategories.find((c) => c.slug === slug)?.label ?? slug
 
-  useEffect(() => {
-    if (postCategories.length === 0) return
-    setCategory((prev) => {
-      if (prev && postCategories.some((c) => c.slug === prev)) return prev
-      return postCategories[0].slug
-    })
-  }, [postCategories])
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files?.length) return
-    const list = Array.from(files)
-    if (imageFiles.length + list.length > MAX_IMAGES) {
-      toast.error(`Máximo ${MAX_IMAGES} imágenes`)
-      return
-    }
-    const valid: File[] = []
-    for (const f of list) {
-      if (f.size > MAX_FILE_MB * 1024 * 1024) {
-        toast.error(`${f.name} supera ${MAX_FILE_MB} MB`)
-        continue
-      }
-      if (!f.type.startsWith('image/')) {
-        toast.error(`${f.name} no es una imagen`)
-        continue
-      }
-      valid.push(f)
-    }
-    setImageFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES))
-  }
-
-  const removeImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const uploadImages = async (): Promise<string[]> => {
-    if (!currentUser || imageFiles.length === 0) return []
-    const supabase = createClient()
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!baseUrl) {
-      toast.error('Configuración de Storage no disponible')
-      return []
-    }
-    const urls: string[] = []
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i]
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
-      if (error) {
-        toast.error(`Error al subir ${file.name}: ${error.message}`)
-        throw error
-      }
-      // URL pública explícita (el bucket "publicaciones" debe estar en Public en Supabase Dashboard)
-      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
-      urls.push(publicUrl)
-    }
-    return urls
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!currentUser) {
-      toast.error('Debes iniciar sesión para crear publicaciones')
-      router.push('/login')
-      return
-    }
-
-    if (!title.trim() || !description.trim()) {
-      toast.error('Completa título y descripción')
-      return
-    }
-    if (!category || !postCategories.some((c) => c.slug === category)) {
-      toast.error('Elegí una categoría válida')
-      return
-    }
-
-    setSending(true)
-    try {
-      const imageUrls = imageFiles.length > 0 ? await uploadImages() : []
-      const result = await addPost({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        images: imageUrls,
-        whatsappNumber: whatsappNumber.trim() || undefined,
-      })
-      if (!result.ok) {
-        toast.error(result.error ?? 'Error al enviar')
-        return
-      }
-      toast.success('Publicación enviada. Será revisada por un administrador.')
-      router.push('/')
-    } finally {
-      setSending(false)
-    }
-  }
+  const iconCategoriesAvailable = ICON_CATEGORIES.filter(
+    (row) => row.slug !== 'alertas' && postCategories.some((c) => c.slug === row.slug)
+  )
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: CST.fondo }}>
+        <Card className="max-w-md w-full border-[#D8D2CC]">
           <CardContent className="p-6 text-center">
-            <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-xl mb-2">Inicia sesión</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Debes iniciar sesión para crear publicaciones</p>
-            <Button onClick={() => router.push('/login')}>Iniciar Sesión</Button>
+            <p className="text-[#2B2B2B] font-medium mb-4">Iniciá sesión para publicar</p>
+            <Button onClick={() => router.push('/login')} style={{ backgroundColor: CST.bordo }} className="text-white w-full hover:bg-[#5A000E]">
+              Ir a iniciar sesión
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -146,139 +52,101 @@ export default function CreatePostPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+      <div className="max-w-md mx-auto pb-10">
+        <div className="flex items-center gap-3 mb-2">
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Nueva Publicación</h1>
+          <div>
+            <h1 className="text-xl font-bold text-[#8B0015] font-montserrat-only">Nueva publicación</h1>
+            <p className="text-sm text-[#7A5C52]">Elegí con un toque qué querés avisar</p>
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <CardContent className="p-4">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900 dark:text-blue-300">
-                  <p className="mb-1">Tu publicación será revisada por un administrador antes de hacerse pública.</p>
-                  <p className="text-xs text-blue-700 dark:text-blue-400">{config.termsOfService}</p>
+
+        {postCategories.some((c) => c.slug === 'alertas') && (
+          <Link href="/create/alerta" className="block mb-4">
+            <Card
+              className="gap-0 overflow-hidden border-2 border-red-200 p-0 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] dark:border-red-900/50"
+              style={{
+                background: `linear-gradient(105deg, ${CST.bordoDark} 0%, ${CST.bordo} 100%)`,
+              }}
+            >
+              <CardContent className="!p-0">
+                <div className="flex items-stretch gap-4 p-5">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                    <AlertTriangle className="h-9 w-9" strokeWidth={2.25} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-extrabold leading-tight">Alerta importante</p>
+                    <p className="mt-1 text-sm text-white/90 leading-snug">
+                      Título, descripción y una imagen — aviso prioritario con sonido y vibración para todos
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
+        <Link href="/create/animales" className="block mb-6">
+          <Card
+            className="gap-0 overflow-hidden border-2 border-[#E8E0D5] p-0 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            style={{
+              background: `linear-gradient(105deg, ${CST.bordo} 0%, ${CST.acento} 100%)`,
+            }}
+          >
+            <CardContent className="!p-0">
+              <div className="flex items-stretch gap-4 p-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+                  <Dog className="h-9 w-9" strokeWidth={2.25} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-extrabold leading-tight">Mascotas</p>
+                  <p className="mt-1 text-sm text-white/90 leading-snug">
+                    Perdí o encontré — texto armado, solo ubicación, fecha, teléfono y foto
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
+        </Link>
 
-          <div className="space-y-2">
-            <Label htmlFor="title">
-              Título <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="title"
-              placeholder="Ej: Perro perdido en zona centro"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              maxLength={100}
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">{title.length}/100 caracteres</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category">
-              Categoría <span className="text-red-500">*</span>
-            </Label>
-            <Select value={category || undefined} onValueChange={(value) => setCategory(value as Category)}>
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Elegí categoría" />
-              </SelectTrigger>
-              <SelectContent>
-                {postCategories.map((cat) => (
-                  <SelectItem key={cat.slug} value={cat.slug}>
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              Descripción <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="Describe tu publicación con el mayor detalle posible..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={6}
-              maxLength={1000}
-              className="resize-none"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400">{description.length}/1000 caracteres</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Imágenes (opcional, máx. {MAX_IMAGES})</Label>
-            {imageFiles.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {imageFiles.map((file, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center"
-                      aria-label="Quitar"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+        <p className="text-xs font-bold uppercase tracking-wider text-[#7A5C52] mb-3 font-montserrat-only">Otras categorías</p>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          {iconCategoriesAvailable.map(({ slug, Icon }) => (
+            <Link
+              key={slug}
+              href={`/create/otro?categoria=${encodeURIComponent(slug)}`}
+              className="rounded-2xl border-2 border-[#D8D2CC] bg-white p-4 shadow-sm transition-all hover:border-[#8B0015]/25 hover:shadow-md active:scale-[0.98]"
+            >
+              <div
+                className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl text-white"
+                style={{ background: `linear-gradient(145deg, ${CST.bordo} 0%, ${CST.bordoDark} 100%)` }}
+              >
+                <Icon className="h-6 w-6" />
               </div>
-            )}
-            {imageFiles.length < MAX_IMAGES && (
-              <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
-                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-                <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-600 dark:text-gray-400">Agregar fotos (máx. {MAX_FILE_MB} MB c/u)</p>
-              </label>
-            )}
-          </div>
+              <p className="text-sm font-bold text-[#2B2B2B]">{slugToLabel(slug)}</p>
+              <p className="text-[11px] text-[#7A5C52] mt-0.5">Formulario completo</p>
+            </Link>
+          ))}
+        </div>
 
-          {config.whatsappEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">Número de WhatsApp (opcional)</Label>
-              <Input
-                id="whatsapp"
-                type="tel"
-                placeholder="+54 9 11 1234-5678"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Si lo agregás, otros podrán contactarte por WhatsApp
-              </p>
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" size="lg" disabled={sending}>
-            {sending ? 'Enviando…' : 'Enviar publicación'}
-          </Button>
-        </form>
-
-        {currentUser && (
-          <div className="mt-4">
-            <Button variant="outline" className="w-full" size="lg" asChild>
-              <Link href="/publicidades/crear">
-                <Megaphone className="w-4 h-4 mr-2" />
-                Crear publicidad
-              </Link>
-            </Button>
-          </div>
-        )}
+        <Link href="/create/otro">
+          <Card className="border-2 border-dashed border-[#D8D2CC] bg-[#F4EFEA] hover:bg-white transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white border border-[#D8D2CC]">
+                <LayoutGrid className="h-5 w-5 text-[#7A5C52]" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#2B2B2B] flex items-center gap-2">
+                  <PenLine className="h-4 w-4 shrink-0 text-[#8B0015]" />
+                  Otra categoría / texto libre
+                </p>
+                <p className="text-xs text-[#7A5C52] mt-0.5">Elegí categoría y escribí como quieras</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </DashboardLayout>
   )

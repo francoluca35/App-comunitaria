@@ -1,18 +1,18 @@
 import './globals.css'
 import { Providers } from './providers'
-import { Plus_Jakarta_Sans, Oswald } from 'next/font/google'
+import { Montserrat, Open_Sans } from 'next/font/google'
 
-const plusJakarta = Plus_Jakarta_Sans({
+const openSans = Open_Sans({
   subsets: ['latin'],
-  variable: '--font-plus-jakarta',
+  variable: '--font-open-sans',
   display: 'swap',
 })
 
-const oswald = Oswald({
+const montserrat = Montserrat({
   subsets: ['latin'],
-  variable: '--font-oswald',
+  variable: '--font-montserrat',
   display: 'swap',
-  weight: ['600', '700'],
+  weight: ['500', '600', '700'],
 })
 
 export const metadata = {
@@ -20,19 +20,19 @@ export const metadata = {
   description: 'Plataforma de difusión comunitaria',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, title: 'CST Comunidad' },
-  themeColor: '#C06C3B',
+  themeColor: '#8B0015',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${plusJakarta.variable} ${oswald.variable}`}>
+    <html lang="es" className={`${openSans.variable} ${montserrat.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#C06C3B" />
+        <meta name="theme-color" content="#8B0015" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className="antialiased">
+      <body className={`${openSans.className} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -4,8 +4,8 @@
   "description": "Plataforma de difusión comunitaria",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#F4EFEA",
+  "theme_color": "#8B0015",
   "orientation": "portrait-primary",
   "icons": [
     {
