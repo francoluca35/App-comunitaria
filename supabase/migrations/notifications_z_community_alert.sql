@@ -43,8 +43,7 @@ begin
 
   for r in
     select id from public.profiles
-    where id <> new.author_id
-      and coalesce(status, 'active') <> 'blocked'
+    where coalesce(status, 'active') <> 'blocked'
   loop
     insert into public.notifications (user_id, type, title, body, link_url, related_id)
     values (

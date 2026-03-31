@@ -53,6 +53,8 @@ self.addEventListener('push', (event) => {
       vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
       requireInteraction: urgent,
       silent: false,
+      // Android: volver a avisar aunque haya otra con el mismo tag reciente
+      renotify: urgent,
     })
   )
 })

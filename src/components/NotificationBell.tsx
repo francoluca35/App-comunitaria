@@ -80,28 +80,67 @@ export function NotificationBell({
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(false)
   const [sendingWelcomeId, setSendingWelcomeId] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const supabase = createClient()
 
   const fetchNotifications = useCallback(async () => {
-    if (!currentUser) return
+    if (!currentUser?.id) return
     setLoading(true)
+    setFetchError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) return
+      if (!session?.access_token) {
+        setFetchError('No hay sesión')
+        return
+      }
       const res = await fetch('/api/notifications', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       })
-      if (!res.ok) return
-      const data = await res.json()
-      setNotifications(data)
+      const data: unknown = await res.json().catch(() => null)
+      if (!res.ok) {
+        const msg =
+          data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
+            ? (data as { error: string }).error
+            : `Error ${res.status}`
+        setFetchError(msg)
+        toast.error('No se pudieron cargar las notificaciones', { description: msg })
+        return
+      }
+      if (!Array.isArray(data)) {
+        setFetchError('Respuesta inválida del servidor')
+        toast.error('Notificaciones: respuesta inválida')
+        return
+      }
+      const rows = data as AppNotification[]
+      rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      setNotifications(rows)
     } finally {
       setLoading(false)
     }
-  }, [currentUser, supabase.auth])
+  }, [currentUser?.id, supabase.auth])
 
   useEffect(() => {
     if (!currentUser?.id) return
     fetchNotifications()
+  }, [currentUser?.id, fetchNotifications])
+
+  /** En móvil el realtime a veces se corta; al volver a la app refrescamos la campana. */
+  useEffect(() => {
+    if (!currentUser?.id) return
+    let t: ReturnType<typeof setTimeout> | undefined
+    const schedule = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      clearTimeout(t)
+      t = setTimeout(() => void fetchNotifications(), 400)
+    }
+    schedule()
+    document.addEventListener('visibilitychange', schedule)
+    window.addEventListener('focus', schedule)
+    return () => {
+      clearTimeout(t)
+      document.removeEventListener('visibilitychange', schedule)
+      window.removeEventListener('focus', schedule)
+    }
   }, [currentUser?.id, fetchNotifications])
 
   // Realtime: nueva notificación desde la tabla (persistida por triggers)
@@ -133,15 +172,20 @@ export function NotificationBell({
               next.splice(optIndex, 1, row)
               return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             }
-            return [row, ...prev]
+            const next = [row, ...prev.filter((n) => n.id !== row.id)]
+            return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          void fetchNotifications()
+        }
+      })
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser?.id, supabase])
+  }, [currentUser?.id, supabase, fetchNotifications])
 
   // Realtime instantáneo: mensajes de chat (para que lleguen al instante sin esperar al trigger)
   useEffect(() => {
@@ -290,6 +334,14 @@ export function NotificationBell({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            </div>
+          ) : fetchError ? (
+            <div className="px-4 py-8 text-center text-sm text-amber-800 dark:text-amber-200">
+              <p className="font-medium">No se pudo cargar el listado</p>
+              <p className="mt-1 text-xs text-slate-600 dark:text-gray-400">{fetchError}</p>
+              <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => void fetchNotifications()}>
+                Reintentar
+              </Button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-500 dark:text-gray-400">
