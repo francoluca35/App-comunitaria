@@ -15,7 +15,7 @@ const COLOR_BY_SLUG: Record<string, string> = {
   alertas: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   avisos: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   objetos: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  noticias: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  noticias: 'bg-[#7A5C52]/12 text-[#5c453e] dark:bg-[#7A5C52]/22 dark:text-stone-200',
 }
 
 interface CategoryBadgeProps {

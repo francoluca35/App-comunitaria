@@ -6,7 +6,10 @@ import { Toaster } from './components/ui/sonner'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
 import { NotificationPreferenceModal } from '@/components/NotificationPreferenceModal'
+import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
+import { registerWebPushIfPossible } from '@/lib/push-client'
+import { showPushEnrollmentPreviewFirstTime } from '@/lib/notifications'
 import {
   DEFAULT_POST_CATEGORIES,
   DEFAULT_PUBLICIDAD_CATEGORIES,
@@ -74,6 +77,18 @@ export interface Post {
   whatsappNumber?: string
 }
 
+/** Un solo post por id (evita duplicados si addPost y realtime INSERT agregan la misma fila). */
+function dedupePostsById(posts: Post[]): Post[] {
+  const seen = new Set<string>()
+  const out: Post[] = []
+  for (const p of posts) {
+    if (seen.has(p.id)) continue
+    seen.add(p.id)
+    out.push(p)
+  }
+  return out
+}
+
 export interface Comment {
   id: string
   postId: string
@@ -93,7 +108,7 @@ export interface AppConfig {
   /**
    * Banner principal del inicio (identidad comunidad + referente).
    * Ayuda a distinguir la app oficial de grupos copia en redes.
-   * Se muestra en tipografía display (Oswald, mayúsculas).
+   * Se muestra en tipografía display (Montserrat, mayúsculas).
    */
   heroTitle: string
   /** Línea secundaria en mayúsculas / destacada (ej. avisos oficiales). */
@@ -507,6 +522,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigator.serviceWorker.register('/sw.js').catch(() => {})
   }, [])
 
+  // Web Push en segundo plano (alertas): re-registrar si hay sesión y permiso concedido
+  useEffect(() => {
+    if (!currentUser?.id) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (cancelled || !session?.access_token) return
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+        await registerWebPushIfPossible(session.access_token)
+      } catch {
+        // ignore
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser?.id, supabase])
+
   useSuppressSupabaseAuthAbortError()
 
   useEffect(() => {
@@ -601,7 +638,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             whatsappNumber: r.whatsapp_number ?? undefined,
           }
         })
-        setPosts(mapped)
+        setPosts(dedupePostsById(mapped))
       } catch {
         if (!cancelled) setPosts(MOCK_POSTS)
       } finally {
@@ -654,7 +691,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               createdAt: new Date(r.created_at),
               whatsappNumber: r.whatsapp_number ?? undefined,
             }
-            setPosts((prev) => [newPost, ...prev])
+            setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
           })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
@@ -710,7 +747,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           whatsappNumber: r.whatsapp_number ?? undefined,
         }
       })
-      setPosts(mapped)
+      setPosts(dedupePostsById(mapped))
     } catch {
       // ignore
     }
@@ -952,6 +989,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await window.Notification.requestPermission()
         }
         await refreshUser()
+        if (typeof window !== 'undefined' && window.Notification?.permission === 'granted') {
+          const pushRes = await registerWebPushIfPossible(session.access_token)
+          if (pushRes.ok) await showPushEnrollmentPreviewFirstTime()
+        }
         return { ok: true }
       } catch (e) {
         return { ok: false, error: 'Error de conexión' }
@@ -1109,7 +1150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(data.created_at),
         images: imageUrls,
       }
-      setPosts((prev) => [newPost, ...prev])
+      setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
       return { ok: true }
     } catch (e) {
       return { ok: false, error: 'Error de conexión. Intentá de nuevo.' }
@@ -1222,6 +1263,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }}
         onDismiss={dismissNotificationPreferenceModal}
         loading={notificationPreferenceLoading}
+      />
+      <MobileNotificationsOncePrompt
+        gateOpen={!showNotificationPreferenceModal}
+        authLoading={authLoading}
+        userId={currentUser?.id}
       />
     </AppContext.Provider>
   )

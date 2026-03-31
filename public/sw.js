@@ -16,22 +16,33 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+const URGENT_VIBRATE = [280, 100, 280, 100, 400]
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
-  let payload = { title: 'Comunidad', body: '', tag: 'comunidad', icon: ICON_PATH }
+  let payload = {
+    title: 'Comunidad',
+    body: '',
+    tag: 'comunidad',
+    icon: ICON_PATH,
+    url: '/',
+    urgent: false,
+  }
   try {
     const data = event.data.json()
     payload = {
       title: data.title ?? payload.title,
       body: data.body ?? data.text ?? payload.body,
       tag: data.tag ?? payload.tag,
-      url: data.url,
+      url: data.url ?? '/',
       icon: data.icon ?? ICON_PATH,
+      urgent: Boolean(data.urgent),
     }
   } catch {
     payload.body = event.data.text()
   }
   const iconUrl = getFullIconUrl(payload.icon)
+  const urgent = payload.urgent
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
@@ -39,8 +50,9 @@ self.addEventListener('push', (event) => {
       data: { url: payload.url || '/' },
       icon: iconUrl,
       badge: iconUrl,
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
+      vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
+      requireInteraction: urgent,
+      silent: false,
     })
   )
 })

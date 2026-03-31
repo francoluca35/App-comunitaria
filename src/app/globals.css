@@ -4,53 +4,63 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Título del banner de identidad: Oswald, sólida y legible */
+/* Título del banner de identidad — Montserrat, marca fuerte */
 .font-hero-display {
-  font-family: var(--font-oswald), system-ui, sans-serif;
+  font-family: var(--font-montserrat), system-ui, sans-serif;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 :root {
+  /* Paleta CST refinada */
+  --cst-bordo: #8b0015;
+  --cst-bordo-dark: #5a000e;
+  --cst-crema: #f4efea;
+  --cst-texto: #2b2b2b;
+  --cst-texto-sec: #7a5c52;
+  --cst-gris-ui: #d8d2cc;
+  --cst-acento: #7a5c52;
+  --cst-acento-hover: #634942;
+
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --background: var(--cst-crema);
+  --foreground: var(--cst-texto);
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
+  --card-foreground: var(--cst-texto);
+  --popover: #ffffff;
+  --popover-foreground: var(--cst-texto);
+  --primary: var(--cst-bordo);
+  --primary-foreground: #ffffff;
+  --secondary: var(--cst-acento);
+  --secondary-foreground: #ffffff;
+  --muted: color-mix(in srgb, var(--cst-crema) 82%, var(--cst-gris-ui));
+  --muted-foreground: var(--cst-texto-sec);
+  --accent: var(--cst-crema);
+  --accent-foreground: var(--cst-texto);
   --destructive: #d4183d;
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
+  --border: var(--cst-gris-ui);
+  --input: var(--cst-gris-ui);
+  --input-background: #ffffff;
   --switch-background: #cbced4;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
+  --ring: color-mix(in srgb, var(--cst-bordo) 28%, transparent);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--cst-texto);
+  --sidebar-primary: var(--cst-bordo);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--cst-crema);
+  --sidebar-accent-foreground: var(--cst-texto);
+  --sidebar-border: var(--cst-gris-ui);
+  --sidebar-ring: color-mix(in srgb, var(--cst-bordo) 35%, transparent);
 }
 
 .dark {
@@ -138,7 +148,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
   }
 
   html {
@@ -146,21 +156,27 @@
   }
 
   h1 {
+    font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
     font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--cst-bordo);
   }
 
   h2 {
+    font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
     font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--cst-bordo);
   }
 
   h3 {
+    font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
     font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--cst-bordo);
   }
 
   h4 {
@@ -196,6 +212,12 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@layer utilities {
+  .font-montserrat-only {
+    font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  }
 }
 
 /* Smooth transitions */

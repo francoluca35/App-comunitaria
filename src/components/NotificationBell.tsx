@@ -2,7 +2,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, MessageCircle, FileText, CheckCircle, XCircle, Trash2, Megaphone, Loader2, UserPlus, Send } from 'lucide-react'
+import {
+  Bell,
+  MessageCircle,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  Megaphone,
+  Loader2,
+  UserPlus,
+  Send,
+  AlertTriangle,
+} from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { showSystemNotification } from '@/lib/notifications'
@@ -38,6 +50,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   post_deleted: Trash2,
   post_pending: Megaphone,
   new_profile: UserPlus,
+  community_alert: AlertTriangle,
 }
 
 function formatNotificationTime(dateStr: string): string {
@@ -101,6 +114,15 @@ export function NotificationBell({
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
         (payload) => {
           const row = payload.new as AppNotification
+          if (row.type === 'community_alert') {
+            void showSystemNotification({
+              title: row.title,
+              body: row.body ?? undefined,
+              tag: `community-alert-${row.related_id ?? row.id}`,
+              url: row.link_url ?? '/',
+              urgent: true,
+            })
+          }
           setNotifications((prev) => {
             // Si ya tenemos una optimista del mismo mensaje, reemplazarla por la real
             const optIndex = prev.findIndex(
@@ -338,10 +360,18 @@ export function NotificationBell({
                         onClick={() => handleNotificationClick(n)}
                         className={cn(
                           'w-full flex gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-indigo-50/50 dark:bg-indigo-900/10'
+                          !n.read_at && 'bg-indigo-50/50 dark:bg-indigo-900/10',
+                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 pl-3'
                         )}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-gray-700 text-slate-600 dark:text-gray-300">
+                        <span
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 dark:text-gray-300',
+                            n.type === 'community_alert'
+                              ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
+                              : 'bg-slate-200 dark:bg-gray-700'
+                          )}
+                        >
                           <Icon className="w-4 h-4" />
                         </span>
                         <div className="min-w-0 flex-1">

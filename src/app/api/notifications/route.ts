@@ -9,6 +9,7 @@ export type NotificationType =
   | 'post_deleted'
   | 'post_pending'
   | 'new_profile'
+  | 'community_alert'
 
 export interface NotificationRow {
   id: string

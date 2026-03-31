@@ -33,6 +33,10 @@ import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
+import { PostPublicationActions } from '@/components/PostPublicationActions'
+import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
+import { CoverImageWithSkeleton } from '@/components/CoverImageWithSkeleton'
+import { Skeleton } from '@/app/components/ui/skeleton'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { matchesPostSearch, matchesPublicidadSearch, searchTokens } from '@/lib/community-search'
@@ -46,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select'
+import { CST } from '@/lib/cst-theme'
 
 const FEED_FILTER_ALL = 'all'
 const FEED_FILTER_SOLO_PUBLICIDADES = 'publicidades_only'
@@ -91,9 +96,6 @@ function interleavePostsWithPublicidades(posts: Post[], publicidades: Publicidad
   return out
 }
 
-const orange = '#C06C3B'
-const sage = '#8EA07E'
-
 /** Imagen fija del referente en el banner si no hay URL en configuración (`public/Assets/mario.png`). */
 const HERO_REFERENT_IMAGE = '/Assets/mario.png'
 
@@ -113,6 +115,36 @@ function authorInitials(name: string) {
     .slice(0, 2)
     .map((p) => p[0]!.toUpperCase())
     .join('')
+}
+
+/** Placeholder del feed mientras llegan publicaciones / publicidades (servidor lento o red). */
+function FeedListSkeleton() {
+  return (
+    <ul className="space-y-5" aria-busy="true" aria-label="Cargando publicaciones">
+      {[0, 1, 2].map((i) => (
+        <li key={i}>
+          <div className="overflow-hidden rounded-[1.25rem] border border-[#D8D2CC] bg-white shadow-sm">
+            <div className="flex items-start gap-3 p-4 pb-3">
+              <Skeleton className="h-11 w-11 shrink-0 rounded-full border-2 border-[#D8D2CC]/40 bg-[#D4CEC8]/55" />
+              <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+                <Skeleton className="h-4 w-[40%] max-w-[180px] rounded-md bg-[#D4CEC8]/50" />
+                <Skeleton className="h-3 w-[55%] max-w-[220px] rounded-md bg-[#D4CEC8]/45" />
+              </div>
+            </div>
+            <div className="space-y-2 px-4 pb-3">
+              <Skeleton className="h-5 w-full rounded-md bg-[#D4CEC8]/55" />
+              <Skeleton className="h-4 w-[92%] rounded-md bg-[#D4CEC8]/45" />
+              <Skeleton className="h-4 w-[68%] rounded-md bg-[#D4CEC8]/40" />
+            </div>
+            <Skeleton className="mx-0 h-[min(280px,52vw)] w-full rounded-none border-y border-[#D8D2CC]/25 bg-[#D4CEC8]/60" />
+            <div className="border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">
+              <Skeleton className="h-11 w-full rounded-xl bg-[#D8D2CC]/45" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function ZonaPublicitariaCarousel() {
@@ -175,11 +207,11 @@ function ZonaPublicitariaCarousel() {
         publicidad={selectedPublicidad}
       />
       {adsLoading ? (
-        <div className="py-6 text-center text-sm text-[#6B5F54]">Cargando publicidades…</div>
+        <div className="py-6 text-center text-sm text-[#7A5C52]">Cargando publicidades…</div>
       ) : ads.length === 0 ? (
-        <p className="px-2 py-4 text-center text-xs text-[#6B5F54]">
+        <p className="px-2 py-4 text-center text-xs text-[#7A5C52]">
           No hay publicidades en la barra lateral activas. Podés ver todas en{' '}
-          <Link href="/publicidades" className="font-semibold underline" style={{ color: orange }}>
+          <Link href="/publicidades" className="font-semibold underline" style={{ color: CST.bordo }}>
             Publicidades
           </Link>
           .
@@ -192,20 +224,20 @@ function ZonaPublicitariaCarousel() {
                 <button
                   type="button"
                   onClick={() => setSelectedPublicidad(p)}
-                  className="w-full overflow-hidden rounded-2xl border border-[#E8E0D5] bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C06C3B]/40"
+                  className="w-full overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35"
                 >
-                  <div className="aspect-[4/3] overflow-hidden bg-[#E8E0D5]">
+                  <div className="aspect-[4/3] overflow-hidden bg-[#D8D2CC]/30">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
-                        <Megaphone className="h-8 w-8 text-[#9A8F84]" />
+                        <Megaphone className="h-8 w-8 text-[#7A5C52]/50" />
                       </div>
                     )}
                   </div>
                   <div className="p-2">
-                    <p className="line-clamp-2 text-xs font-semibold text-[#2C241C]">{p.title}</p>
+                    <p className="line-clamp-2 text-xs font-semibold text-[#2B2B2B]">{p.title}</p>
                     <PublicidadContactLinks
                       whatsappUrl={p.whatsappUrl}
                       instagramUrl={p.instagramUrl}
@@ -392,7 +424,7 @@ function HomePageContent() {
         publicidad={selectedFeedPublicidad}
       />
       <Dialog open={showAvatarPrompt} onOpenChange={(open) => !open && setAvatarDismissed(true)}>
-        <DialogContent className="sm:max-w-md rounded-2xl border-[#E8E0D5]">
+        <DialogContent className="sm:max-w-md rounded-2xl border-[#D8D2CC]">
           <DialogHeader>
             <DialogTitle>Agregá tu foto de perfil</DialogTitle>
             <DialogDescription>
@@ -405,7 +437,7 @@ function HomePageContent() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
-                className="block w-full text-sm text-[#6B5F54] file:mr-4 file:rounded-xl file:border-0 file:bg-[#C06C3B] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:opacity-90"
+                className="block w-full text-sm text-[#7A5C52] file:mr-4 file:rounded-xl file:border-0 file:bg-[#8B0015] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#5A000E]"
                 onChange={() => setUploadError(null)}
               />
             </div>
@@ -417,8 +449,8 @@ function HomePageContent() {
               <Button
                 type="submit"
                 disabled={uploading}
-                className="rounded-xl text-white"
-                style={{ backgroundColor: orange }}
+                className="rounded-xl text-white hover:bg-[#5A000E]"
+                style={{ backgroundColor: CST.bordo }}
               >
                 {uploading ? (
                   'Subiendo…'
@@ -436,30 +468,27 @@ function HomePageContent() {
 
       <div className="relative w-full pb-28">
         {/* Banner identidad (estilo hero tipo marketplace): comunidad + referente oficial */}
-        <div className="mb-6 overflow-hidden rounded-[1.25rem] shadow-md ring-1 ring-black/5">
+        <div className="mb-6 overflow-hidden rounded-[1.25rem] shadow-md ring-1 ring-[#8B0015]/10">
           <div
-            className="relative bg-gradient-to-br from-[#F8DCC8] via-[#F0C4AE] to-[#E5A88E] px-5 py-5 sm:px-6 sm:py-6"
+            className="relative bg-gradient-to-br from-[#F4EFEA] via-[#EBE6E1] to-[#E0D8D4] px-5 py-5 sm:px-6 sm:py-6"
             style={{
               backgroundImage:
-                'radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255,255,255,0.35) 0%, transparent 50%)',
+                'radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255,255,255,0.5) 0%, transparent 55%)',
             }}
           >
             <div
-              className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#C06C3B]/10 blur-2xl"
+              className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#8B0015]/12 blur-2xl"
               aria-hidden
             />
             <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
               <div className="min-w-0 flex-1">
-                <p className="font-hero-display text-[1.35rem] leading-tight text-[#4A2E1F] sm:text-[1.75rem]">
+                <p className="font-hero-display text-[1.35rem] leading-tight text-[#8B0015] sm:text-[1.75rem]">
                   {config.heroTitle}
                 </p>
-                <p
-                  className="mt-2 max-w-xl text-sm font-semibold leading-snug text-black sm:text-base"
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
-                >
+                <p className="mt-2 max-w-xl text-sm font-semibold leading-snug text-[#2B2B2B] sm:text-base">
                   {config.heroSubtitle}
                 </p>
-                <p className="mt-3 text-xs leading-relaxed text-[#5C3D2E]/95 sm:text-sm">
+                <p className="mt-3 text-xs leading-relaxed text-[#7A5C52] sm:text-sm">
                   {currentUser ? (
                     <>
                       Hola, <span className="font-semibold">{firstName(currentUser.name)}</span>.{' '}
@@ -473,7 +502,7 @@ function HomePageContent() {
                 </p>
                 <Link
                   href="/message"
-                  className="mt-4 inline-flex items-center rounded-full bg-[#C06C3B] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition hover:opacity-95 active:scale-[0.98]"
+                  className="mt-4 inline-flex items-center rounded-full bg-[#8B0015] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#5A000E] active:scale-[0.98]"
                 >
                   Habla con Mario!
                   <span className="ml-1" aria-hidden>
@@ -489,14 +518,14 @@ function HomePageContent() {
                   />
                   <AvatarFallback
                     className="text-xl font-bold sm:text-2xl"
-                    style={{ backgroundColor: orange, color: 'white' }}
+                    style={{ backgroundColor: CST.bordo, color: 'white' }}
                   >
                     {authorInitials(config.heroReferentName || 'MS')}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-center sm:max-w-[8rem]">
-                  <p className="text-sm font-bold leading-tight text-[#3D2818]">{config.heroReferentName}</p>
-                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#6B4A38]/80">
+                  <p className="text-sm font-bold leading-tight text-[#2B2B2B]">{config.heroReferentName}</p>
+                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#7A5C52]">
                     Referente oficial
                   </p>
                 </div>
@@ -509,11 +538,11 @@ function HomePageContent() {
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/create"
-            className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
-            style={{ backgroundColor: orange }}
+            className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
+            style={{ backgroundColor: CST.bordo }}
           >
             <div>
-              <h3 className="text-lg font-bold">Crear publicación</h3>
+              <h3 className="text-lg font-bold text-white">Crear publicación</h3>
               <p className="mt-1 text-sm text-white/90">Compartí con tu comunidad</p>
             </div>
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
@@ -524,11 +553,11 @@ function HomePageContent() {
           {currentUser ? (
             <Link
               href="/publicidades/crear"
-              className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99]"
-              style={{ backgroundColor: sage }}
+              className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
+              style={{ backgroundColor: CST.acento }}
             >
               <div>
-                <h3 className="text-lg font-bold">Crear publicidad</h3>
+                <h3 className="text-lg font-bold text-white">Crear publicidad</h3>
                 <p className="mt-1 text-sm text-white/90">Gestioná anuncios</p>
               </div>
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20">
@@ -538,30 +567,33 @@ function HomePageContent() {
           ) : (
             <Link
               href="/login"
-              className="flex items-center justify-between gap-4 rounded-[1.25rem] border-2 border-dashed border-[#E8E0D5] bg-white p-5 text-[#2C241C] shadow-sm"
+              className="flex items-center justify-between gap-4 rounded-[1.25rem] border-2 border-dashed border-[#8B0015]/20 bg-white p-5 text-[#2B2B2B] shadow-sm"
             >
               <div>
-                <h3 className="text-lg font-bold">Crear publicidad</h3>
-                <p className="mt-1 text-sm text-[#6B5F54]">Iniciá sesión para publicitar</p>
+                <h3 className="text-lg font-bold text-[#8B0015]">Crear publicidad</h3>
+                <p className="mt-1 text-sm text-[#7A5C52]">Iniciá sesión para publicitar</p>
               </div>
-              <Megaphone className="h-8 w-8 shrink-0 text-[#9A8F84]" />
+              <Megaphone className="h-8 w-8 shrink-0 text-[#7A5C52]" />
             </Link>
           )}
         </div>
 
         {/* Filtro: categorías de publicaciones o solo publicidades */}
-        <div className="mb-6 rounded-[1.25rem] border border-[#E8E0D5] bg-gradient-to-br from-white to-[#FAF6F1] p-4 shadow-sm sm:p-5">
+        <div
+          className="mb-6 rounded-[1.25rem] border border-[#8B0015]/12 p-4 shadow-sm sm:p-5"
+          style={{ backgroundColor: CST.fondo }}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
             <div className="flex min-w-0 items-start gap-3">
               <span
                 className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
-                style={{ background: `linear-gradient(145deg, ${orange} 0%, ${sage} 100%)` }}
+                style={{ background: `linear-gradient(145deg, ${CST.bordo} 0%, ${CST.bordoDark} 100%)` }}
               >
                 <Filter className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-[#2C241C]">¿Qué querés ver en el feed?</p>
-                <p className="mt-0.5 text-xs leading-snug text-[#6B5F54]">
+                <p className="text-sm font-bold text-[#8B0015] font-montserrat-only">¿Qué querés ver en el feed?</p>
+                <p className="mt-0.5 text-xs leading-snug text-[#7A5C52]">
                   Filtrá por categoría (ventas, avisos, etc.) o mostrá solo publicidades.
                 </p>
               </div>
@@ -569,31 +601,31 @@ function HomePageContent() {
             <Select value={feedFilter} onValueChange={setFeedFilter}>
               <SelectTrigger
                 size="default"
-                className="h-12 w-full min-w-0 rounded-2xl border-2 border-[#E8E0D5] bg-white px-4 text-left font-semibold text-[#2C241C] shadow-sm transition-[border-color,box-shadow] hover:border-[#C06C3B]/40 hover:shadow data-[size=default]:h-12 focus-visible:border-[#C06C3B]/55 focus-visible:ring-[3px] focus-visible:ring-[#C06C3B]/20 sm:max-w-[min(100%,22rem)]"
+                className="h-12 w-full min-w-0 rounded-2xl border-2 border-[#D8D2CC] bg-white px-4 text-left font-semibold text-[#2B2B2B] shadow-sm transition-[border-color,box-shadow] hover:border-[#8B0015]/35 hover:shadow data-[size=default]:h-12 focus-visible:border-[#8B0015] focus-visible:ring-[3px] focus-visible:ring-[#8B0015]/20 sm:max-w-[min(100%,22rem)]"
               >
                 <SelectValue placeholder="Elegí una opción" />
               </SelectTrigger>
-              <SelectContent className="max-h-[min(70vh,24rem)] rounded-xl border-[#E8E0D5] shadow-xl">
+              <SelectContent className="max-h-[min(70vh,24rem)] rounded-xl border-[#D8D2CC] shadow-xl">
                 <SelectGroup>
-                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#9A8F84]">
+                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
                     General
                   </SelectLabel>
                   <SelectItem value={FEED_FILTER_ALL} className="cursor-pointer rounded-lg py-2.5 pl-2">
                     <span className="flex items-center gap-2.5">
-                      <LayoutGrid className="h-4 w-4 shrink-0 text-[#8EA07E]" aria-hidden />
+                      <LayoutGrid className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
                       Todas las categorías
                     </span>
                   </SelectItem>
                   <SelectItem value={FEED_FILTER_SOLO_PUBLICIDADES} className="cursor-pointer rounded-lg py-2.5 pl-2">
                     <span className="flex items-center gap-2.5">
-                      <Megaphone className="h-4 w-4 shrink-0 text-[#8EA07E]" aria-hidden />
+                      <Megaphone className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
                       Solo publicidades
                     </span>
                   </SelectItem>
                 </SelectGroup>
-                <SelectSeparator className="my-1 bg-[#E8E0D5]/90" />
+                <SelectSeparator className="my-1 bg-[#D8D2CC]" />
                 <SelectGroup>
-                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#9A8F84]">
+                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
                     Por categoría
                   </SelectLabel>
                   {postCategories.map((c) => (
@@ -610,23 +642,21 @@ function HomePageContent() {
         {/* Feed: solo publicaciones; el buscador no filtra la barra de publicidad */}
         <section>
           <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <h2 className="text-base font-bold text-[#2C241C]">
+            <h2 className="font-montserrat-only text-base font-bold text-[#8B0015]">
               {feedFilter === FEED_FILTER_SOLO_PUBLICIDADES ? 'Publicidades' : 'Últimas publicaciones'}
             </h2>
             {hasSearch ? (
-              <span className="text-xs font-medium text-[#6B5F54]">
+              <span className="text-xs font-medium text-[#7A5C52]">
                 {combinedFeed.length} resultado{combinedFeed.length === 1 ? '' : 's'}
               </span>
             ) : null}
           </div>
 
           {feedPubLoading && combinedFeed.length === 0 && !hasSearch ? (
-            <div className="rounded-[1.25rem] border border-[#E8E0D5] bg-white p-8 text-center text-sm text-[#6B5F54] shadow-sm">
-              Cargando publicaciones…
-            </div>
+            <FeedListSkeleton />
           ) : combinedFeed.length === 0 ? (
-            <div className="rounded-[1.25rem] border border-[#E8E0D5] bg-white p-8 text-center shadow-sm">
-              <p className="text-[#6B5F54]">
+            <div className="rounded-[1.25rem] border border-[#D8D2CC] bg-white p-8 text-center shadow-sm">
+              <p className="text-[#7A5C52]">
                 {hasSearch
                   ? 'No encontramos publicaciones ni publicidades con todas las palabras de tu búsqueda.'
                   : feedFilter === FEED_FILTER_SOLO_PUBLICIDADES
@@ -639,7 +669,7 @@ function HomePageContent() {
                 <Link
                   href="/create"
                   className="mt-4 inline-flex font-semibold hover:underline"
-                  style={{ color: orange }}
+                  style={{ color: CST.bordo }}
                 >
                   Sé el primero en publicar
                 </Link>
@@ -652,7 +682,6 @@ function HomePageContent() {
                   const post = item.post
                   const catLabel = categoryLabelBySlug.get(post.category) ?? post.category
                   const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
-                  const mainImage = post.images[0]
                   const isMine = currentUser?.id === post.authorId
                   return (
                     <li key={`post-${post.id}`} className="relative">
@@ -661,42 +690,49 @@ function HomePageContent() {
                           <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
                         </div>
                       ) : null}
-                      <Link
-                        href={`/post/${post.id}`}
-                        className="block overflow-hidden rounded-[1.25rem] border border-[#E8E0D5] bg-white shadow-sm transition-shadow hover:shadow-md"
-                      >
-                        <div className={`flex items-start gap-3 p-4 pb-3 ${isMine ? 'pr-14' : ''}`}>
-                          <Avatar className="h-11 w-11 border-2 border-[#F9F5F0]">
-                            <AvatarImage src={post.authorAvatar} alt={post.authorName} />
-                            <AvatarFallback
-                              className="text-xs font-bold text-white"
-                              style={{ backgroundColor: sage }}
-                            >
-                              {authorInitials(post.authorName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-[#2C241C]">{post.authorName}</p>
-                            <p className="text-xs text-[#6B5F54]">
-                              {when}
-                              <span className="mx-1.5 text-[#C4B8A8]">•</span>
-                              Vecino/a • {catLabel}
-                            </p>
+                      <div className="overflow-hidden rounded-[1.25rem] border border-[#D8D2CC] bg-white shadow-sm transition-shadow hover:shadow-md hover:shadow-[#5A000E]/08">
+                        <Link
+                          href={`/post/${post.id}`}
+                          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8B0015]/25"
+                        >
+                          <div className={`flex items-start gap-3 p-4 pb-3 ${isMine ? 'pr-14' : ''}`}>
+                            <Avatar className="h-11 w-11 border-2 border-[#D8D2CC]">
+                              <AvatarImage src={post.authorAvatar} alt={post.authorName} />
+                              <AvatarFallback
+                                className="text-xs font-bold text-white"
+                                style={{ backgroundColor: CST.acento }}
+                              >
+                                {authorInitials(post.authorName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-[#2B2B2B]">{post.authorName}</p>
+                              <p className="text-xs text-[#7A5C52]">
+                                {when}
+                                <span className="mx-1.5 text-[#8B0015]/35">•</span>
+                                Vecino/a • {catLabel}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="px-4 pb-3">
-                          <h3 className="font-bold text-[#2C241C]">{post.title}</h3>
-                          {post.description ? (
-                            <p className="mt-1 line-clamp-3 text-sm text-[#3D3429]">{post.description}</p>
-                          ) : null}
-                        </div>
-                        {mainImage ? (
-                          <div className="aspect-[16/10] w-full overflow-hidden bg-[#E8E0D5]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={mainImage} alt="" className="h-full w-full object-cover" />
+                          <div className="px-4 pb-3">
+                            <h3 className="font-bold text-[#2B2B2B] font-montserrat-only">{post.title}</h3>
+                            {post.description ? (
+                              <p className="mt-1 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
+                            ) : null}
                           </div>
+                        </Link>
+                        {post.images.length > 0 ? (
+                          <PostImageWithLightbox
+                            images={post.images}
+                            alt={post.title}
+                            variant="feed"
+                            priority={feedIndex < 2}
+                          />
                         ) : null}
-                      </Link>
+                        <div className="border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">
+                          <PostPublicationActions postId={post.id} whatsappNumber={post.whatsappNumber} />
+                        </div>
+                      </div>
                     </li>
                   )
                 }
@@ -710,48 +746,47 @@ function HomePageContent() {
 
                 return (
                   <li key={`pub-${pub.id}-${feedIndex}`}>
-                    <div className="overflow-hidden rounded-[1.25rem] border-2 border-[#C06C3B]/45 bg-gradient-to-br from-[#FFF8F0] via-[#FDF6EE] to-[#E8F0E4] shadow-md ring-2 ring-[#8EA07E]/20">
-                      <div className="flex items-center justify-between gap-2 border-b border-[#C06C3B]/25 bg-[#C06C3B]/12 px-4 py-2.5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#8EA07E] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                    <div className="overflow-hidden rounded-[1.25rem] border-2 border-[#7A5C52]/40 bg-gradient-to-br from-white via-[#F4EFEA] to-[#EBE6E1] shadow-md ring-2 ring-[#7A5C52]/15">
+                      <div className="flex items-center justify-between gap-2 border-b border-[#7A5C52]/25 bg-[#7A5C52]/10 px-4 py-2.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7A5C52] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
                           <Megaphone className="h-3.5 w-3.5" aria-hidden />
                           Publicidad
                         </span>
-                        <span className="text-xs font-medium text-[#5C5348]">{when}</span>
+                        <span className="text-xs font-medium text-[#7A5C52]">{when}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setSelectedFeedPublicidad(pub)}
-                        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C06C3B]/50 focus-visible:ring-offset-2"
+                        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/40 focus-visible:ring-offset-2"
                       >
                         <div className="flex items-start gap-3 p-4 pb-2">
                           <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-[#C06C3B]/35 bg-white shadow-sm"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-[#D8D2CC] bg-white shadow-sm"
                             aria-hidden
                           >
-                            <Megaphone className="h-5 w-5" style={{ color: sage }} />
+                            <Megaphone className="h-5 w-5 text-[#7A5C52]" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-bold text-[#2C241C]">{pub.title}</h3>
-                            <p className="mt-0.5 text-xs text-[#6B5F54]">
+                            <h3 className="font-bold text-[#2B2B2B] font-montserrat-only">{pub.title}</h3>
+                            <p className="mt-0.5 text-xs text-[#7A5C52]">
                               {pubCatLabel}
-                              <span className="mx-1.5 text-[#C4B8A8]">•</span>
+                              <span className="mx-1.5 text-[#8B0015]/25">•</span>
                               Tocá para ver más
                             </p>
                           </div>
                         </div>
                         {pub.description ? (
                           <div className="px-4 pb-3">
-                            <p className="line-clamp-3 text-sm text-[#3D3429]">{pub.description}</p>
+                            <p className="line-clamp-3 text-sm text-[#2B2B2B]/88">{pub.description}</p>
                           </div>
                         ) : null}
                         {mainPubImage ? (
-                          <div className="aspect-[16/10] w-full overflow-hidden bg-[#E8E0D5]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={mainPubImage} alt="" className="h-full w-full object-cover" />
+                          <div className="aspect-[16/10] w-full overflow-hidden">
+                            <CoverImageWithSkeleton src={mainPubImage} alt="" />
                           </div>
                         ) : null}
                       </button>
-                      <div className="border-t border-[#C06C3B]/15 bg-white/60 px-4 py-3">
+                      <div className="border-t border-[#D8D2CC] bg-white/70 px-4 py-3">
                         <PublicidadContactLinks
                           whatsappUrl={pub.whatsappUrl}
                           instagramUrl={pub.instagramUrl}
@@ -767,8 +802,8 @@ function HomePageContent() {
           )}
         </section>
 
-        <section className="mt-10 border-t border-[#E8E0D5] pt-6 lg:hidden">
-          <h2 className="mb-3 px-1 text-[10px] font-bold uppercase tracking-widest text-[#9A8F84]">
+        <section className="mt-10 border-t border-[#8B0015]/12 pt-6 lg:hidden">
+          <h2 className="mb-3 px-1 text-[10px] font-bold uppercase tracking-widest text-[#7A5C52]/90 font-montserrat-only">
             Zona publicitaria
           </h2>
           <ZonaPublicitariaCarousel />
@@ -778,23 +813,24 @@ function HomePageContent() {
         <div className="pointer-events-none fixed bottom-6 right-4 z-30 flex flex-col items-end gap-3 sm:right-6 lg:right-8">
           <Link
             href="/publicidades"
-            className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-            style={{ backgroundColor: sage }}
+            className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#634942] active:scale-95"
+            style={{ backgroundColor: CST.acento }}
             aria-label="Publicidades"
           >
             <Megaphone className="h-5 w-5" />
           </Link>
           <Link
             href="/create"
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-            style={{ backgroundColor: orange }}
+            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#5A000E] active:scale-95"
+            style={{ backgroundColor: CST.bordo }}
             aria-label="Crear publicación"
           >
             <PenLine className="h-6 w-6" />
           </Link>
           <Link
             href="/configuracion"
-            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#4A4540] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+            style={{ backgroundColor: CST.bordoDark }}
             aria-label="Ayuda y configuración"
           >
             <CircleHelp className="h-5 w-5" />
