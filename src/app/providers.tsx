@@ -64,6 +64,25 @@ export interface AdminProfile {
   suspended_until: string | null
 }
 
+export type PostMediaKind = 'image' | 'video'
+
+export interface PostMediaItem {
+  url: string
+  type: PostMediaKind
+}
+
+function normalizePostMediaRows(
+  rows: { url: string; position: number; type?: string | null }[] | null | undefined
+): PostMediaItem[] {
+  const list = Array.isArray(rows) ? rows : []
+  return [...list]
+    .sort((a, b) => a.position - b.position)
+    .map((m) => ({
+      url: m.url,
+      type: m.type === 'video' ? 'video' : 'image',
+    }))
+}
+
 export interface Post {
   id: string
   title: string
@@ -71,7 +90,8 @@ export interface Post {
   category: Category
   /** Texto libre: nombre de categoría pedido por el vecino (solo si category === 'propuesta'). */
   proposedCategoryLabel?: string | null
-  images: string[]
+  /** Fotos y videos en orden (tabla post_media). */
+  media: PostMediaItem[]
   authorId: string
   authorName: string
   authorAvatar?: string
@@ -241,7 +261,12 @@ const MOCK_POSTS: Post[] = [
     description:
       'Busco a mi perro "Max", es un Golden Retriever de 3 años. Se perdió el día 5 de febrero cerca del parque central. Tiene collar azul con mi número de teléfono. Cualquier información será muy agradecida.',
     category: 'mascotas',
-    images: ['https://images.unsplash.com/photo-1633722715463-d30f4f325e24?w=800&h=600&fit=crop'],
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1633722715463-d30f4f325e24?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+    ],
     authorId: '2',
     authorName: 'María González',
     authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
@@ -255,7 +280,12 @@ const MOCK_POSTS: Post[] = [
     description:
       'La empresa eléctrica informa que habrá un corte de luz programado el día sábado 8 de febrero de 9:00 a 14:00 hs en las calles principales del barrio. Se recomienda tomar precauciones.',
     category: 'alertas',
-    images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'],
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+    ],
     authorId: '1',
     authorName: 'Admin Usuario',
     authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
@@ -268,7 +298,12 @@ const MOCK_POSTS: Post[] = [
     description:
       'Encontré un manojo de llaves con llavero azul en la plaza del barrio esta mañana. Tiene 4 llaves y una etiqueta con iniciales "JR". Si son tuyas, contactame.',
     category: 'objetos',
-    images: ['https://images.unsplash.com/photo-1582139329536-e7284fece509?w=800&h=600&fit=crop'],
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+    ],
     authorId: '3',
     authorName: 'Carlos Rodríguez',
     authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
@@ -282,7 +317,12 @@ const MOCK_POSTS: Post[] = [
     description:
       'Se convoca a todos los vecinos a una reunión para discutir las próximas mejoras del barrio. Será el martes 11 de febrero a las 19:00 hs en el salón comunitario. Temas: seguridad, espacios verdes y mantenimiento.',
     category: 'avisos',
-    images: ['https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop'],
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+    ],
     authorId: '4',
     authorName: 'Ana Martínez',
     authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
@@ -295,9 +335,15 @@ const MOCK_POSTS: Post[] = [
     description:
       'Abrió una nueva panadería artesanal en la esquina de Av. Principal y calle 5. Tienen pan casero, facturas y productos sin TACC. ¡Les recomiendo visitarlos!',
     category: 'noticias',
-    images: [
-      'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&h=600&fit=crop',
-      'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&h=600&fit=crop',
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&h=600&fit=crop',
+        type: 'image',
+      },
     ],
     authorId: '2',
     authorName: 'María González',
@@ -311,7 +357,12 @@ const MOCK_POSTS: Post[] = [
     description:
       'Encontré un gato gris con rayas blancas muy cariñoso. Parece estar bien cuidado así que seguro tiene dueño. Lo encontré en la calle 8. Temporalmente está en mi casa.',
     category: 'mascotas',
-    images: ['https://images.unsplash.com/photo-1574158622682-e40e69881006?w=800&h=600&fit=crop'],
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=800&h=600&fit=crop',
+        type: 'image',
+      },
+    ],
     authorId: '3',
     authorName: 'Carlos Rodríguez',
     authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
@@ -325,7 +376,7 @@ const MOCK_POSTS: Post[] = [
     description:
       'Vecinos de la cuadra 400 de calle 7 reportaron intento de robo anoche. Por favor estén atentos y reporten cualquier actividad sospechosa a la policía.',
     category: 'alertas',
-    images: [],
+    media: [],
     authorId: '4',
     authorName: 'Ana Martínez',
     authorAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
@@ -596,7 +647,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase
           .from('posts')
           .select(
-            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
           )
           .order('created_at', { ascending: false })
         if (cancelled) return
@@ -617,18 +668,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             created_at: string
             author_id: string
             profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-            post_media?: { url: string; position: number }[] | null
+            post_media?: { url: string; position: number; type?: string | null }[] | null
           }
           const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-          const media = Array.isArray(r.post_media) ? r.post_media : []
-          const images = media.sort((a, b) => a.position - b.position).map((m) => m.url)
+          const media = normalizePostMediaRows(r.post_media)
           return {
             id: r.id,
             title: r.title,
             description: r.description,
             category: r.category,
             proposedCategoryLabel: r.proposed_category_label ?? undefined,
-            images,
+            media,
             authorId: r.author_id,
             authorName: profile?.name ?? r.author_id.slice(0, 8),
             authorAvatar: profile?.avatar_url ?? undefined,
@@ -658,7 +708,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         supabase
           .from('posts')
           .select(
-            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
           )
           .eq('id', row.id)
           .single()
@@ -675,18 +725,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
               created_at: string
               author_id: string
               profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-              post_media?: { url: string; position: number }[] | null
+              post_media?: { url: string; position: number; type?: string | null }[] | null
             }
             const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-            const media = Array.isArray(r.post_media) ? r.post_media : []
-            const images = media.sort((a: { position: number }, b: { position: number }) => a.position - b.position).map((m: { url: string }) => m.url)
+            const media = normalizePostMediaRows(r.post_media)
             const newPost: Post = {
               id: r.id,
               title: r.title,
               description: r.description,
               category: r.category,
               proposedCategoryLabel: r.proposed_category_label ?? undefined,
-              images,
+              media,
               authorId: r.author_id,
               authorName: profile?.name ?? r.author_id.slice(0, 8),
               authorAvatar: profile?.avatar_url ?? undefined,
@@ -734,7 +783,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('posts')
         .select(
-          'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+          'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
         )
         .order('created_at', { ascending: false })
       if (error) return
@@ -750,18 +799,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           created_at: string
           author_id: string
           profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-          post_media?: { url: string; position: number }[] | null
+          post_media?: { url: string; position: number; type?: string | null }[] | null
         }
         const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        const media = Array.isArray(r.post_media) ? r.post_media : []
-        const images = media.sort((a, b) => a.position - b.position).map((m) => m.url)
+        const media = normalizePostMediaRows(r.post_media)
         return {
           id: r.id,
           title: r.title,
           description: r.description,
           category: r.category,
           proposedCategoryLabel: r.proposed_category_label ?? undefined,
-          images,
+          media,
           authorId: r.author_id,
           authorName: profile?.name ?? r.author_id.slice(0, 8),
           authorAvatar: profile?.avatar_url ?? undefined,
@@ -1152,14 +1200,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: error.message ?? 'Error al guardar la publicación' }
       }
 
-      const imageUrls = post.images ?? []
-      if (imageUrls.length > 0) {
+      const mediaItems = post.media ?? []
+      if (mediaItems.length > 0) {
         const mediaResults = await Promise.all(
-          imageUrls.map((url, position) =>
+          mediaItems.map((item, position) =>
             supabase.from('post_media').insert({
               post_id: data.id,
-              url,
-              type: 'image',
+              url: item.url,
+              type: item.type,
               position,
             })
           )
@@ -1167,7 +1215,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const mediaError = mediaResults.find((r) => r.error)
         if (mediaError?.error) {
           await supabase.from('posts').delete().eq('id', data.id)
-          return { ok: false, error: mediaError.error.message ?? 'Error al guardar las imágenes' }
+          return { ok: false, error: mediaError.error.message ?? 'Error al guardar fotos o videos' }
         }
       }
 
@@ -1179,7 +1227,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         authorAvatar: currentUser.avatar,
         status,
         createdAt: new Date(data.created_at),
-        images: imageUrls,
+        media: mediaItems,
         proposedCategoryLabel: post.proposedCategoryLabel?.trim() || undefined,
       }
       setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))

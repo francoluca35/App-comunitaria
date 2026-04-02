@@ -3,7 +3,8 @@
  * Requiere que el usuario haya aceptado permisos y que la app esté instalada o en HTTPS.
  */
 
-const NOTIFICATION_ICON_PATH = '/Assets/logocst.png'
+/** Icono por defecto en notificaciones del sistema (alineado con PWA / Android). */
+const NOTIFICATION_ICON_PATH = '/Assets/logo-mobil-192.png'
 
 /** URL absoluta del icono para que en móvil (barra de estado) se vea bien. */
 function getNotificationIconUrl(customIcon?: string): string {

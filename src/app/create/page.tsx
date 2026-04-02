@@ -17,6 +17,7 @@ import {
   PenLine,
 } from 'lucide-react'
 import { CST } from '@/lib/cst-theme'
+import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 
 const ICON_CATEGORIES: { slug: string; label: string; Icon: typeof Dog }[] = [
   { slug: 'alertas', label: 'Alertas', Icon: AlertTriangle },
@@ -79,7 +80,8 @@ export default function CreateHubPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-extrabold leading-tight">Alerta importante</p>
                     <p className="mt-1 text-sm text-white/90 leading-snug">
-                      Título, descripción y una imagen — aviso prioritario con sonido y vibración para todos
+                      Título, descripción y hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos — aviso prioritario con sonido
+                      y vibración para todos
                     </p>
                   </div>
                 </div>
@@ -103,7 +105,8 @@ export default function CreateHubPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-extrabold leading-tight">Mascotas</p>
                   <p className="mt-1 text-sm text-white/90 leading-snug">
-                    Perdí o encontré — texto armado, solo ubicación, fecha, teléfono y foto
+                    Perdí o encontré — texto armado, ubicación, fecha, teléfono y hasta{' '}
+                    {POST_MEDIA_LIMITS.maxImagesPerPost} fotos
                   </p>
                 </div>
               </div>
@@ -130,7 +133,7 @@ export default function CreateHubPage() {
                 {slug === 'objetos'
                   ? 'Perdí, encontré, vendo o regalo'
                   : slug === 'avisos' || slug === 'noticias'
-                    ? 'Título, texto, WhatsApp e imagen'
+                    ? `Título, texto, WhatsApp y hasta ${POST_MEDIA_LIMITS.maxImagesPerPost} fotos o videos`
                     : 'Formulario completo'}
               </p>
             </Link>

@@ -1,4 +1,5 @@
 import './globals.css'
+import type { Metadata, Viewport } from 'next'
 import { Providers } from './providers'
 import { Montserrat, Open_Sans } from 'next/font/google'
 
@@ -15,23 +16,38 @@ const montserrat = Montserrat({
   weight: ['500', '600', '700'],
 })
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'CST Comunidad',
-  description: 'Plataforma de difusión comunitaria',
+  description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, title: 'CST Comunidad' },
+  applicationName: 'CST Comunidad',
+  appleWebApp: {
+    capable: true,
+    title: 'CST Comunidad',
+    statusBarStyle: 'default',
+  },
+  /** Web / Android: favicon y tamaños estándar PWA. */
+  icons: {
+    icon: [
+      { url: '/Assets/logo-mobil-96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/Assets/logo-mobil-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/Assets/logo-mobil-96.png',
+    /** iPhone / iPad: variantes -i (Apple touch icon). */
+    apple: [
+      { url: '/Assets/logo-mobil-120-i.png', sizes: '120x120', type: 'image/png' },
+      { url: '/Assets/logo-mobil-180-i.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+}
+
+export const viewport: Viewport = {
   themeColor: '#8B0015',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${openSans.variable} ${montserrat.variable}`}>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#8B0015" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      </head>
       <body className={`${openSans.className} antialiased`}>
         <Providers>{children}</Providers>
       </body>

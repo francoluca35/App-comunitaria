@@ -1,7 +1,7 @@
 {
-  "name": "Difusión Comunitaria",
-  "short_name": "Comunidad",
-  "description": "Plataforma de difusión comunitaria",
+  "name": "CST Comunidad",
+  "short_name": "CST",
+  "description": "Plataforma de difusión comunitaria — Comunidad de Santo Tomé",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F4EFEA",
@@ -9,16 +9,28 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/Assets/logocst.png",
-      "sizes": "192x192",
+      "src": "/Assets/logo-mobil-96.png",
+      "sizes": "96x96",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/Assets/logocst.png",
+      "src": "/Assets/logo-mobil-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Assets/logo-mobil.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/Assets/logo-mobil-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["social", "community"]

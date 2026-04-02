@@ -101,10 +101,10 @@ export default function PostDetailPage() {
         </div>
 
         {/* Imagen(es): se ve entera; tocá para ampliar */}
-        {post.images.length > 0 ? (
+        {post.media.length > 0 ? (
           <div className="mb-6 shadow-xl">
             <PostImageWithLightbox
-              images={post.images}
+              media={post.media}
               alt={post.title}
               variant="detail"
               priority

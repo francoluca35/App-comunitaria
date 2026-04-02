@@ -3,8 +3,13 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useApp } from '@/app/providers'
-import { createClient } from '@/lib/supabase/client'
+import { useApp, type PostMediaItem } from '@/app/providers'
+import {
+  uploadLocalPostMedia,
+  isAllowedPostVideoFile,
+  type LocalAttachment,
+} from '@/lib/upload-post-media'
+import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import {
   buildAnimalesDescription,
   buildAnimalesTitle,
@@ -22,10 +27,6 @@ import { toast } from 'sonner'
 import { cn } from '@/app/components/ui/utils'
 import { CST } from '@/lib/cst-theme'
 
-const BUCKET = 'publicaciones'
-const MAX_IMAGES = 5
-const MAX_FILE_MB = 5
-
 function todayIsoDate(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -41,7 +42,7 @@ export default function CreateAnimalesPage() {
   const [ubicacion, setUbicacion] = useState('')
   const [fechaIso, setFechaIso] = useState(todayIsoDate)
   const [telefono, setTelefono] = useState('')
-  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
 
   const mascotasSlug = useMemo(() => {
@@ -65,56 +66,60 @@ export default function CreateAnimalesPage() {
     [caso, nombreReferente, ubicacion, fechaIso, telefono]
   )
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length) return
     const list = Array.from(files)
-    if (imageFiles.length + list.length > MAX_IMAGES) {
-      toast.error(`Máximo ${MAX_IMAGES} fotos`)
-      return
-    }
-    const valid: File[] = []
-    for (const f of list) {
-      if (f.size > MAX_FILE_MB * 1024 * 1024) {
-        toast.error(`${f.name} supera ${MAX_FILE_MB} MB`)
-        continue
+    setAttachmentFiles((prev) => {
+      const out: LocalAttachment[] = [...prev]
+      let imageCount = out.filter((a) => a.kind === 'image').length
+      let videoCount = out.filter((a) => a.kind === 'video').length
+      const { maxImagesPerPost, maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
+      for (const f of list) {
+        const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
+        const isVid = isAllowedPostVideoFile(f)
+        if (!isImg && !isVid) {
+          toast.error(`${f.name}: solo fotos o videos (p. ej. MP4, MOV, WebM)`)
+          continue
+        }
+        if (isImg) {
+          if (imageCount >= maxImagesPerPost) {
+            toast.error(`Máximo ${maxImagesPerPost} fotos (${maxImageMbPerFile} MB c/u)`)
+            break
+          }
+          if (f.size > maxImageMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
+            continue
+          }
+          out.push({ file: f, kind: 'image' })
+          imageCount++
+        } else {
+          if (videoCount >= maxVideosPerPost) {
+            toast.error(`Máximo ${maxVideosPerPost} videos por publicación`)
+            continue
+          }
+          if (f.size > maxVideoMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxVideoMbPerFile} MB`)
+            continue
+          }
+          out.push({ file: f, kind: 'video' })
+          videoCount++
+        }
       }
-      if (!f.type.startsWith('image/')) {
-        toast.error(`${f.name} no es una imagen`)
-        continue
-      }
-      valid.push(f)
-    }
-    setImageFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES))
+      return out
+    })
+    e.target.value = ''
   }
 
-  const removeImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index))
+  const removeAttachment = (index: number) => {
+    setAttachmentFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const uploadImages = async (): Promise<string[]> => {
-    if (!currentUser || imageFiles.length === 0) return []
-    const supabase = createClient()
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!baseUrl) {
-      toast.error('Configuración de Storage no disponible')
-      return []
-    }
-    const urls: string[] = []
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i]
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
-      if (error) {
-        toast.error(`Error al subir ${file.name}: ${error.message}`)
-        throw error
-      }
-      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
-      urls.push(publicUrl)
-    }
-    return urls
-  }
+  const imageAttachmentCount = attachmentFiles.filter((a) => a.kind === 'image').length
+  const videoAttachmentCount = attachmentFiles.filter((a) => a.kind === 'video').length
+  const canAddAttachments =
+    imageAttachmentCount < POST_MEDIA_LIMITS.maxImagesPerPost ||
+    videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -135,8 +140,8 @@ export default function CreateAnimalesPage() {
       toast.error('Indicá un teléfono de contacto')
       return
     }
-    if (imageFiles.length === 0) {
-      toast.error('Agregá al menos una foto de la mascota')
+    if (attachmentFiles.length === 0) {
+      toast.error('Agregá al menos una foto o un video de la mascota')
       return
     }
 
@@ -151,12 +156,19 @@ export default function CreateAnimalesPage() {
 
     setSending(true)
     try {
-      const imageUrls = await uploadImages()
+      let media: PostMediaItem[] = []
+      try {
+        media = await uploadLocalPostMedia(currentUser.id, attachmentFiles)
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error al subir archivos'
+        toast.error(msg)
+        return
+      }
       const result = await addPost({
         title,
         description,
         category: mascotasSlug,
-        images: imageUrls,
+        media,
         whatsappNumber: config.whatsappEnabled ? telefono.trim() : undefined,
       })
       if (!result.ok) {
@@ -324,16 +336,33 @@ export default function CreateAnimalesPage() {
 
           <div className="space-y-2">
             <Label className="text-[#2C241C]">
-              Foto de la mascota <span className="text-red-500">*</span>
+              Fotos o videos de la mascota <span className="text-red-500">*</span>
             </Label>
-            {imageFiles.length > 0 && (
+            <p className="text-xs text-[#6B5F54]">
+              Hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u, hasta{' '}
+              {POST_MEDIA_LIMITS.maxImagesPerPost * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total) y hasta{' '}
+              {POST_MEDIA_LIMITS.maxVideosPerPost} videos; las fotos se comprimen al subir.
+            </p>
+            {attachmentFiles.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
-                {imageFiles.map((file, index) => (
-                  <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-[#D8D2CC]/30">
-                    <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                {attachmentFiles.map((att, index) => (
+                  <div
+                    key={`${att.file.name}-${index}`}
+                    className="relative aspect-square rounded-xl overflow-hidden bg-[#D8D2CC]/30"
+                  >
+                    {att.kind === 'video' ? (
+                      <video
+                        src={URL.createObjectURL(att.file)}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img src={URL.createObjectURL(att.file)} alt="" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
+                      onClick={() => removeAttachment(index)}
                       className="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center"
                       aria-label="Quitar"
                     >
@@ -343,12 +372,21 @@ export default function CreateAnimalesPage() {
                 ))}
               </div>
             )}
-            {imageFiles.length < MAX_IMAGES && (
+            {canAddAttachments && (
               <label className="block border-2 border-dashed border-[#D8D2CC] rounded-2xl p-8 text-center cursor-pointer bg-white hover:border-[#8B0015] transition-colors">
-                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                <input
+                  type="file"
+                  accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"
+                  multiple
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                />
                 <Upload className="w-10 h-10 text-[#8B0015] mx-auto mb-2" />
-                <p className="text-sm font-semibold text-[#2C241C]">Tocá para subir fotos</p>
-                <p className="text-xs text-[#6B5F54] mt-1">Hasta {MAX_IMAGES} fotos, {MAX_FILE_MB} MB c/u</p>
+                <p className="text-sm font-semibold text-[#2C241C]">Tocá para subir fotos o videos</p>
+                <p className="text-xs text-[#6B5F54] mt-1">
+                  Fotos hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u; videos hasta{' '}
+                  {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB.
+                </p>
               </label>
             )}
           </div>

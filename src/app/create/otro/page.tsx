@@ -2,8 +2,13 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useApp, type Category } from '@/app/providers'
-import { createClient } from '@/lib/supabase/client'
+import { useApp, type Category, type PostMediaItem } from '@/app/providers'
+import {
+  uploadLocalPostMedia,
+  isAllowedPostVideoFile,
+  type LocalAttachment,
+} from '@/lib/upload-post-media'
+import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import { cn } from '@/app/components/ui/utils'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -13,10 +18,6 @@ import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ArrowLeft, AlertCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
-
-const BUCKET = 'publicaciones'
-const MAX_IMAGES = 5
-const MAX_FILE_MB = 5
 
 const OBJETO_TIPOS = [
   { value: 'perdi', label: 'Perdí' },
@@ -81,7 +82,7 @@ function CreateOtroForm() {
   const [objetoLugar, setObjetoLugar] = useState('')
   const [objetoDia, setObjetoDia] = useState('')
   const [whatsappNumber, setWhatsappNumber] = useState('')
-  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
@@ -108,56 +109,60 @@ function CreateOtroForm() {
     return buildObjetoTextoPublicacion(objetoTipo, objetoCosa, objetoLugar, objetoDia)
   }, [isObjetos, objetoTipo, objetoCosa, objetoLugar, objetoDia])
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length) return
     const list = Array.from(files)
-    if (imageFiles.length + list.length > MAX_IMAGES) {
-      toast.error(`Máximo ${MAX_IMAGES} imágenes`)
-      return
-    }
-    const valid: File[] = []
-    for (const f of list) {
-      if (f.size > MAX_FILE_MB * 1024 * 1024) {
-        toast.error(`${f.name} supera ${MAX_FILE_MB} MB`)
-        continue
+    setAttachmentFiles((prev) => {
+      const out: LocalAttachment[] = [...prev]
+      let imageCount = out.filter((a) => a.kind === 'image').length
+      let videoCount = out.filter((a) => a.kind === 'video').length
+      const { maxImagesPerPost, maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
+      for (const f of list) {
+        const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
+        const isVid = isAllowedPostVideoFile(f)
+        if (!isImg && !isVid) {
+          toast.error(`${f.name}: solo fotos o videos (p. ej. MP4, MOV, WebM)`)
+          continue
+        }
+        if (isImg) {
+          if (imageCount >= maxImagesPerPost) {
+            toast.error(`Máximo ${maxImagesPerPost} fotos por publicación (${maxImageMbPerFile} MB c/u)`)
+            break
+          }
+          if (f.size > maxImageMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
+            continue
+          }
+          out.push({ file: f, kind: 'image' })
+          imageCount++
+        } else {
+          if (videoCount >= maxVideosPerPost) {
+            toast.error(`Máximo ${maxVideosPerPost} videos por publicación`)
+            continue
+          }
+          if (f.size > maxVideoMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxVideoMbPerFile} MB`)
+            continue
+          }
+          out.push({ file: f, kind: 'video' })
+          videoCount++
+        }
       }
-      if (!f.type.startsWith('image/')) {
-        toast.error(`${f.name} no es una imagen`)
-        continue
-      }
-      valid.push(f)
-    }
-    setImageFiles((prev) => [...prev, ...valid].slice(0, MAX_IMAGES))
+      return out
+    })
+    e.target.value = ''
   }
 
-  const removeImage = (index: number) => {
-    setImageFiles((prev) => prev.filter((_, i) => i !== index))
+  const removeAttachment = (index: number) => {
+    setAttachmentFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const uploadImages = async (): Promise<string[]> => {
-    if (!currentUser || imageFiles.length === 0) return []
-    const supabase = createClient()
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!baseUrl) {
-      toast.error('Configuración de Storage no disponible')
-      return []
-    }
-    const urls: string[] = []
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i]
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
-      if (error) {
-        toast.error(`Error al subir ${file.name}: ${error.message}`)
-        throw error
-      }
-      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
-      urls.push(publicUrl)
-    }
-    return urls
-  }
+  const imageAttachmentCount = attachmentFiles.filter((a) => a.kind === 'image').length
+  const videoAttachmentCount = attachmentFiles.filter((a) => a.kind === 'video').length
+  const canAddAttachments =
+    imageAttachmentCount < POST_MEDIA_LIMITS.maxImagesPerPost ||
+    videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -208,8 +213,8 @@ function CreateOtroForm() {
       }
     }
 
-    if (isAvisoONoticia && imageFiles.length === 0) {
-      toast.error('Agregá al menos una imagen')
+    if (isAvisoONoticia && attachmentFiles.length === 0) {
+      toast.error('Agregá al menos una foto o un video')
       return
     }
     if (isAvisoONoticia && config.whatsappEnabled && !whatsappNumber.trim()) {
@@ -237,14 +242,23 @@ function CreateOtroForm() {
 
     setSending(true)
     try {
-      const imageUrls = imageFiles.length > 0 ? await uploadImages() : []
+      let media: PostMediaItem[] = []
+      if (attachmentFiles.length > 0 && currentUser) {
+        try {
+          media = await uploadLocalPostMedia(currentUser.id, attachmentFiles)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Error al subir archivos'
+          toast.error(msg)
+          return
+        }
+      }
       const result = await addPost({
         title: titleToSend,
         description: descriptionToSend,
         category,
         proposedCategoryLabel:
           category === 'propuesta' ? proposedCategoryLabel.trim() : undefined,
-        images: imageUrls,
+        media,
         whatsappNumber: whatsappNumber.trim() || undefined,
       })
       if (!result.ok) {
@@ -518,16 +532,35 @@ function CreateOtroForm() {
 
           <div className="space-y-2">
             <Label>
-              Imágenes {isAvisoONoticia ? <span className="text-red-500">*</span> : '(opcional)'} · máx. {MAX_IMAGES}
+              Fotos y/o videos {isAvisoONoticia ? <span className="text-red-500">*</span> : '(opcional)'} · hasta{' '}
+              {POST_MEDIA_LIMITS.maxImagesPerPost} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta{' '}
+              {POST_MEDIA_LIMITS.maxVideosPerPost} videos
             </Label>
-            {imageFiles.length > 0 && (
+            <p className="text-xs text-slate-500 dark:text-gray-400">
+              Podés elegir hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos (como mucho{' '}
+              {POST_MEDIA_LIMITS.maxImagesPerPost * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total antes de enviar); al
+              subir se comprimen para ahorrar espacio.
+            </p>
+            {attachmentFiles.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
-                {imageFiles.map((file, index) => (
-                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800">
-                    <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                {attachmentFiles.map((att, index) => (
+                  <div
+                    key={`${att.file.name}-${index}`}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800"
+                  >
+                    {att.kind === 'video' ? (
+                      <video
+                        src={URL.createObjectURL(att.file)}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img src={URL.createObjectURL(att.file)} alt="" className="w-full h-full object-cover" />
+                    )}
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
+                      onClick={() => removeAttachment(index)}
                       className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center"
                       aria-label="Quitar"
                     >
@@ -537,11 +570,20 @@ function CreateOtroForm() {
                 ))}
               </div>
             )}
-            {imageFiles.length < MAX_IMAGES && (
+            {canAddAttachments && (
               <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
-                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                <input
+                  type="file"
+                  accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"
+                  multiple
+                  className="hidden"
+                  onChange={handleAttachmentChange}
+                />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-600 dark:text-gray-400">Agregar fotos (máx. {MAX_FILE_MB} MB c/u)</p>
+                <p className="text-sm text-slate-600 dark:text-gray-400">
+                  Fotos hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u (se optimizan al subir). Videos hasta{' '}
+                  {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB.
+                </p>
               </label>
             )}
           </div>

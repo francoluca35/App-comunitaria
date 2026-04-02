@@ -12,6 +12,7 @@ import { Textarea } from '@/app/components/ui/textarea'
 import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
 import { instagramStoredFromLocal, phoneStoredFromDigits } from '@/lib/publicidad-contact-fields'
 
@@ -166,13 +167,16 @@ export default function CrearPublicidadPage() {
       return []
     }
 
+    const prepared = await compressImagesForCommunityUpload(imageFiles)
     const urls: string[] = []
-    for (const file of imageFiles) {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    for (let i = 0; i < prepared.length; i++) {
+      const file = prepared[i]
+      const label = imageFiles[i]?.name ?? file.name
+      const ext = storageExtensionFromFile(file)
       const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
       if (error) {
-        toast.error(`Error al subir imagen: ${error.message}`)
+        toast.error(`Error al subir ${label}: ${error.message}`)
         throw error
       }
       const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
@@ -390,7 +394,9 @@ export default function CrearPublicidadPage() {
                       onChange={handleImageChange}
                     />
                     <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-sm text-slate-600 dark:text-gray-400">Agregar fotos (máx. {MAX_FILE_MB} MB c/u)</p>
+                    <p className="text-sm text-slate-600 dark:text-gray-400">
+                      Hasta {MAX_FILE_MB} MB c/u; se optimizan antes de subir.
+                    </p>
                   </label>
                 </div>
 
