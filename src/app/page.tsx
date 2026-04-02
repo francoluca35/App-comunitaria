@@ -723,9 +723,9 @@ function HomePageContent() {
                             ) : null}
                           </div>
                         </Link>
-                        {post.images.length > 0 ? (
+                        {post.media.length > 0 ? (
                           <PostImageWithLightbox
-                            images={post.images}
+                            media={post.media}
                             alt={post.title}
                             variant="feed"
                             priority={feedIndex < 2}

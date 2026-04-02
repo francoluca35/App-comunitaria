@@ -75,8 +75,8 @@ export function PostCard({ post, showStatus = false }: PostCardProps) {
         </Link>
       </CardContent>
 
-      {post.images.length > 0 ? (
-        <PostImageWithLightbox images={post.images} alt={post.title} variant="feed" />
+      {post.media.length > 0 ? (
+        <PostImageWithLightbox media={post.media} alt={post.title} variant="feed" />
       ) : null}
 
       <CardFooter className="flex flex-col gap-3 border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">

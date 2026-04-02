@@ -133,22 +133,26 @@ export default function AdminModerationPage() {
 
   const nextImage = () => {
     if (selectedPost) {
-      setCurrentImageIndex((prev) => (prev + 1) % selectedPost.images.length)
+      setCurrentImageIndex((prev) => (prev + 1) % selectedPost.media.length)
     }
   }
 
   const prevImage = () => {
     if (selectedPost) {
-      setCurrentImageIndex((prev) => (prev - 1 + selectedPost.images.length) % selectedPost.images.length)
+      setCurrentImageIndex((prev) => (prev - 1 + selectedPost.media.length) % selectedPost.media.length)
     }
   }
 
   const PostListItem = ({ post }: { post: Post }) => (
     <Card className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedPost(post)}>
       <div className="flex gap-3 p-3">
-        {post.images.length > 0 && (
+        {post.media.length > 0 && (
           <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex-shrink-0">
-            <img src={post.images[0]} alt={post.title} className="w-full h-full object-cover" />
+            {post.media[0].type === 'video' ? (
+              <video src={post.media[0].url} muted playsInline className="w-full h-full object-cover" />
+            ) : (
+              <img src={post.media[0].url} alt={post.title} className="w-full h-full object-cover" />
+            )}
           </div>
         )}
 
@@ -280,17 +284,26 @@ export default function AdminModerationPage() {
               </DialogHeader>
 
               <div className="space-y-4">
-                {selectedPost.images.length > 0 && (
+                {selectedPost.media.length > 0 && (
                   <div className="relative bg-black rounded-lg overflow-hidden">
                     <div className="aspect-video flex items-center justify-center bg-muted">
                       {dialogImageError ? (
                         <div className="flex flex-col items-center gap-2 text-muted-foreground py-8">
                           <ImageOff className="w-12 h-12" />
-                          <span className="text-sm">Imagen no disponible</span>
+                          <span className="text-sm">Archivo no disponible</span>
                         </div>
+                      ) : selectedPost.media[currentImageIndex]?.type === 'video' ? (
+                        <video
+                          key={selectedPost.media[currentImageIndex].url}
+                          src={selectedPost.media[currentImageIndex].url}
+                          controls
+                          playsInline
+                          className="max-h-[min(70vh,420px)] w-full object-contain"
+                          onError={() => setDialogImageError(true)}
+                        />
                       ) : (
                         <img
-                          src={selectedPost.images[currentImageIndex]}
+                          src={selectedPost.media[currentImageIndex]?.url}
                           alt={selectedPost.title}
                           className="w-full h-full object-contain"
                           onError={() => setDialogImageError(true)}
@@ -298,7 +311,7 @@ export default function AdminModerationPage() {
                       )}
                     </div>
 
-                    {selectedPost.images.length > 1 && (
+                    {selectedPost.media.length > 1 && (
                       <>
                         <Button
                           variant="ghost"
@@ -319,12 +332,12 @@ export default function AdminModerationPage() {
                         </Button>
 
                         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 px-2 py-1 rounded text-white text-xs">
-                          {currentImageIndex + 1} / {selectedPost.images.length}
+                          {currentImageIndex + 1} / {selectedPost.media.length}
                         </div>
                       </>
                     )}
 
-                    {selectedPost.status === 'pending' && selectedPost.images.length > 0 && (
+                    {selectedPost.status === 'pending' && selectedPost.media.length > 0 && (
                       <div className="absolute top-2 right-2">
                         <Button
                           size="sm"
@@ -334,12 +347,12 @@ export default function AdminModerationPage() {
                           {rejectedImageIndices.includes(currentImageIndex) ? (
                             <>
                               <XCircle className="w-4 h-4 mr-1" />
-                              Imagen marcada
+                              Archivo marcado
                             </>
                           ) : (
                             <>
                               <XCircle className="w-4 h-4 mr-1" />
-                              Rechazar imagen
+                              Rechazar archivo
                             </>
                           )}
                         </Button>

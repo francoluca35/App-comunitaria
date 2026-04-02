@@ -11,7 +11,9 @@
 --   2. Storage → New bucket (o editar el bucket "publicaciones" si ya existe)
 --   3. Name: publicaciones
 --   4. Public bucket: DEBE ESTAR ACTIVADO (para que las URLs carguen sin auth)
---   5. Create bucket (o Save)
+--   5. Si el Dashboard ofrece "Allowed MIME types" / restricción de tipos:
+--      dejalo vacío o incluí image/* y video/* (si solo permitís image/*, los videos fallan al subir).
+--   6. Create bucket (o Save)
 --
 -- PASO 2 – Ejecutar este archivo en SQL Editor (Storage → Policies o SQL Editor)
 -- ============================================
