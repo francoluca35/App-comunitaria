@@ -49,8 +49,8 @@ function useIsMobileViewport() {
 }
 
 type Props = {
-  /** No mostrar mientras el modal de preferencias de notificaciones está abierto */
-  gateOpen: boolean
+  /** Si es false, no se muestra el diálogo (p. ej. otro modal crítico encima). */
+  gateOpen?: boolean
   authLoading: boolean
   userId: string | null | undefined
 }
@@ -58,7 +58,7 @@ type Props = {
 /**
  * Una sola vez en móvil: invita a aceptar notificaciones del navegador y registra Web Push.
  */
-export function MobileNotificationsOncePrompt({ gateOpen, authLoading, userId }: Props) {
+export function MobileNotificationsOncePrompt({ gateOpen = true, authLoading, userId }: Props) {
   const isMobile = useIsMobileViewport()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)

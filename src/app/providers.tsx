@@ -5,7 +5,6 @@ import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
-import { NotificationPreferenceModal } from '@/components/NotificationPreferenceModal'
 import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
 import { registerWebPushIfPossible } from '@/lib/push-client'
@@ -16,7 +15,6 @@ import {
   type NamedCategoryRow,
 } from '@/lib/category-defaults'
 
-const NOTIFICATION_MODAL_DISMISSED_KEY = 'comunidad_notification_modal_dismissed'
 const APP_CONFIG_STORAGE_KEY = 'comunidad_app_config_v1'
 
 /** Slug en `post_categories` (feed y /categoria/…). No confundir con publicidad_categories. */
@@ -42,7 +40,10 @@ export interface User {
   phone?: string
   province?: string
   locality?: string
-  /** Preferencia de notificaciones. Null = aún no eligió (mostrar modal al iniciar sesión). */
+  /**
+   * Preferencia de notificaciones. En BD puede ser null (legacy): la app trata eso como `all` (todas activas).
+   * Solo cambia si el usuario entra a Configuración y elige otra opción.
+   */
   notificationPreference?: NotificationPreference | null
 }
 
@@ -150,8 +151,6 @@ interface AppContextType {
   refreshUser: () => Promise<void>
   /** Guardar preferencia de notificaciones y refrescar usuario. */
   setNotificationPreference: (preference: NotificationPreference) => Promise<{ ok: boolean; error?: string }>
-  /** Cerrar el modal de preferencias de notificaciones (sin guardar). */
-  dismissNotificationPreferenceModal: () => void
 
   posts: Post[]
   postsLoading: boolean
@@ -202,6 +201,7 @@ const MOCK_USERS: User[] = [
     isAdmin: true,
     isBlocked: false,
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+    notificationPreference: 'all',
   },
   {
     id: '2',
@@ -210,6 +210,7 @@ const MOCK_USERS: User[] = [
     isAdmin: false,
     isBlocked: false,
     avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
+    notificationPreference: 'all',
   },
   {
     id: '3',
@@ -218,6 +219,7 @@ const MOCK_USERS: User[] = [
     isAdmin: false,
     isBlocked: false,
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
+    notificationPreference: 'all',
   },
   {
     id: '4',
@@ -226,6 +228,7 @@ const MOCK_USERS: User[] = [
     isAdmin: false,
     isBlocked: false,
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
+    notificationPreference: 'all',
   },
 ]
 
@@ -410,7 +413,8 @@ function profileToUser(profile: {
     phone: profile.phone ?? undefined,
     province: profile.province ?? undefined,
     locality: profile.locality ?? undefined,
-    notificationPreference: pref === 'all' || pref === 'custom' || pref === 'messages_only' ? pref : null,
+    notificationPreference:
+      pref === 'custom' || pref === 'messages_only' ? pref : 'all',
   }
 }
 
@@ -425,6 +429,7 @@ function adminProfileToUser(p: AdminProfile): User {
     isModerator: p.role === 'moderator',
     suspendedUntil: p.suspended_until ?? undefined,
     phone: p.phone ?? undefined,
+    notificationPreference: 'all',
   }
 }
 
@@ -496,24 +501,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
   const [recentRegistrations, setRecentRegistrations] = useState<RegistrationNotification[]>([])
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG)
-  const [notificationModalDismissed, setNotificationModalDismissed] = useState(false)
-  const [notificationPreferenceLoading, setNotificationPreferenceLoading] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
 
   // Restaurar configuración de app (admin + banner de identidad) desde localStorage
   useEffect(() => {
     setConfig(loadAppConfigFromStorage())
-  }, [])
-
-  // Cargar "más tarde" del modal de notificaciones desde localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      setNotificationModalDismissed(window.localStorage.getItem(NOTIFICATION_MODAL_DISMISSED_KEY) === '1')
-    } catch {
-      // ignore
-    }
   }, [])
 
   // Registrar service worker para PWA y notificaciones
@@ -972,7 +965,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setNotificationPreference = useCallback(
     async (preference: NotificationPreference): Promise<{ ok: boolean; error?: string }> => {
-      setNotificationPreferenceLoading(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session?.access_token) return { ok: false, error: 'Sesión expirada' }
@@ -996,21 +988,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return { ok: true }
       } catch (e) {
         return { ok: false, error: 'Error de conexión' }
-      } finally {
-        setNotificationPreferenceLoading(false)
       }
     },
     [supabase]
   )
-
-  const dismissNotificationPreferenceModal = useCallback(() => {
-    setNotificationModalDismissed(true)
-    try {
-      if (typeof window !== 'undefined') window.localStorage.setItem(NOTIFICATION_MODAL_DISMISSED_KEY, '1')
-    } catch {
-      // ignore
-    }
-  }, [])
 
   const register = async (data: {
     name: string
@@ -1068,9 +1049,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const profile = await fetchProfileFromApi(token)
         userForContext = profile && profile.status !== 'blocked'
           ? profileToUser(profile)
-          : { id: uid, email: uEmail, name: displayName, isAdmin: false, isBlocked: false, avatar: undefined }
+          : {
+              id: uid,
+              email: uEmail,
+              name: displayName,
+              isAdmin: false,
+              isBlocked: false,
+              avatar: undefined,
+              notificationPreference: 'all',
+            }
       } else {
-        userForContext = { id: uid, email: uEmail, name: displayName, isAdmin: false, isBlocked: false, avatar: undefined }
+        userForContext = {
+          id: uid,
+          email: uEmail,
+          name: displayName,
+          isAdmin: false,
+          isBlocked: false,
+          avatar: undefined,
+          notificationPreference: 'all',
+        }
       }
       setCurrentUser(userForContext)
       // Notificación para admin: quién se registró, con todos los datos excepto contraseña
@@ -1218,7 +1215,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     register,
     refreshUser,
     setNotificationPreference,
-    dismissNotificationPreferenceModal,
     posts,
     postsLoading,
     refreshPosts,
@@ -1246,29 +1242,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshPublicidadCategories,
   }
 
-  const showNotificationPreferenceModal =
-    !!currentUser &&
-    (currentUser.notificationPreference === undefined || currentUser.notificationPreference === null) &&
-    !notificationModalDismissed
-
   return (
     <AppContext.Provider value={value}>
       {children}
       <RealtimeNotificationSubscriptions />
-      <NotificationPreferenceModal
-        open={showNotificationPreferenceModal}
-        onSelect={async (pref) => {
-          const result = await setNotificationPreference(pref)
-          if (result.ok) dismissNotificationPreferenceModal()
-        }}
-        onDismiss={dismissNotificationPreferenceModal}
-        loading={notificationPreferenceLoading}
-      />
-      <MobileNotificationsOncePrompt
-        gateOpen={!showNotificationPreferenceModal}
-        authLoading={authLoading}
-        userId={currentUser?.id}
-      />
+      <MobileNotificationsOncePrompt authLoading={authLoading} userId={currentUser?.id} />
     </AppContext.Provider>
   )
 }

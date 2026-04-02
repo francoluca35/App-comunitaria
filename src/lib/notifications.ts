@@ -73,6 +73,10 @@ export function playUrgentAlertFeedback(): void {
  * Muestra una notificación en la barra del sistema (móvil/PC).
  * Usa icono en URL absoluta para que en Android aparezca en la barra de estado.
  * `urgent`: vibración + tono en el cliente y notificación más llamativa cuando hay permiso.
+ *
+ * **Sonido del celular:** el tono no se elige desde código. Con `silent: false` el sistema usa el
+ * sonido del **canal de notificaciones** del navegador o de la PWA (Android: Ajustes → Apps → Chrome
+ * u otro navegador → Notificaciones; iOS: Ajustes → Notificaciones → la app en cuestión).
  */
 export async function showSystemNotification(options: {
   title: string
@@ -105,6 +109,7 @@ export async function showSystemNotification(options: {
         data: { url: options.url ?? '/' },
         icon: iconUrl,
         badge: iconUrl,
+        silent: false,
         ...urgentOpts,
       })
     } else {
@@ -112,6 +117,7 @@ export async function showSystemNotification(options: {
         body: options.body,
         tag: options.tag,
         icon: iconUrl,
+        silent: false,
       })
       n.onclick = () => {
         n.close()

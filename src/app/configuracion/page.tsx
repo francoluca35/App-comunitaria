@@ -28,7 +28,7 @@ export default function ConfiguracionPage() {
     return null
   }
 
-  const currentPreference = currentUser.notificationPreference ?? null
+  const currentPreference = currentUser.notificationPreference ?? 'all'
 
   return (
     <DashboardLayout>
@@ -56,7 +56,8 @@ export default function ConfiguracionPage() {
                 Notificaciones
               </Label>
               <p className="text-sm text-slate-500 dark:text-gray-400 mb-3">
-                Qué notificaciones recibir en el celular o la PC (barra de notificaciones).
+                Por defecto están <strong>activas todas</strong> las notificaciones. Solo cambian si elegís otra opción
+                abajo (personalizado o solo mensajes).
               </p>
               <div className="flex flex-col gap-2">
                 {(

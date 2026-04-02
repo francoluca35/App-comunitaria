@@ -52,6 +52,7 @@ self.addEventListener('push', (event) => {
       badge: iconUrl,
       vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
       requireInteraction: urgent,
+      // false = el SO puede sonar según el canal de notificaciones (lo que el usuario configuró en Ajustes)
       silent: false,
       // Android: volver a avisar aunque haya otra con el mismo tag reciente
       renotify: urgent,
