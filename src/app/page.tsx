@@ -628,11 +628,13 @@ function HomePageContent() {
                   <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
                     Por categoría
                   </SelectLabel>
-                  {postCategories.map((c) => (
-                    <SelectItem key={c.slug} value={c.slug} className="cursor-pointer rounded-lg py-2.5">
-                      {c.label}
-                    </SelectItem>
-                  ))}
+                  {postCategories
+                    .filter((c) => c.slug !== 'propuesta')
+                    .map((c) => (
+                      <SelectItem key={c.slug} value={c.slug} className="cursor-pointer rounded-lg py-2.5">
+                        {c.label}
+                      </SelectItem>
+                    ))}
                 </SelectGroup>
               </SelectContent>
             </Select>

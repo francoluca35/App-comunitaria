@@ -84,11 +84,13 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   const categoryLinks = useMemo(() => {
     const head = [{ slug: 'todas', label: 'Todas', icon: Filter }]
-    const rest = postCategories.map((c) => ({
-      slug: c.slug,
-      label: c.label,
-      icon: ICON_BY_SLUG[c.slug] ?? Tag,
-    }))
+    const rest = postCategories
+      .filter((c) => c.slug !== 'propuesta')
+      .map((c) => ({
+        slug: c.slug,
+        label: c.label,
+        icon: ICON_BY_SLUG[c.slug] ?? Tag,
+      }))
     return [...head, ...rest]
   }, [postCategories])
 

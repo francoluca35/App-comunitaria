@@ -69,6 +69,8 @@ export interface Post {
   title: string
   description: string
   category: Category
+  /** Texto libre: nombre de categoría pedido por el vecino (solo si category === 'propuesta'). */
+  proposedCategoryLabel?: string | null
   images: string[]
   authorId: string
   authorName: string
@@ -369,7 +371,7 @@ const DEFAULT_CONFIG: AppConfig = {
   maxImagesPerPost: 5,
   termsOfService:
     'Al publicar en esta plataforma, aceptas que tu contenido será moderado antes de ser visible públicamente. Prohibido contenido ofensivo, falso o ilegal.',
-  heroTitle: 'Comunidad de Santo Tome Mario stebler',
+  heroTitle: 'Comunidad de Santo Tome',
   heroSubtitle: 'Bienvenido a nuestra comunidad',
   heroReferentName: 'Mario Stebler',
   heroReferentPhotoUrl: '',
@@ -593,7 +595,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const { data, error } = await supabase
           .from('posts')
-          .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+          .select(
+            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+          )
           .order('created_at', { ascending: false })
         if (cancelled) return
         if (error) {
@@ -607,6 +611,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             title: string
             description: string
             category: string
+            proposed_category_label: string | null
             status: string
             whatsapp_number: string | null
             created_at: string
@@ -622,6 +627,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             title: r.title,
             description: r.description,
             category: r.category,
+            proposedCategoryLabel: r.proposed_category_label ?? undefined,
             images,
             authorId: r.author_id,
             authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -651,7 +657,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const row = payload.new as { id: string }
         supabase
           .from('posts')
-          .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+          .select(
+            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+          )
           .eq('id', row.id)
           .single()
           .then(({ data, error }) => {
@@ -661,6 +669,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               title: string
               description: string
               category: string
+              proposed_category_label: string | null
               status: string
               whatsapp_number: string | null
               created_at: string
@@ -676,6 +685,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               title: r.title,
               description: r.description,
               category: r.category,
+              proposedCategoryLabel: r.proposed_category_label ?? undefined,
               images,
               authorId: r.author_id,
               authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -688,9 +698,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts' }, (payload) => {
-        const row = payload.new as { id: string; status: string }
+        const row = payload.new as {
+          id: string
+          status?: string
+          category?: string
+          proposed_category_label?: string | null
+        }
         setPosts((prev) =>
-          prev.map((p) => (p.id === row.id ? { ...p, status: row.status as PostStatus } : p))
+          prev.map((p) =>
+            p.id === row.id
+              ? {
+                  ...p,
+                  ...(row.status !== undefined && { status: row.status as PostStatus }),
+                  ...(row.category !== undefined && { category: row.category }),
+                  ...(row.proposed_category_label !== undefined && {
+                    proposedCategoryLabel: row.proposed_category_label ?? undefined,
+                  }),
+                }
+              : p
+          )
         )
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts' }, (payload) => {
@@ -707,7 +733,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('posts')
-        .select('id, title, description, category, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)')
+        .select(
+          'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position)'
+        )
         .order('created_at', { ascending: false })
       if (error) return
       const mapped: Post[] = (data ?? []).map((row: unknown) => {
@@ -716,6 +744,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           title: string
           description: string
           category: string
+          proposed_category_label: string | null
           status: string
           whatsapp_number: string | null
           created_at: string
@@ -730,7 +759,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           id: r.id,
           title: r.title,
           description: r.description,
-              category: r.category,
+          category: r.category,
+          proposedCategoryLabel: r.proposed_category_label ?? undefined,
           images,
           authorId: r.author_id,
           authorName: profile?.name ?? r.author_id.slice(0, 8),
@@ -1098,7 +1128,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: 'Tu cuenta está suspendida. No podés publicar hasta que se cumpla la fecha indicada.' }
     }
 
-    const status: PostStatus = currentUser.isAdmin ? 'approved' : 'pending'
+    const isProposedCategory =
+      post.category === 'propuesta' && Boolean(post.proposedCategoryLabel?.trim())
+    const status: PostStatus =
+      isProposedCategory ? 'pending' : currentUser.isAdmin ? 'approved' : 'pending'
 
     try {
       const { data, error } = await supabase
@@ -1110,6 +1143,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           category: post.category,
           status,
           whatsapp_number: post.whatsappNumber?.trim() || null,
+          proposed_category_label: post.proposedCategoryLabel?.trim() || null,
         })
         .select('id, created_at')
         .single()
@@ -1146,6 +1180,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status,
         createdAt: new Date(data.created_at),
         images: imageUrls,
+        proposedCategoryLabel: post.proposedCategoryLabel?.trim() || undefined,
       }
       setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
       return { ok: true }
