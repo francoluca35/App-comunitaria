@@ -36,3 +36,36 @@ export async function requireAdmin(request: NextRequest): Promise<
   const serviceClient = createServiceRoleClient()
   return { ok: true, supabase, serviceClient }
 }
+
+/** Admin o moderador (moderación de publicaciones y categorías propuestas). */
+export async function requireStaff(request: NextRequest): Promise<
+  | {
+      ok: true
+      supabase: ReturnType<typeof createClient>
+      serviceClient: ReturnType<typeof createServiceRoleClient> | null
+      role: 'admin' | 'moderator'
+    }
+  | { ok: false; response: NextResponse }
+> {
+  const token = getAccessToken(request)
+  if (!token) {
+    return { ok: false, response: NextResponse.json({ error: 'No autorizado' }, { status: 401 }) }
+  }
+  const supabase = createClient(token)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token)
+  if (!user?.id) {
+    return { ok: false, response: NextResponse.json({ error: 'Sesión inválida' }, { status: 401 }) }
+  }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+  const role = profile?.role
+  if (role !== 'admin' && role !== 'moderator') {
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Se requieren permisos de moderación' }, { status: 403 }),
+    }
+  }
+  const serviceClient = createServiceRoleClient()
+  return { ok: true, supabase, serviceClient, role }
+}

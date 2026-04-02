@@ -126,7 +126,13 @@ export default function CreateHubPage() {
                 <Icon className="h-6 w-6" />
               </div>
               <p className="text-sm font-bold text-[#2B2B2B]">{slugToLabel(slug)}</p>
-              <p className="text-[11px] text-[#7A5C52] mt-0.5">Formulario completo</p>
+              <p className="text-[11px] text-[#7A5C52] mt-0.5">
+                {slug === 'objetos'
+                  ? 'Perdí, encontré, vendo o regalo'
+                  : slug === 'avisos' || slug === 'noticias'
+                    ? 'Título, texto, WhatsApp e imagen'
+                    : 'Formulario completo'}
+              </p>
             </Link>
           ))}
         </div>
@@ -142,7 +148,9 @@ export default function CreateHubPage() {
                   <PenLine className="h-4 w-4 shrink-0 text-[#8B0015]" />
                   Otra categoría / texto libre
                 </p>
-                <p className="text-xs text-[#7A5C52] mt-0.5">Elegí categoría y escribí como quieras</p>
+                <p className="text-xs text-[#7A5C52] mt-0.5">
+                  Proponé el nombre de la categoría y el contenido; si la aprueban, se crea en la comunidad
+                </p>
               </div>
             </CardContent>
           </Card>

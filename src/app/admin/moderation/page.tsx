@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, Post } from '@/app/providers'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
@@ -23,22 +24,24 @@ import { toast } from 'sonner'
 
 export default function AdminModerationPage() {
   const router = useRouter()
-  const { currentUser, posts, updatePostStatus, deletePost } = useApp()
+  const { currentUser, posts, updatePostStatus, deletePost, refreshPosts, refreshPostCategories } = useApp()
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [rejectedImageIndices, setRejectedImageIndices] = useState<number[]>([])
   const [dialogImageError, setDialogImageError] = useState(false)
+  const [approveBusy, setApproveBusy] = useState(false)
 
   useEffect(() => {
     setDialogImageError(false)
   }, [selectedPost?.id, currentImageIndex])
 
-  if (!currentUser?.isAdmin) {
+  const canModerate = currentUser?.isAdmin || currentUser?.isModerator
+  if (!canModerate) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">No tienes permisos de administrador</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">No tenés permisos para moderar publicaciones</p>
             <Button onClick={() => router.push('/')}>Volver al inicio</Button>
           </CardContent>
         </Card>
@@ -50,7 +53,53 @@ export default function AdminModerationPage() {
   const approvedPosts = posts.filter((p) => p.status === 'approved')
   const rejectedPosts = posts.filter((p) => p.status === 'rejected')
 
-  const handleApprovePost = (post: Post) => {
+  const handleApprovePost = async (post: Post) => {
+    const isNewCategoryRequest =
+      post.category === 'propuesta' && Boolean(post.proposedCategoryLabel?.trim())
+
+    if (isNewCategoryRequest && rejectedImageIndices.length > 0) {
+      toast.error('Para publicaciones con categoría nueva, quitá el rechazo de imágenes o rechazá la publicación completa.')
+      return
+    }
+
+    if (isNewCategoryRequest) {
+      setApproveBusy(true)
+      try {
+        const supabase = createClient()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          toast.error('Sesión expirada')
+          return
+        }
+        const res = await fetch('/api/moderation/approve-proposed-category', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ postId: post.id }),
+        })
+        const data = (await res.json().catch(() => ({}))) as { error?: string; label?: string }
+        if (!res.ok) {
+          toast.error(typeof data.error === 'string' ? data.error : 'No se pudo aprobar')
+          return
+        }
+        toast.success(
+          data.label
+            ? `Se creó la categoría «${data.label}» y la publicación quedó aprobada.`
+            : 'Categoría creada y publicación aprobada.'
+        )
+        await refreshPostCategories()
+        await refreshPosts()
+        setSelectedPost(null)
+      } finally {
+        setApproveBusy(false)
+      }
+      return
+    }
+
     updatePostStatus(post.id, 'approved')
     toast.success('Publicación aprobada')
     setSelectedPost(null)
@@ -108,6 +157,11 @@ export default function AdminModerationPage() {
             <h3 className="text-sm line-clamp-2 flex-1">{post.title}</h3>
             <CategoryBadge category={post.category} />
           </div>
+          {post.category === 'propuesta' && post.proposedCategoryLabel?.trim() ? (
+            <p className="text-xs font-semibold text-violet-800 dark:text-violet-300 mb-1">
+              Categoría pedida: {post.proposedCategoryLabel.trim()}
+            </p>
+          ) : null}
 
           <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">{post.description}</p>
 
@@ -130,7 +184,11 @@ export default function AdminModerationPage() {
       <div className="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/admin')}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push(currentUser?.isAdmin ? '/admin' : '/')}
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <h1 className="text-lg">Moderación</h1>
@@ -210,6 +268,15 @@ export default function AdminModerationPage() {
                   <span>·</span>
                   <CategoryBadge category={selectedPost.category} />
                 </div>
+                {selectedPost.category === 'propuesta' && selectedPost.proposedCategoryLabel?.trim() ? (
+                  <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-100">
+                    <span className="font-semibold">Categoría que pide el vecino: </span>
+                    {selectedPost.proposedCategoryLabel.trim()}
+                    <p className="mt-1 text-xs font-normal opacity-90">
+                      Al aprobar se crea esta categoría en el listado y la publicación queda en ella.
+                    </p>
+                  </div>
+                ) : null}
               </DialogHeader>
 
               <div className="space-y-4">
@@ -304,9 +371,19 @@ export default function AdminModerationPage() {
               <DialogFooter className="flex-col sm:flex-col gap-2">
                 {selectedPost.status === 'pending' && (
                   <>
-                    <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => handleApprovePost(selectedPost)}>
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={approveBusy}
+                      onClick={() => void handleApprovePost(selectedPost)}
+                    >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      {rejectedImageIndices.length > 0 ? 'Aprobar (sin imágenes rechazadas)' : 'Aprobar Publicación'}
+                      {approveBusy
+                        ? 'Procesando…'
+                        : selectedPost.category === 'propuesta' && selectedPost.proposedCategoryLabel?.trim()
+                          ? 'Crear categoría y aprobar'
+                          : rejectedImageIndices.length > 0
+                            ? 'Aprobar (sin imágenes rechazadas)'
+                            : 'Aprobar publicación'}
                     </Button>
                     <Button variant="destructive" className="w-full" onClick={() => handleRejectPost(selectedPost)}>
                       <XCircle className="w-4 h-4 mr-2" />

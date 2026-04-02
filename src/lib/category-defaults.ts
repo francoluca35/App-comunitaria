@@ -12,6 +12,7 @@ export const DEFAULT_POST_CATEGORIES: NamedCategoryRow[] = [
   { slug: 'avisos', label: 'Avisos', sort_order: 3 },
   { slug: 'objetos', label: 'Objetos', sort_order: 4 },
   { slug: 'noticias', label: 'Noticias', sort_order: 5 },
+  { slug: 'propuesta', label: 'Nueva categoría (pendiente)', sort_order: 99 },
 ]
 
 export const DEFAULT_PUBLICIDAD_CATEGORIES: NamedCategoryRow[] = [

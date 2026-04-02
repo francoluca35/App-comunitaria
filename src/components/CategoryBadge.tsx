@@ -1,4 +1,4 @@
-import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Tag } from 'lucide-react'
+import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Sparkles, Tag } from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { Badge } from '@/app/components/ui/badge'
 
@@ -8,6 +8,7 @@ const ICON_BY_SLUG: Record<string, React.ReactNode> = {
   avisos: <Megaphone className="w-3 h-3" />,
   objetos: <Package className="w-3 h-3" />,
   noticias: <Newspaper className="w-3 h-3" />,
+  propuesta: <Sparkles className="w-3 h-3" />,
 }
 
 const COLOR_BY_SLUG: Record<string, string> = {
@@ -16,6 +17,7 @@ const COLOR_BY_SLUG: Record<string, string> = {
   avisos: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   objetos: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   noticias: 'bg-[#7A5C52]/12 text-[#5c453e] dark:bg-[#7A5C52]/22 dark:text-stone-200',
+  propuesta: 'bg-violet-100 text-violet-900 dark:bg-violet-900/35 dark:text-violet-200',
 }
 
 interface CategoryBadgeProps {

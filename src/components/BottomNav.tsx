@@ -37,6 +37,16 @@ export function BottomNav() {
             </Link>
           )}
 
+          {currentUser?.isModerator && !currentUser?.isAdmin && (
+            <Link
+              href="/admin/moderation"
+              className={linkClass(pathname.startsWith('/admin/moderation'))}
+            >
+              <LayoutDashboard className="w-6 h-6" />
+              <span className="text-xs font-medium">Moderar</span>
+            </Link>
+          )}
+
           <Link href="/profile" className={linkClass(isActive('/profile'))}>
             <User className="w-6 h-6" />
             <span className="text-xs font-medium">Perfil</span>
