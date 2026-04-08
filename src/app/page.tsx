@@ -30,12 +30,12 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { PublicidadModal } from '@/components/PublicidadModal'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
-import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
+import { type PublicidadDisplay } from '@/lib/publicidad-display'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { PostPublicationActions } from '@/components/PostPublicationActions'
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
-import { CoverImageWithSkeleton } from '@/components/CoverImageWithSkeleton'
+import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -120,10 +120,14 @@ function authorInitials(name: string) {
 /** Placeholder del feed mientras llegan publicaciones / publicidades (servidor lento o red). */
 function FeedListSkeleton() {
   return (
-    <ul className="space-y-5" aria-busy="true" aria-label="Cargando publicaciones">
+    <ul
+      className="-mx-3 m-0 flex w-[calc(100%+1.5rem)] list-none flex-col gap-8 p-0 sm:mx-0 sm:w-full sm:gap-5"
+      aria-busy="true"
+      aria-label="Cargando publicaciones"
+    >
       {[0, 1, 2].map((i) => (
         <li key={i}>
-          <div className="overflow-hidden rounded-[1.25rem] border border-[#D8D2CC] bg-white shadow-sm">
+          <div className="overflow-hidden bg-white shadow-sm sm:rounded-none sm:border sm:border-[#D8D2CC] sm:hover:shadow-md sm:hover:shadow-[#5A000E]/08">
             <div className="flex items-start gap-3 p-4 pb-3">
               <Skeleton className="h-11 w-11 shrink-0 rounded-full border-2 border-[#D8D2CC]/40 bg-[#D4CEC8]/55" />
               <div className="min-w-0 flex-1 space-y-2 pt-0.5">
@@ -136,9 +140,9 @@ function FeedListSkeleton() {
               <Skeleton className="h-4 w-[92%] rounded-md bg-[#D4CEC8]/45" />
               <Skeleton className="h-4 w-[68%] rounded-md bg-[#D4CEC8]/40" />
             </div>
-            <Skeleton className="mx-0 h-[min(280px,52vw)] w-full rounded-none border-y border-[#D8D2CC]/25 bg-[#D4CEC8]/60" />
-            <div className="border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">
-              <Skeleton className="h-11 w-full rounded-xl bg-[#D8D2CC]/45" />
+            <Skeleton className="mx-0 h-[min(280px,52vw)] w-full rounded-none border-y border-[#CED0D4]/40 bg-[#D4CEC8]/60" />
+            <div className="bg-white px-0 py-0">
+              <Skeleton className="h-10 w-full rounded-none border-t border-[#CED0D4] bg-[#E9EBEE] sm:h-11 sm:bg-[#E9EBEE]" />
             </div>
           </div>
         </li>
@@ -678,7 +682,7 @@ function HomePageContent() {
               )}
             </div>
           ) : (
-            <ul className="space-y-5">
+            <ul className="-mx-3 m-0 flex w-[calc(100%+1.5rem)] list-none flex-col gap-8 p-0 sm:mx-0 sm:w-full sm:gap-5">
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
@@ -688,11 +692,11 @@ function HomePageContent() {
                   return (
                     <li key={`post-${post.id}`} className="relative">
                       {isMine ? (
-                        <div className="absolute right-3 top-3 z-10">
+                        <div className="absolute right-2 top-3 z-10 sm:right-3">
                           <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
                         </div>
                       ) : null}
-                      <div className="overflow-hidden rounded-[1.25rem] border border-[#D8D2CC] bg-white shadow-sm transition-shadow hover:shadow-md hover:shadow-[#5A000E]/08">
+                      <div className="overflow-hidden bg-white shadow-sm transition-shadow sm:rounded-none sm:border sm:border-[#D8D2CC] sm:hover:shadow-md sm:hover:shadow-[#5A000E]/08">
                         <Link
                           href={`/post/${post.id}`}
                           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8B0015]/25"
@@ -731,8 +735,12 @@ function HomePageContent() {
                             priority={feedIndex < 2}
                           />
                         ) : null}
-                        <div className="border-t-2 border-[#D8D2CC] bg-[#F4EFEA] px-4 py-4">
-                          <PostPublicationActions postId={post.id} whatsappNumber={post.whatsappNumber} />
+                        <div className="bg-white px-0 py-0">
+                          <PostPublicationActions
+                            postId={post.id}
+                            whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
+                            showComments={config.commentsEnabled}
+                          />
                         </div>
                       </div>
                     </li>
@@ -742,61 +750,15 @@ function HomePageContent() {
                 const pub = item.publicidad
                 const pubCatLabel =
                   publicidadCategories.find((c) => c.slug === pub.category)?.label ?? pub.category
-                const when = formatDistanceToNow(pub.createdAt, { addSuffix: true, locale: es })
-                const pubImages = getPublicidadImageUrls(pub)
-                const mainPubImage = pubImages[0]
 
                 return (
                   <li key={`pub-${pub.id}-${feedIndex}`}>
-                    <div className="overflow-hidden rounded-[1.25rem] border-2 border-[#7A5C52]/40 bg-gradient-to-br from-white via-[#F4EFEA] to-[#EBE6E1] shadow-md ring-2 ring-[#7A5C52]/15">
-                      <div className="flex items-center justify-between gap-2 border-b border-[#7A5C52]/25 bg-[#7A5C52]/10 px-4 py-2.5">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7A5C52] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
-                          <Megaphone className="h-3.5 w-3.5" aria-hidden />
-                          Publicidad
-                        </span>
-                        <span className="text-xs font-medium text-[#7A5C52]">{when}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFeedPublicidad(pub)}
-                        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/40 focus-visible:ring-offset-2"
-                      >
-                        <div className="flex items-start gap-3 p-4 pb-2">
-                          <span
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-[#D8D2CC] bg-white shadow-sm"
-                            aria-hidden
-                          >
-                            <Megaphone className="h-5 w-5 text-[#7A5C52]" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-bold text-[#2B2B2B] font-montserrat-only">{pub.title}</h3>
-                            <p className="mt-0.5 text-xs text-[#7A5C52]">
-                              {pubCatLabel}
-                              <span className="mx-1.5 text-[#8B0015]/25">•</span>
-                              Tocá para ver más
-                            </p>
-                          </div>
-                        </div>
-                        {pub.description ? (
-                          <div className="px-4 pb-3">
-                            <p className="line-clamp-3 text-sm text-[#2B2B2B]/88">{pub.description}</p>
-                          </div>
-                        ) : null}
-                        {mainPubImage ? (
-                          <div className="aspect-[16/10] w-full overflow-hidden">
-                            <CoverImageWithSkeleton src={mainPubImage} alt="" />
-                          </div>
-                        ) : null}
-                      </button>
-                      <div className="border-t border-[#D8D2CC] bg-white/70 px-4 py-3">
-                        <PublicidadContactLinks
-                          whatsappUrl={pub.whatsappUrl}
-                          instagramUrl={pub.instagramUrl}
-                          pulse
-                          stopPropagationOnClick
-                        />
-                      </div>
-                    </div>
+                    <PublicidadFeedCard
+                      publicidad={pub}
+                      categoryLabel={pubCatLabel}
+                      onOpenDetail={() => setSelectedFeedPublicidad(pub)}
+                      imagePriority={feedIndex < 2}
+                    />
                   </li>
                 )
               })}

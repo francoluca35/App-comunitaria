@@ -144,18 +144,16 @@ export default function PostDetailPage() {
           </p>
         </div>
 
-        {/* Acciones: comentarios y WhatsApp (botones grandes, fáciles de tocar) */}
-        {(config.commentsEnabled || (config.whatsappEnabled && post.whatsappNumber)) && (
-          <div className="mb-8 rounded-2xl border-2 border-[#D8D2CC] bg-[#F4EFEA] p-4">
-            <PostPublicationActions
-              postId={post.id}
-              whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
-              showComments={config.commentsEnabled}
-              commentsHref="#comments"
-              commentsLabel={`Comentarios (${postComments.length})`}
-            />
-          </div>
-        )}
+        {/* Acciones: comentarios, WhatsApp y compartir (siempre al menos compartir) */}
+        <div className="mb-8 overflow-hidden rounded-none border border-[#CED0D4] bg-white p-0 sm:rounded-2xl sm:border-2 sm:border-[#D8D2CC] sm:bg-[#F4EFEA] sm:p-4">
+          <PostPublicationActions
+            postId={post.id}
+            whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
+            showComments={config.commentsEnabled}
+            commentsHref="#comments"
+            commentsLabel={`Comentarios (${postComments.length})`}
+          />
+        </div>
 
         {/* Comentarios */}
         {config.commentsEnabled && (
