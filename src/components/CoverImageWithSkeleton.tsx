@@ -8,10 +8,12 @@ type Props = {
   src: string
   alt?: string
   className?: string
+  /** Prioridad de carga (p. ej. primeras tarjetas del feed). */
+  loading?: 'lazy' | 'eager'
 }
 
 /** Imagen a ancho completo (p. ej. cover del feed) con placeholder hasta `onLoad`. */
-export function CoverImageWithSkeleton({ src, alt = '', className }: Props) {
+export function CoverImageWithSkeleton({ src, alt = '', className, loading = 'lazy' }: Props) {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export function CoverImageWithSkeleton({ src, alt = '', className }: Props) {
           loaded ? 'opacity-100' : 'opacity-0',
         )}
         onLoad={() => setLoaded(true)}
-        loading="lazy"
+        loading={loading}
         decoding="async"
       />
     </div>

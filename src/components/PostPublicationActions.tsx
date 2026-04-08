@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { MessageCircle } from 'lucide-react'
+import { MessageCircle, Share2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/app/components/ui/button'
 import { cn } from '@/app/components/ui/utils'
+import { postPermalink } from '@/lib/app-public-url'
 
 function WhatsAppMark({ className }: { className?: string }) {
   return (
@@ -13,13 +15,17 @@ function WhatsAppMark({ className }: { className?: string }) {
   )
 }
 
-const touchRow = 'flex flex-col gap-3 sm:flex-row sm:items-stretch'
+const touchRow =
+  'flex w-full flex-row items-stretch overflow-hidden rounded-none border-t border-[#CED0D4] bg-white divide-x divide-[#CED0D4]'
 
 const commentBtn =
-  '!h-auto min-h-[52px] w-full justify-center gap-3 rounded-xl border-2 border-[#6b0010] bg-[#8B0015] px-4 py-3.5 text-base font-semibold leading-tight text-white shadow-md transition-colors hover:bg-[#5A000E] hover:text-white focus-visible:ring-[3px] focus-visible:ring-[#8B0015]/50 focus-visible:ring-offset-2 sm:min-h-14 sm:py-4 sm:text-lg'
+  '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
 
 const waBtn =
-  '!h-auto min-h-[52px] w-full justify-center gap-3 rounded-xl border-2 border-[#0d8f4f] bg-[#25D366] px-4 py-3.5 text-base font-semibold leading-tight text-white shadow-md transition-colors hover:bg-[#20bd5a] hover:text-white focus-visible:ring-[3px] focus-visible:ring-[#128C4A]/45 focus-visible:ring-offset-2 sm:min-h-14 sm:py-4 sm:text-lg'
+  '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
+
+const shareBtn =
+  '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
 
 export type PostPublicationActionsProps = {
   postId: string
@@ -29,6 +35,8 @@ export type PostPublicationActionsProps = {
   commentsHref?: string
   showComments?: boolean
   commentsLabel?: string
+  /** Compartir enlace absoluto a `/post/{id}` (solo URL). Por defecto activo. */
+  showShare?: boolean
 }
 
 export function PostPublicationActions({
@@ -38,20 +46,39 @@ export function PostPublicationActions({
   commentsHref: commentsHrefProp,
   showComments = true,
   commentsLabel = 'Comentar',
+  showShare = true,
 }: PostPublicationActionsProps) {
   const wa = whatsappNumber?.replace(/\D/g, '') ?? ''
   const hasWa = wa.length > 0
   const commentsHref = commentsHrefProp ?? `/post/${postId}`
   const isHashLink = commentsHref.startsWith('#')
 
-  if (!showComments && !hasWa) return null
+  if (!showComments && !hasWa && !showShare) return null
 
-  const commentFlex = showComments && hasWa
+  const handleShare = async () => {
+    if (typeof window === 'undefined') return
+    const url = postPermalink(postId)
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ url })
+        return
+      } catch (e: unknown) {
+        const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : ''
+        if (name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Enlace copiado al portapapeles')
+    } catch {
+      toast.error('No se pudo compartir ni copiar el enlace')
+    }
+  }
 
   const commentTrigger = (
     <>
-      <MessageCircle className="h-7 w-7 shrink-0 sm:h-8 sm:w-8" strokeWidth={2.5} aria-hidden />
-      <span className="text-center">{commentsLabel}</span>
+      <MessageCircle className="h-[18px] w-[18px] shrink-0 sm:h-7 sm:w-7" strokeWidth={2.25} aria-hidden />
+      <span className="max-w-[9rem] truncate text-center">{commentsLabel}</span>
     </>
   )
 
@@ -62,29 +89,38 @@ export function PostPublicationActions({
       className={cn(touchRow, className)}
     >
       {showComments ? (
-        <Button asChild variant="ghost" className={cn(commentBtn, commentFlex ? 'sm:flex-1' : '')}>
+        <Button asChild variant="ghost" className={commentBtn}>
           {isHashLink ? (
-            <a href={commentsHref} className="inline-flex items-center justify-center gap-3">
+            <a href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
               {commentTrigger}
             </a>
           ) : (
-            <Link href={commentsHref} className="inline-flex items-center justify-center gap-3">
+            <Link href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
               {commentTrigger}
             </Link>
           )}
         </Button>
       ) : null}
       {hasWa ? (
-        <Button asChild variant="ghost" className={cn(waBtn, showComments ? 'sm:flex-1' : '')}>
+        <Button asChild variant="ghost" className={waBtn}>
           <a
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-3"
+            className="inline-flex items-center justify-center gap-2 sm:gap-3"
           >
-            <WhatsAppMark className="h-7 w-7 sm:h-8 sm:w-8" />
-            <span className="text-center">Contactar por WhatsApp</span>
+            <WhatsAppMark className="h-[18px] w-[18px] shrink-0 text-[#25D366] sm:h-7 sm:w-7" />
+            <span className="text-center sm:hidden">WhatsApp</span>
+            <span className="hidden text-center sm:inline">Contactar por WhatsApp</span>
           </a>
+        </Button>
+      ) : null}
+      {showShare ? (
+        <Button type="button" variant="ghost" className={shareBtn} onClick={() => void handleShare()}>
+          <span className="inline-flex items-center justify-center gap-2 sm:gap-3">
+            <Share2 className="h-[18px] w-[18px] shrink-0 sm:h-7 sm:w-7" strokeWidth={2.25} aria-hidden />
+            <span className="max-w-[9rem] truncate text-center">Compartir</span>
+          </span>
         </Button>
       ) : null}
     </div>

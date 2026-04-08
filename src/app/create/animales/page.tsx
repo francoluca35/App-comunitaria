@@ -52,6 +52,8 @@ export default function CreateAnimalesPage() {
 
   const nombreReferente = referentFirstName(config.heroReferentName || 'Mario')
 
+  const maxImagesMascotas = POST_MEDIA_LIMITS.maxImagesMascotas
+
   const previewDescription = useMemo(
     () =>
       ubicacion.trim() && telefono.trim()
@@ -74,7 +76,7 @@ export default function CreateAnimalesPage() {
       const out: LocalAttachment[] = [...prev]
       let imageCount = out.filter((a) => a.kind === 'image').length
       let videoCount = out.filter((a) => a.kind === 'video').length
-      const { maxImagesPerPost, maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
+      const { maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
       for (const f of list) {
         const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
         const isVid = isAllowedPostVideoFile(f)
@@ -83,8 +85,8 @@ export default function CreateAnimalesPage() {
           continue
         }
         if (isImg) {
-          if (imageCount >= maxImagesPerPost) {
-            toast.error(`Máximo ${maxImagesPerPost} fotos (${maxImageMbPerFile} MB c/u)`)
+          if (imageCount >= maxImagesMascotas) {
+            toast.error(`Máximo ${maxImagesMascotas} fotos (${maxImageMbPerFile} MB c/u)`)
             break
           }
           if (f.size > maxImageMbPerFile * 1024 * 1024) {
@@ -118,8 +120,7 @@ export default function CreateAnimalesPage() {
   const imageAttachmentCount = attachmentFiles.filter((a) => a.kind === 'image').length
   const videoAttachmentCount = attachmentFiles.filter((a) => a.kind === 'video').length
   const canAddAttachments =
-    imageAttachmentCount < POST_MEDIA_LIMITS.maxImagesPerPost ||
-    videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
+    imageAttachmentCount < maxImagesMascotas || videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -339,8 +340,8 @@ export default function CreateAnimalesPage() {
               Fotos o videos de la mascota <span className="text-red-500">*</span>
             </Label>
             <p className="text-xs text-[#6B5F54]">
-              Hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u, hasta{' '}
-              {POST_MEDIA_LIMITS.maxImagesPerPost * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total) y hasta{' '}
+              Hasta {maxImagesMascotas} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u, hasta{' '}
+              {maxImagesMascotas * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total) y hasta{' '}
               {POST_MEDIA_LIMITS.maxVideosPerPost} videos; las fotos se comprimen al subir.
             </p>
             {attachmentFiles.length > 0 && (

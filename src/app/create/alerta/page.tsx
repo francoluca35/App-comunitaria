@@ -3,7 +3,11 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, type PostMediaItem } from '@/app/providers'
-import { uploadLocalPostMedia, type LocalAttachment } from '@/lib/upload-post-media'
+import {
+  uploadLocalPostMedia,
+  isAllowedPostVideoFile,
+  type LocalAttachment,
+} from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -23,7 +27,7 @@ export default function CreateAlertaPage() {
   const { addPost, currentUser, config, postCategories } = useApp()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [imageAttachments, setImageAttachments] = useState<LocalAttachment[]>([])
+  const [attachments, setAttachments] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
 
   const hasAlertCategory = useMemo(
@@ -31,42 +35,63 @@ export default function CreateAlertaPage() {
     [postCategories]
   )
 
-  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const maxImagesAlertas = POST_MEDIA_LIMITS.maxImagesAlertas
+  const maxVideosAlertas = POST_MEDIA_LIMITS.maxVideosAlertas
+
+  const handleAttachmentsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length) return
     const list = Array.from(files)
-    const { maxImagesPerPost, maxImageMbPerFile } = POST_MEDIA_LIMITS
-    setImageAttachments((prev) => {
+    const { maxImageMbPerFile, maxVideoMbPerFile } = POST_MEDIA_LIMITS
+    setAttachments((prev) => {
       const out: LocalAttachment[] = [...prev]
-      let count = out.length
+      let imageCount = out.filter((a) => a.kind === 'image').length
+      let videoCount = out.filter((a) => a.kind === 'video').length
       for (const f of list) {
-        if (count >= maxImagesPerPost) {
-          toast.error(`Máximo ${maxImagesPerPost} fotos por alerta (${maxImageMbPerFile} MB c/u)`)
-          break
-        }
         const isImg =
           f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
-        if (!isImg) {
-          toast.error(`${f.name}: solo imágenes`)
+        const isVid = isAllowedPostVideoFile(f)
+        if (!isImg && !isVid) {
+          toast.error(`${f.name}: solo fotos o videos (p. ej. MP4, MOV, WebM)`)
           continue
         }
-        if (f.size > maxImageMbPerFile * 1024 * 1024) {
-          toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
-          continue
+        if (isImg) {
+          if (imageCount >= maxImagesAlertas) {
+            toast.error(`Máximo ${maxImagesAlertas} fotos por alerta (${maxImageMbPerFile} MB c/u)`)
+            continue
+          }
+          if (f.size > maxImageMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
+            continue
+          }
+          out.push({ file: f, kind: 'image' })
+          imageCount++
+        } else {
+          if (videoCount >= maxVideosAlertas) {
+            toast.error(`Máximo ${maxVideosAlertas} videos por alerta`)
+            continue
+          }
+          if (f.size > maxVideoMbPerFile * 1024 * 1024) {
+            toast.error(`${f.name} supera ${maxVideoMbPerFile} MB`)
+            continue
+          }
+          out.push({ file: f, kind: 'video' })
+          videoCount++
         }
-        out.push({ file: f, kind: 'image' })
-        count++
       }
       return out
     })
     e.target.value = ''
   }
 
-  const removeImage = (index: number) => {
-    setImageAttachments((prev) => prev.filter((_, i) => i !== index))
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const canAddImages = imageAttachments.length < POST_MEDIA_LIMITS.maxImagesPerPost
+  const imageCount = attachments.filter((a) => a.kind === 'image').length
+  const videoCount = attachments.filter((a) => a.kind === 'video').length
+  const canAddAttachments =
+    imageCount < maxImagesAlertas || videoCount < maxVideosAlertas
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,8 +108,8 @@ export default function CreateAlertaPage() {
       toast.error('Completá título y descripción')
       return
     }
-    if (imageAttachments.length === 0) {
-      toast.error('La alerta debe incluir al menos una imagen')
+    if (attachments.length === 0) {
+      toast.error('La alerta debe incluir al menos una foto o un video')
       return
     }
 
@@ -92,7 +117,7 @@ export default function CreateAlertaPage() {
     try {
       let media: PostMediaItem[] = []
       try {
-        media = await uploadLocalPostMedia(currentUser.id, imageAttachments)
+        media = await uploadLocalPostMedia(currentUser.id, attachments)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Error al subir imágenes'
         toast.error(msg)
@@ -225,30 +250,39 @@ export default function CreateAlertaPage() {
 
           <div className="space-y-2">
             <Label>
-              Fotos <span className="text-red-600">*</span>
+              Fotos o videos <span className="text-red-600">*</span>
             </Label>
             <p className="text-xs text-[#7A5C52]">
-              Hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u); al enviar se
-              optimizan para ahorrar espacio.
+              Hasta {maxImagesAlertas} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta {maxVideosAlertas}{' '}
+              videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u); las fotos se optimizan al enviar.
             </p>
-            {imageAttachments.length > 0 && (
+            {attachments.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
-                {imageAttachments.map((att, index) => (
+                {attachments.map((att, index) => (
                   <div
                     key={`${att.file.name}-${index}`}
                     className="relative aspect-square rounded-xl overflow-hidden border border-[#D8D2CC] bg-black/5"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={URL.createObjectURL(att.file)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    {att.kind === 'video' ? (
+                      <video
+                        src={URL.createObjectURL(att.file)}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={URL.createObjectURL(att.file)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
                     <button
                       type="button"
-                      onClick={() => removeImage(index)}
+                      onClick={() => removeAttachment(index)}
                       className="absolute right-2 top-2 z-10 rounded-full bg-black/60 p-1.5 text-white hover:bg-black/80"
-                      aria-label="Quitar imagen"
+                      aria-label="Quitar archivo"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -256,18 +290,18 @@ export default function CreateAlertaPage() {
                 ))}
               </div>
             )}
-            {canAddImages && (
-              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#D8D2CC] bg-white dark:bg-gray-900/40 py-10 cursor-pointer hover:border-[#8B0015] transition-colors">
+            {canAddAttachments && (
+              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#D8D2CC] bg-white py-10 cursor-pointer transition-colors hover:border-[#8B0015] dark:bg-gray-900/40">
                 <Upload className="h-8 w-8 text-[#7A5C52]/70" />
                 <span className="text-sm font-medium text-[#2B2B2B]">
-                  Tocá para agregar fotos ({imageAttachments.length}/{POST_MEDIA_LIMITS.maxImagesPerPost})
+                  Tocá para agregar ({imageCount}/{maxImagesAlertas} fotos · {videoCount}/{maxVideosAlertas} videos)
                 </span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"
                   multiple
                   className="sr-only"
-                  onChange={handleImagesChange}
+                  onChange={handleAttachmentsChange}
                 />
               </label>
             )}

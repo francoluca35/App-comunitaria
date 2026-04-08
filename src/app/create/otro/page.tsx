@@ -102,7 +102,11 @@ function CreateOtroForm() {
     (wantsLockedCategory ? presetFromUrl.replace(/-/g, ' ') : category)
   const isObjetos = category === 'objetos'
   const isAvisoONoticia = category === 'avisos' || category === 'noticias'
+  const isNoticias = category === 'noticias'
   const isProposedCategoryFlow = !categoryLocked
+
+  const maxImagesMedia = isNoticias ? POST_MEDIA_LIMITS.maxImagesNoticias : POST_MEDIA_LIMITS.maxImagesPerPost
+  const maxVideosMedia = isNoticias ? POST_MEDIA_LIMITS.maxVideosNoticias : POST_MEDIA_LIMITS.maxVideosPerPost
 
   const objetoTextoGenerado = useMemo(() => {
     if (!isObjetos || !objetoTipo) return null
@@ -117,7 +121,7 @@ function CreateOtroForm() {
       const out: LocalAttachment[] = [...prev]
       let imageCount = out.filter((a) => a.kind === 'image').length
       let videoCount = out.filter((a) => a.kind === 'video').length
-      const { maxImagesPerPost, maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
+      const { maxImageMbPerFile, maxVideoMbPerFile } = POST_MEDIA_LIMITS
       for (const f of list) {
         const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
         const isVid = isAllowedPostVideoFile(f)
@@ -126,9 +130,9 @@ function CreateOtroForm() {
           continue
         }
         if (isImg) {
-          if (imageCount >= maxImagesPerPost) {
-            toast.error(`Máximo ${maxImagesPerPost} fotos por publicación (${maxImageMbPerFile} MB c/u)`)
-            break
+          if (imageCount >= maxImagesMedia) {
+            toast.error(`Máximo ${maxImagesMedia} fotos por publicación (${maxImageMbPerFile} MB c/u)`)
+            continue
           }
           if (f.size > maxImageMbPerFile * 1024 * 1024) {
             toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
@@ -137,8 +141,8 @@ function CreateOtroForm() {
           out.push({ file: f, kind: 'image' })
           imageCount++
         } else {
-          if (videoCount >= maxVideosPerPost) {
-            toast.error(`Máximo ${maxVideosPerPost} videos por publicación`)
+          if (videoCount >= maxVideosMedia) {
+            toast.error(`Máximo ${maxVideosMedia} video${maxVideosMedia === 1 ? '' : 's'} por publicación`)
             continue
           }
           if (f.size > maxVideoMbPerFile * 1024 * 1024) {
@@ -161,8 +165,7 @@ function CreateOtroForm() {
   const imageAttachmentCount = attachmentFiles.filter((a) => a.kind === 'image').length
   const videoAttachmentCount = attachmentFiles.filter((a) => a.kind === 'video').length
   const canAddAttachments =
-    imageAttachmentCount < POST_MEDIA_LIMITS.maxImagesPerPost ||
-    videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
+    imageAttachmentCount < maxImagesMedia || videoAttachmentCount < maxVideosMedia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -213,7 +216,7 @@ function CreateOtroForm() {
       }
     }
 
-    if (isAvisoONoticia && attachmentFiles.length === 0) {
+    if (category === 'avisos' && attachmentFiles.length === 0) {
       toast.error('Agregá al menos una foto o un video')
       return
     }
@@ -532,14 +535,41 @@ function CreateOtroForm() {
 
           <div className="space-y-2">
             <Label>
-              Fotos y/o videos {isAvisoONoticia ? <span className="text-red-500">*</span> : '(opcional)'} · hasta{' '}
-              {POST_MEDIA_LIMITS.maxImagesPerPost} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta{' '}
-              {POST_MEDIA_LIMITS.maxVideosPerPost} videos
+              Fotos y/o videos{' '}
+              {category === 'avisos' ? (
+                <span className="text-red-500">*</span>
+              ) : isNoticias ? (
+                <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
+              ) : (
+                '(opcional)'
+              )}
+              {isNoticias ? (
+                <>
+                  {' '}
+                  · hasta {maxImagesMedia} fotos y {maxVideosMedia} video
+                </>
+              ) : (
+                <>
+                  {' '}
+                  · hasta {maxImagesMedia} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta {maxVideosMedia}{' '}
+                  videos
+                </>
+              )}
             </Label>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              Podés elegir hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos (como mucho{' '}
-              {POST_MEDIA_LIMITS.maxImagesPerPost * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total antes de enviar); al
-              subir se comprimen para ahorrar espacio.
+              {isNoticias ? (
+                <>
+                  Podés publicar solo con título y texto. Si sumás archivos: como mucho {maxImagesMedia} fotos y{' '}
+                  {maxVideosMedia} video; alcanza con subir solo fotos, solo un video, o combinar (siempre dentro de esos
+                  límites).
+                </>
+              ) : (
+                <>
+                  Podés elegir hasta {maxImagesMedia} fotos (como mucho{' '}
+                  {maxImagesMedia * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total antes de enviar); al subir se comprimen
+                  para ahorrar espacio.
+                </>
+              )}
             </p>
             {attachmentFiles.length > 0 && (
               <div className="grid grid-cols-3 gap-2">
@@ -581,7 +611,8 @@ function CreateOtroForm() {
                 />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-gray-400">
-                  Fotos hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u (se optimizan al subir). Videos hasta{' '}
+                  {imageAttachmentCount}/{maxImagesMedia} fotos · {videoAttachmentCount}/{maxVideosMedia} videos · fotos hasta{' '}
+                  {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u (se optimizan al subir). Videos hasta{' '}
                   {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB.
                 </p>
               </label>

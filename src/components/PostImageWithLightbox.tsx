@@ -198,6 +198,7 @@ export function PostImageWithLightbox({
       <div
         className={cn(
           'relative w-full bg-[#E8E4E0]',
+          variant === 'feed' && 'flex flex-col rounded-none leading-none',
           variant === 'detail' && 'overflow-hidden rounded-2xl ring-1 ring-[#D8D2CC]',
           className
         )}
@@ -378,7 +379,8 @@ function SingleMediaPreview({
       type="button"
       onClick={onOpen}
       className={cn(
-        'group relative grid w-full cursor-zoom-in place-items-center px-2 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]',
+        'group relative grid w-full cursor-zoom-in place-items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]',
+        variant === 'feed' ? 'px-0 py-0' : 'px-2 py-3',
         variant === 'detail' && 'rounded-2xl'
       )}
       style={{ minHeight: maxH }}
@@ -386,7 +388,10 @@ function SingleMediaPreview({
     >
       {!previewLoaded ? (
         <Skeleton
-          className="pointer-events-none absolute inset-x-2 top-3 bottom-3 z-0 rounded-xl border border-[#D8D2CC]/40 bg-[#D4CEC8]/65"
+          className={cn(
+            'pointer-events-none absolute z-0 border border-[#D8D2CC]/40 bg-[#D4CEC8]/65',
+            variant === 'feed' ? 'inset-0 rounded-none border-0' : 'inset-x-2 top-3 bottom-3 rounded-xl'
+          )}
           aria-hidden
         />
       ) : null}
@@ -408,7 +413,7 @@ function SingleMediaPreview({
           controls
           preload="metadata"
           className={cn(
-            'relative z-[1] h-auto w-auto max-w-full object-contain object-center select-none transition-opacity duration-300',
+            'relative z-[1] block h-auto w-full max-w-full object-contain object-center select-none transition-opacity duration-300',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
@@ -429,7 +434,7 @@ function SingleMediaPreview({
           onLoad={() => setPreviewLoaded(true)}
           onError={onFail}
           className={cn(
-            'relative z-[1] h-auto w-auto max-w-full object-contain object-center select-none transition-opacity duration-300',
+            'relative z-[1] block h-auto w-full max-w-full object-contain object-center select-none transition-opacity duration-300',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
@@ -463,12 +468,18 @@ function MultiMediaCollage({
       ? 'clamp(260px, 50vh, 520px)'
       : 'clamp(240px, 52vw, 480px)'
 
-  const gap = 'gap-0.5'
+  const collageShell =
+    variant === 'feed'
+      ? 'grid bg-[#CED0D4] p-0 gap-px'
+      : 'grid bg-[#D8D2CC] p-0.5 gap-0.5'
+
+  /** Filas tipo Facebook: arriba ~62%, abajo ~38% (2+3 cuando hay ≥5) */
+  const rowsTopHeavy = 'grid-rows-[minmax(0,62fr)_minmax(0,38fr)]'
 
   if (n === 2) {
     return (
       <div
-        className={cn('grid grid-cols-1 grid-rows-2 bg-[#D8D2CC] p-0.5', gap)}
+        className={cn(collageShell, 'grid-cols-2 grid-rows-1')}
         style={{ height: collageHeight }}
       >
         {media.map((item, index) => (
@@ -491,7 +502,7 @@ function MultiMediaCollage({
   if (n === 3) {
     return (
       <div
-        className={cn('grid grid-cols-2 grid-rows-2 bg-[#D8D2CC] p-0.5', gap)}
+        className={cn(collageShell, 'grid-cols-2', rowsTopHeavy)}
         style={{ height: collageHeight }}
       >
         <CollageCell
@@ -502,7 +513,7 @@ function MultiMediaCollage({
           failed={!!failed[0]}
           onFail={() => onFail(0)}
           onOpen={onOpen}
-          className="col-span-1 row-span-1"
+          className="col-span-1 min-h-0 h-full"
         />
         <CollageCell
           item={media[1]}
@@ -512,7 +523,7 @@ function MultiMediaCollage({
           failed={!!failed[1]}
           onFail={() => onFail(1)}
           onOpen={onOpen}
-          className="col-span-1 row-span-1"
+          className="col-span-1 min-h-0 h-full"
         />
         <CollageCell
           item={media[2]}
@@ -522,37 +533,93 @@ function MultiMediaCollage({
           failed={!!failed[2]}
           onFail={() => onFail(2)}
           onOpen={onOpen}
-          className="col-span-2 row-span-1"
+          className="col-span-2 min-h-0 h-full"
         />
       </div>
     )
   }
 
-  const moreCount = n > 4 ? n - 4 : undefined
+  if (n === 4) {
+    return (
+      <div
+        className={cn(collageShell, 'grid-cols-2 grid-rows-2')}
+        style={{ height: collageHeight }}
+      >
+        {media.slice(0, 4).map((item, index) => (
+          <CollageCell
+            key={`${item.url}-${index}`}
+            item={item}
+            index={index}
+            alt={alt}
+            priority={priority && index === 0}
+            failed={!!failed[index]}
+            onFail={() => onFail(index)}
+            onOpen={onOpen}
+            className="min-h-0 h-full"
+          />
+        ))}
+      </div>
+    )
+  }
+
+  const moreCount = n > 5 ? n - 5 : undefined
 
   return (
     <div
-      className={cn('grid grid-cols-2 grid-rows-2 bg-[#D8D2CC] p-0.5', gap)}
+      className={cn(collageShell, 'grid-cols-6', rowsTopHeavy)}
       style={{ height: collageHeight }}
     >
-      {[0, 1, 2, 3].map((slot) => {
-        const item = media[slot]
-        if (!item) return null
-        return (
-          <CollageCell
-            key={`${item.url}-${slot}`}
-            item={item}
-            index={slot}
-            alt={alt}
-            priority={priority && slot === 0}
-            failed={!!failed[slot]}
-            onFail={() => onFail(slot)}
-            onOpen={onOpen}
-            className="min-h-0"
-            overlayCount={slot === 3 && moreCount != null ? moreCount : undefined}
-          />
-        )
-      })}
+      <CollageCell
+        item={media[0]}
+        index={0}
+        alt={alt}
+        priority={priority}
+        failed={!!failed[0]}
+        onFail={() => onFail(0)}
+        onOpen={onOpen}
+        className="col-span-3 min-h-0 h-full"
+      />
+      <CollageCell
+        item={media[1]}
+        index={1}
+        alt={alt}
+        priority={false}
+        failed={!!failed[1]}
+        onFail={() => onFail(1)}
+        onOpen={onOpen}
+        className="col-span-3 min-h-0 h-full"
+      />
+      <CollageCell
+        item={media[2]}
+        index={2}
+        alt={alt}
+        priority={false}
+        failed={!!failed[2]}
+        onFail={() => onFail(2)}
+        onOpen={onOpen}
+        className="col-span-2 min-h-0 h-full"
+      />
+      <CollageCell
+        item={media[3]}
+        index={3}
+        alt={alt}
+        priority={false}
+        failed={!!failed[3]}
+        onFail={() => onFail(3)}
+        onOpen={onOpen}
+        className="col-span-2 min-h-0 h-full"
+      />
+      <CollageCell
+        item={media[4]}
+        index={4}
+        alt={alt}
+        priority={false}
+        failed={!!failed[4]}
+        onFail={() => onFail(4)}
+        onOpen={onOpen}
+        className="col-span-2 min-h-0 h-full"
+        overlayCount={moreCount}
+      />
     </div>
   )
 }

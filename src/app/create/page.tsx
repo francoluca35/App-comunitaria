@@ -80,8 +80,8 @@ export default function CreateHubPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-extrabold leading-tight">Alerta importante</p>
                     <p className="mt-1 text-sm text-white/90 leading-snug">
-                      Título, descripción y hasta {POST_MEDIA_LIMITS.maxImagesPerPost} fotos — aviso prioritario con sonido
-                      y vibración para todos
+                      Título, descripción, hasta {POST_MEDIA_LIMITS.maxImagesAlertas} fotos y hasta{' '}
+                      {POST_MEDIA_LIMITS.maxVideosAlertas} videos — aviso prioritario con sonido y vibración para todos
                     </p>
                   </div>
                 </div>
@@ -106,7 +106,7 @@ export default function CreateHubPage() {
                   <p className="text-lg font-extrabold leading-tight">Mascotas</p>
                   <p className="mt-1 text-sm text-white/90 leading-snug">
                     Perdí o encontré — texto armado, ubicación, fecha, teléfono y hasta{' '}
-                    {POST_MEDIA_LIMITS.maxImagesPerPost} fotos
+                    {POST_MEDIA_LIMITS.maxImagesMascotas} fotos
                   </p>
                 </div>
               </div>
@@ -132,9 +132,11 @@ export default function CreateHubPage() {
               <p className="text-[11px] text-[#7A5C52] mt-0.5">
                 {slug === 'objetos'
                   ? 'Perdí, encontré, vendo o regalo'
-                  : slug === 'avisos' || slug === 'noticias'
-                    ? `Título, texto, WhatsApp y hasta ${POST_MEDIA_LIMITS.maxImagesPerPost} fotos o videos`
-                    : 'Formulario completo'}
+                  : slug === 'noticias'
+                    ? `Título, texto, WhatsApp; hasta ${POST_MEDIA_LIMITS.maxImagesNoticias} fotos y ${POST_MEDIA_LIMITS.maxVideosNoticias} video (opcional)`
+                    : slug === 'avisos'
+                      ? `Título, texto, WhatsApp y hasta ${POST_MEDIA_LIMITS.maxImagesPerPost} fotos o videos`
+                      : 'Formulario completo'}
               </p>
             </Link>
           ))}
