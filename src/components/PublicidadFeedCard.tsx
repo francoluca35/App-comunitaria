@@ -111,7 +111,7 @@ export function PublicidadFeedCard({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={onOpenDetail}>Ver detalle</DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <a href="/publicidades">Todas las publicidades</a>
+                <a href="/cartelera">Todas las publicidades</a>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -37,7 +37,7 @@ export default async function PublicidadPermalinkPage({ params }: PageProps) {
         <div className="mx-auto max-w-2xl p-4 lg:p-6">
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <Button variant="ghost" size="icon" asChild className="shrink-0">
-              <Link href="/publicidades" className="rounded-xl">
+              <Link href="/cartelera" className="rounded-xl">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
             </Button>
@@ -50,7 +50,7 @@ export default async function PublicidadPermalinkPage({ params }: PageProps) {
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button asChild variant="outline">
-                <Link href="/publicidades">Ver publicidades</Link>
+                <Link href="/cartelera">Ver publicidades</Link>
               </Button>
               <Button asChild>
                 <Link href="/">Ir al inicio</Link>
@@ -71,7 +71,7 @@ export default async function PublicidadPermalinkPage({ params }: PageProps) {
       <div className="mx-auto max-w-2xl p-4 lg:p-6">
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="icon" asChild className="shrink-0">
-            <Link href="/publicidades" className="rounded-xl">
+            <Link href="/cartelera" className="rounded-xl">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>

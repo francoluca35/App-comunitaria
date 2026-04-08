@@ -311,7 +311,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 Publicidad
               </h3>
               <Link
-                href="/publicidades"
+                href="/cartelera"
                 className="shrink-0 text-xs font-semibold text-[#8B0015] hover:underline"
               >
                 Ver todas

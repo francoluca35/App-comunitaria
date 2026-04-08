@@ -21,7 +21,7 @@ const APP_CONFIG_STORAGE_KEY = 'comunidad_app_config_v1'
 /** Slug en `post_categories` (feed y /categoria/…). No confundir con publicidad_categories. */
 export type Category = string
 
-/** Slug en `publicidad_categories` (filtros en /publicidades). */
+/** Slug en `publicidad_categories` (filtros en /cartelera). */
 export type PublicidadCategorySlug = string
 
 export type PostStatus = 'pending' | 'approved' | 'rejected'
@@ -208,7 +208,7 @@ interface AppContextType {
 
   /** Categorías de publicaciones (desde API / Supabase). */
   postCategories: NamedCategoryRow[]
-  /** Categorías de publicidad (filtros en /publicidades). */
+  /** Categorías de publicidad (filtros en /cartelera). */
   publicidadCategories: NamedCategoryRow[]
   refreshPostCategories: () => Promise<void>
   refreshPublicidadCategories: () => Promise<void>

@@ -122,7 +122,7 @@ export default function MisPublicidadesPage() {
         <div className="flex items-center justify-between gap-3 mb-6">
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Mis publicidades</h1>
           <Button asChild variant="outline" className="shrink-0">
-            <Link href="/publicidades/crear">
+            <Link href="/cartelera/crear">
               Crear
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
