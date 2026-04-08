@@ -4,11 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useApp, type PostMediaItem } from '@/app/providers'
-import {
-  uploadLocalPostMedia,
-  isAllowedPostVideoFile,
-  type LocalAttachment,
-} from '@/lib/upload-post-media'
+import { uploadLocalPostMedia, type LocalAttachment } from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import {
   buildAnimalesDescription,
@@ -72,44 +68,22 @@ export default function CreateAnimalesPage() {
     const files = e.target.files
     if (!files?.length) return
     const list = Array.from(files)
-    setAttachmentFiles((prev) => {
-      const out: LocalAttachment[] = [...prev]
-      let imageCount = out.filter((a) => a.kind === 'image').length
-      let videoCount = out.filter((a) => a.kind === 'video').length
-      const { maxImageMbPerFile, maxVideosPerPost, maxVideoMbPerFile } = POST_MEDIA_LIMITS
-      for (const f of list) {
-        const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
-        const isVid = isAllowedPostVideoFile(f)
-        if (!isImg && !isVid) {
-          toast.error(`${f.name}: solo fotos o videos (p. ej. MP4, MOV, WebM)`)
-          continue
-        }
-        if (isImg) {
-          if (imageCount >= maxImagesMascotas) {
-            toast.error(`Máximo ${maxImagesMascotas} fotos (${maxImageMbPerFile} MB c/u)`)
-            break
-          }
-          if (f.size > maxImageMbPerFile * 1024 * 1024) {
-            toast.error(`${f.name} supera ${maxImageMbPerFile} MB (límite por foto)`)
-            continue
-          }
-          out.push({ file: f, kind: 'image' })
-          imageCount++
-        } else {
-          if (videoCount >= maxVideosPerPost) {
-            toast.error(`Máximo ${maxVideosPerPost} videos por publicación`)
-            continue
-          }
-          if (f.size > maxVideoMbPerFile * 1024 * 1024) {
-            toast.error(`${f.name} supera ${maxVideoMbPerFile} MB`)
-            continue
-          }
-          out.push({ file: f, kind: 'video' })
-          videoCount++
-        }
+    const { maxImageMbPerFile } = POST_MEDIA_LIMITS
+
+    for (const f of list) {
+      const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
+      if (!isImg) {
+        toast.error(`${f.name}: solo se permite una foto (JPG, PNG, etc.). No videos.`)
+        continue
       }
-      return out
-    })
+      if (f.size > maxImageMbPerFile * 1024 * 1024) {
+        toast.error(`${f.name} supera ${maxImageMbPerFile} MB`)
+        continue
+      }
+      setAttachmentFiles([{ file: f, kind: 'image' }])
+      e.target.value = ''
+      return
+    }
     e.target.value = ''
   }
 
@@ -117,10 +91,7 @@ export default function CreateAnimalesPage() {
     setAttachmentFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const imageAttachmentCount = attachmentFiles.filter((a) => a.kind === 'image').length
-  const videoAttachmentCount = attachmentFiles.filter((a) => a.kind === 'video').length
-  const canAddAttachments =
-    imageAttachmentCount < maxImagesMascotas || videoAttachmentCount < POST_MEDIA_LIMITS.maxVideosPerPost
+  const canAddAttachments = attachmentFiles.length < maxImagesMascotas
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,7 +117,7 @@ export default function CreateAnimalesPage() {
       return
     }
     if (attachmentFiles.length === 0) {
-      toast.error('Agregá al menos una foto o un video de la mascota')
+      toast.error('Agregá una foto de la mascota')
       return
     }
 
@@ -359,35 +330,24 @@ export default function CreateAnimalesPage() {
 
           <div className="space-y-2">
             <Label className="text-[#2C241C]">
-              Fotos o videos de la mascota <span className="text-red-500">*</span>
+              Foto de la mascota <span className="text-red-500">*</span>
             </Label>
             <p className="text-xs text-[#6B5F54]">
-              Hasta {maxImagesMascotas} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u, hasta{' '}
-              {maxImagesMascotas * POST_MEDIA_LIMITS.maxImageMbPerFile} MB en total) y hasta{' '}
-              {POST_MEDIA_LIMITS.maxVideosPerPost} videos; las fotos se comprimen al subir.
+              Una sola foto, hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB (se comprime al subir). No videos.
             </p>
             {attachmentFiles.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="max-w-xs">
                 {attachmentFiles.map((att, index) => (
                   <div
                     key={`${att.file.name}-${index}`}
-                    className="relative aspect-square rounded-xl overflow-hidden bg-[#D8D2CC]/30"
+                    className="relative aspect-square max-h-64 overflow-hidden rounded-2xl bg-[#D8D2CC]/30"
                   >
-                    {att.kind === 'video' ? (
-                      <video
-                        src={URL.createObjectURL(att.file)}
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <img src={URL.createObjectURL(att.file)} alt="" className="w-full h-full object-cover" />
-                    )}
+                    <img src={URL.createObjectURL(att.file)} alt="" className="h-full w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeAttachment(index)}
-                      className="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center"
-                      aria-label="Quitar"
+                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white"
+                      aria-label="Quitar foto"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -396,20 +356,16 @@ export default function CreateAnimalesPage() {
               </div>
             )}
             {canAddAttachments && (
-              <label className="block border-2 border-dashed border-[#D8D2CC] rounded-2xl p-8 text-center cursor-pointer bg-white hover:border-[#8B0015] transition-colors">
+              <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-[#D8D2CC] bg-white p-8 text-center transition-colors hover:border-[#8B0015]">
                 <input
                   type="file"
-                  accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"
-                  multiple
+                  accept="image/*"
                   className="hidden"
                   onChange={handleAttachmentChange}
                 />
-                <Upload className="w-10 h-10 text-[#8B0015] mx-auto mb-2" />
-                <p className="text-sm font-semibold text-[#2C241C]">Tocá para subir fotos o videos</p>
-                <p className="text-xs text-[#6B5F54] mt-1">
-                  Fotos hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u; videos hasta{' '}
-                  {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB.
-                </p>
+                <Upload className="mx-auto mb-2 h-10 w-10 text-[#8B0015]" />
+                <p className="text-sm font-semibold text-[#2C241C]">Tocá para elegir una foto</p>
+                <p className="mt-1 text-xs text-[#6B5F54]">Solo imagen (JPG, PNG, WebP…)</p>
               </label>
             )}
           </div>

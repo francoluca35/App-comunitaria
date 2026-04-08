@@ -6,8 +6,8 @@
 export const POST_MEDIA_LIMITS = {
   /** Máximo de fotos por publicación (cada una ≤ maxImageMbPerFile). Otras categorías (avisos, objetos, etc.). */
   maxImagesPerPost: 5,
-  /** Mascotas (crear/animales, perdí o encontré): máximo de fotos. */
-  maxImagesMascotas: 3,
+  /** Mascotas (crear/animales, perdí o encontré): una sola foto, sin videos. */
+  maxImagesMascotas: 1,
   /** Alertas (crear/alerta): máximo de fotos y de videos. */
   maxImagesAlertas: 3,
   maxVideosAlertas: 2,
