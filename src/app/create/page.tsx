@@ -105,8 +105,7 @@ export default function CreateHubPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-extrabold leading-tight">Mascotas</p>
                   <p className="mt-1 text-sm text-white/90 leading-snug">
-                    Perdí o encontré — texto armado, ubicación, fecha, teléfono y hasta{' '}
-                    {POST_MEDIA_LIMITS.maxImagesMascotas} fotos
+                    Perdí o encontré — texto armado, ubicación, fecha, teléfono y 1 foto
                   </p>
                 </div>
               </div>
