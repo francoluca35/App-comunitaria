@@ -9,7 +9,7 @@ export function getAppPublicOrigin(): string {
 }
 
 export function publicidadPermalink(id: string): string {
-  return `${getAppPublicOrigin()}/publicidades/${encodeURIComponent(id)}`
+  return `${getAppPublicOrigin()}/cartelera/${encodeURIComponent(id)}`
 }
 
 export function postPermalink(postId: string): string {

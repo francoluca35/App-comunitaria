@@ -215,7 +215,7 @@ function ZonaPublicitariaCarousel() {
       ) : ads.length === 0 ? (
         <p className="px-2 py-4 text-center text-xs text-[#7A5C52]">
           No hay publicidades en la barra lateral activas. Podés ver todas en{' '}
-          <Link href="/publicidades" className="font-semibold underline" style={{ color: CST.bordo }}>
+          <Link href="/cartelera" className="font-semibold underline" style={{ color: CST.bordo }}>
             Publicidades
           </Link>
           .
@@ -556,7 +556,7 @@ function HomePageContent() {
 
           {currentUser ? (
             <Link
-              href="/publicidades/crear"
+              href="/cartelera/crear"
               className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
               style={{ backgroundColor: CST.acento }}
             >
@@ -776,7 +776,7 @@ function HomePageContent() {
         {/* FABs */}
         <div className="pointer-events-none fixed bottom-6 right-4 z-30 flex flex-col items-end gap-3 sm:right-6 lg:right-8">
           <Link
-            href="/publicidades"
+            href="/cartelera"
             className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#634942] active:scale-95"
             style={{ backgroundColor: CST.acento }}
             aria-label="Publicidades"

@@ -278,10 +278,10 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         })}
 
         <Link
-          href="/publicidades"
+          href="/cartelera"
           onClick={onNavigate}
           className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-[#634942] active:scale-[0.98] ring-offset-[#F4EFEA] ${
-            isActivePath('/publicidades')
+            isActivePath('/cartelera')
               ? 'ring-2 ring-[#5A000E] ring-offset-2'
               : ''
           }`}

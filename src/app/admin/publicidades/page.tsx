@@ -60,7 +60,7 @@ export default function AdminPublicidadesPage() {
   useEffect(() => {
     if (!currentUser) return
     if (!currentUser.isAdmin) {
-      router.replace('/publicidades/crear')
+      router.replace('/cartelera/crear')
       return
     }
     void refreshAdminPending()

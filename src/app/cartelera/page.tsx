@@ -17,7 +17,7 @@ import { sanitizeCategoryRows } from '@/lib/category-defaults'
 import { useApp } from '@/app/providers'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadModal } from '@/components/PublicidadModal'
-import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
+import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
 
 type SortOrder = 'reciente' | 'antiguo'
 
@@ -213,55 +213,30 @@ export default function PublicidadesPage() {
           Acá se muestran todas las publicidades de la comunidad.
         </p>
 
-        <div className="space-y-4">
+        <ul className="m-0 flex list-none flex-col gap-5 p-0 sm:gap-5">
           {filteredAndSorted.length === 0 ? (
-            <div className="rounded-xl bg-slate-100 dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 p-8 text-center">
-              <Megaphone className="w-10 h-10 text-slate-400 mx-auto mb-2" />
-              <p className="text-slate-500 dark:text-gray-400 text-sm">
+            <li className="rounded-xl border border-slate-200 bg-slate-100 p-8 text-center dark:border-gray-700 dark:bg-gray-800/80">
+              <Megaphone className="mx-auto mb-2 h-10 w-10 text-slate-400" />
+              <p className="text-sm text-slate-500 dark:text-gray-400">
                 No hay publicidades con ese filtro o búsqueda.
               </p>
-            </div>
+            </li>
           ) : (
-            filteredAndSorted.map((p) => (
-              <button
-                type="button"
-                key={p.id}
-                onClick={() => setSelectedPublicidad(p)}
-                className="w-full text-left rounded-xl bg-white dark:bg-gray-800/80 border border-slate-200 dark:border-gray-700 overflow-hidden shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-              >
-                <div className="aspect-video rounded-t-xl overflow-hidden bg-slate-200 dark:bg-gray-700">
-                  {p.imageUrl ? (
-                    <img
-                      src={p.imageUrl}
-                      alt={p.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Megaphone className="w-12 h-12 text-slate-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200/90 mb-1.5 w-fit rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5">
-                    {pubCats.find((c) => c.slug === p.category)?.label ?? p.category}
-                  </p>
-                  <p className="font-semibold text-slate-900 dark:text-white">
-                    {p.title}
-                  </p>
-                  <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                    {p.description}
-                  </p>
-                  <PublicidadContactLinks
-                    whatsappUrl={p.whatsappUrl}
-                    instagramUrl={p.instagramUrl}
-                    stopPropagationOnClick
+            filteredAndSorted.map((p, index) => {
+              const pubCatLabel = pubCats.find((c) => c.slug === p.category)?.label ?? p.category
+              return (
+                <li key={p.id}>
+                  <PublicidadFeedCard
+                    publicidad={p}
+                    categoryLabel={pubCatLabel}
+                    onOpenDetail={() => setSelectedPublicidad(p)}
+                    imagePriority={index < 2}
                   />
-                </div>
-              </button>
-            ))
+                </li>
+              )
+            })
           )}
-        </div>
+        </ul>
       </div>
     </DashboardLayout>
   )
