@@ -44,7 +44,7 @@ export default function MisPublicacionesPage() {
         ) : (
           <div className="space-y-4">
             {myPosts.map((post) => (
-              <PostCard key={post.id} post={post} showStatus />
+              <PostCard key={post.id} post={post} />
             ))}
           </div>
         )}

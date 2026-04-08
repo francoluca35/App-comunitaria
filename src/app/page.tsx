@@ -36,6 +36,7 @@ import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { PostPublicationActions } from '@/components/PostPublicationActions'
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
+import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -325,12 +326,6 @@ function HomePageContent() {
       cancelled = true
     }
   }, [refreshPublicidadCategories])
-
-  const categoryLabelBySlug = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const c of postCategories) m.set(c.slug, c.label)
-    return m
-  }, [postCategories])
 
   const [avatarDismissed, setAvatarDismissed] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -686,7 +681,6 @@ function HomePageContent() {
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
-                  const catLabel = categoryLabelBySlug.get(post.category) ?? post.category
                   const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
                   const isMine = currentUser?.id === post.authorId
                   return (
@@ -701,8 +695,8 @@ function HomePageContent() {
                           href={`/post/${post.id}`}
                           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8B0015]/25"
                         >
-                          <div className={`flex items-start gap-3 p-4 pb-3 ${isMine ? 'pr-14' : ''}`}>
-                            <Avatar className="h-11 w-11 border-2 border-[#D8D2CC]">
+                          <div className={`flex items-start gap-3 p-4 pb-2 ${isMine ? 'pr-14' : ''}`}>
+                            <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
                               <AvatarImage src={post.authorAvatar} alt={post.authorName} />
                               <AvatarFallback
                                 className="text-xs font-bold text-white"
@@ -712,18 +706,18 @@ function HomePageContent() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0 flex-1">
-                              <p className="font-semibold text-[#2B2B2B]">{post.authorName}</p>
-                              <p className="text-xs text-[#7A5C52]">
-                                {when}
-                                <span className="mx-1.5 text-[#8B0015]/35">•</span>
-                                Vecino/a • {catLabel}
-                              </p>
+                              <PostAuthorNameCategoryRow
+                                authorName={post.authorName}
+                                category={post.category}
+                                nameClassName="font-semibold"
+                              />
+                              <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">{when}</p>
                             </div>
                           </div>
-                          <div className="px-4 pb-3">
-                            <h3 className="font-bold text-[#2B2B2B] font-montserrat-only">{post.title}</h3>
+                          <div className="px-4 pb-3 pt-0">
+                            <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">{post.title}</h3>
                             {post.description ? (
-                              <p className="mt-1 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
+                              <p className="mt-0.5 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
                             ) : null}
                           </div>
                         </Link>

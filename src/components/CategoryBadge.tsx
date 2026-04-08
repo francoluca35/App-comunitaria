@@ -22,17 +22,22 @@ const COLOR_BY_SLUG: Record<string, string> = {
 
 interface CategoryBadgeProps {
   category: string
+  /** Junto al nombre en una línea: más chico y menos padding */
+  compact?: boolean
 }
 
-export function CategoryBadge({ category }: CategoryBadgeProps) {
+export function CategoryBadge({ category, compact }: CategoryBadgeProps) {
   const { postCategories } = useApp()
   const label = postCategories.find((c) => c.slug === category)?.label ?? category
-  const icon = ICON_BY_SLUG[category] ?? <Tag className="w-3 h-3" />
+  const icon = ICON_BY_SLUG[category] ?? <Tag className="h-3 w-3" />
   const color =
     COLOR_BY_SLUG[category] ?? 'bg-slate-100 text-slate-800 dark:bg-slate-800/50 dark:text-slate-300'
 
   return (
-    <Badge variant="secondary" className={`${color} flex items-center gap-1`}>
+    <Badge
+      variant="secondary"
+      className={`${color} flex items-center ${compact ? 'h-6 gap-0.5 px-2 py-0 text-[11px] font-medium leading-none' : 'gap-1'}`}
+    >
       {icon}
       {label}
     </Badge>

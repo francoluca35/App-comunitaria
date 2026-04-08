@@ -7,8 +7,8 @@ import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
 import { Textarea } from '@/app/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
-import { CategoryBadge } from '@/components/CategoryBadge'
 import { Badge } from '@/app/components/ui/badge'
+import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { ArrowLeft, MessageCircle, Send } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -59,27 +59,12 @@ export default function PostDetailPage() {
     toast.success('Comentario agregado')
   }
 
-  const getStatusBadge = () => {
-    if (post.status === 'pending') {
-      return (
-        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-0">
-          Pendiente
-        </Badge>
-      )
-    }
-    if (post.status === 'rejected') {
-      return (
-        <Badge className="bg-rose-500/15 text-rose-700 dark:text-rose-300 border-0">
-          Rechazada
-        </Badge>
-      )
-    }
-    return (
-      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-0">
-        Aprobada
-      </Badge>
-    )
-  }
+  const statusBadge =
+    post.status === 'pending' ? (
+      <Badge className="border-0 bg-amber-500/15 text-amber-700 dark:text-amber-300">Pendiente</Badge>
+    ) : post.status === 'rejected' ? (
+      <Badge className="border-0 bg-rose-500/15 text-rose-700 dark:text-rose-300">Rechazada</Badge>
+    ) : null
 
   return (
     <DashboardLayout>
@@ -112,31 +97,28 @@ export default function PostDetailPage() {
           </div>
         ) : null}
 
-        {/* Autor + categoría + estado */}
-        <div className="flex items-start gap-4 mb-6">
-          <Avatar className="w-12 h-12 rounded-xl ring-2 ring-slate-200 dark:ring-gray-700 shrink-0">
+        {/* Autor: nombre + categoría en línea; fecha debajo */}
+        <div className="mb-4 flex items-start gap-4">
+          <Avatar className="h-12 w-12 shrink-0 rounded-xl ring-2 ring-slate-200 dark:ring-gray-700">
             <AvatarImage src={post.authorAvatar} />
-            <AvatarFallback className="rounded-xl text-lg">
-              {post.authorName[0]}
-            </AvatarFallback>
+            <AvatarFallback className="rounded-xl text-lg">{post.authorName[0]}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#2B2B2B]">
-              {post.authorName}
-            </p>
-            <p className="text-sm text-slate-500 dark:text-gray-400">
+          <div className="min-w-0 flex-1">
+            <PostAuthorNameCategoryRow
+              authorName={post.authorName}
+              category={post.category}
+              statusBadge={statusBadge}
+              nameClassName="font-semibold"
+            />
+            <p className="mt-0.5 text-sm leading-tight text-slate-500 dark:text-gray-400">
               {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })}
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2 justify-end shrink-0">
-            <CategoryBadge category={post.category} />
-            {getStatusBadge()}
           </div>
         </div>
 
         {/* Título y descripción */}
         <div className="mb-6">
-          <h2 className="mb-3 text-2xl font-bold leading-tight text-[#2B2B2B]">
+          <h2 className="mb-2 text-2xl font-bold leading-tight text-[#2B2B2B]">
             {post.title}
           </h2>
           <p className="whitespace-pre-wrap leading-relaxed text-[#2B2B2B]">
