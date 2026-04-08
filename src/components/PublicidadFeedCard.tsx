@@ -18,24 +18,6 @@ import {
 import { cn } from '@/app/components/ui/utils'
 import { publicidadPermalink } from '@/lib/app-public-url'
 
-function displaySiteLine(p: PublicidadDisplay): string {
-  try {
-    if (p.instagramUrl) {
-      const u = new URL(p.instagramUrl)
-      const host = u.hostname.replace(/^www\./, '')
-      const path = u.pathname.replace(/\/$/, '')
-      if (path && path !== '/') return `${host}${path}`.slice(0, 48)
-      return host
-    }
-    if (p.whatsappUrl) {
-      return 'WhatsApp'
-    }
-  } catch {
-    /* ignore */
-  }
-  return 'Publicidad'
-}
-
 type Props = {
   publicidad: PublicidadDisplay
   categoryLabel: string
@@ -55,8 +37,6 @@ export function PublicidadFeedCard({
   const [captionExpanded, setCaptionExpanded] = useState(false)
   const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
   const mainImage = pubImages[0]
-  const siteLine = useMemo(() => displaySiteLine(pub), [pub])
-  const ctaHeadline = pub.description.trim() ? pub.description.trim().split('\n')[0]!.slice(0, 80) : pub.title
   const hasWa = Boolean(pub.whatsappUrl)
   const hasIg = Boolean(pub.instagramUrl)
 
@@ -190,14 +170,14 @@ export function PublicidadFeedCard({
         </div>
       </button>
 
-      {/* Barra CTA (sitio + titular + botón) */}
-      <div className="flex items-stretch gap-2 border-t border-white/10 bg-[#3A3B3C] px-3 py-2.5">
-        <div className="min-w-0 flex-1 py-0.5">
-          <p className="text-[11px] leading-tight text-[#B0B3B8]">{siteLine}</p>
-          <p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug text-white">{ctaHeadline}</p>
+      {/* Barra CTA: frase fija + íconos WhatsApp / Instagram */}
+      <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#3A3B3C] px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-[11px] font-medium leading-tight text-[#B0B3B8]">{pub.title}</p>
+          <p className="mt-1 text-[15px] font-semibold leading-snug text-white">Contactate</p>
         </div>
-        {hasWa && hasIg ? (
-          <div className="flex shrink-0 items-center gap-2 self-center">
+        <div className="flex shrink-0 items-center gap-2">
+          {hasWa ? (
             <a
               href={pub.whatsappUrl!}
               target="_blank"
@@ -208,6 +188,8 @@ export function PublicidadFeedCard({
             >
               <WhatsAppIcon sx={{ fontSize: 26 }} />
             </a>
+          ) : null}
+          {hasIg ? (
             <a
               href={pub.instagramUrl!}
               target="_blank"
@@ -218,41 +200,20 @@ export function PublicidadFeedCard({
             >
               <InstagramIcon sx={{ fontSize: 24 }} />
             </a>
-          </div>
-        ) : hasWa ? (
-          <a
-            href={pub.whatsappUrl!}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={stop}
-            className="inline-flex shrink-0 items-center gap-2 self-center rounded-md bg-[#25D366] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#20BD5A]"
-          >
-            <WhatsAppIcon sx={{ fontSize: 22 }} className="shrink-0" />
-            Contactar
-          </a>
-        ) : hasIg ? (
-          <a
-            href={pub.instagramUrl!}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={stop}
-            className="inline-flex shrink-0 items-center gap-2 self-center rounded-md bg-gradient-to-r from-[#f09433] via-[#e1306c] to-[#833ab4] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-95"
-          >
-            <InstagramIcon sx={{ fontSize: 22 }} className="shrink-0" />
-            Contactar
-          </a>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              stop(e)
-              onOpenDetail()
-            }}
-            className="inline-flex shrink-0 items-center self-center rounded-md bg-[#4E4F50] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5F6C7B]"
-          >
-            Ver más
-          </button>
-        )}
+          ) : null}
+          {!hasWa && !hasIg ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                stop(e)
+                onOpenDetail()
+              }}
+              className="inline-flex shrink-0 items-center rounded-md bg-[#4E4F50] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#5F6C7B]"
+            >
+              Ver más
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Barra de interacción estilo red social */}
@@ -294,20 +255,7 @@ export function PublicidadFeedCard({
             Compartir
           </button>
         </div>
-        <div className="flex shrink-0 items-center gap-1 pr-1">
-          {pub.instagramUrl ? (
-            <a
-              href={pub.instagramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={stop}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#f09433] via-[#e1306c] to-[#833ab4] text-white shadow-sm"
-              aria-label="Instagram"
-            >
-              <Instagram className="h-4 w-4" />
-            </a>
-          ) : null}
-        </div>
+    
       </div>
     </div>
   )

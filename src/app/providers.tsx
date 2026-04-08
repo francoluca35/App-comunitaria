@@ -12,6 +12,7 @@ import { showPushEnrollmentPreviewFirstTime } from '@/lib/notifications'
 import {
   DEFAULT_POST_CATEGORIES,
   DEFAULT_PUBLICIDAD_CATEGORIES,
+  sanitizeCategoryRows,
   type NamedCategoryRow,
 } from '@/lib/category-defaults'
 
@@ -526,8 +527,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch('/api/categories/posts')
       if (!res.ok) return
-      const data = (await res.json()) as NamedCategoryRow[]
-      if (Array.isArray(data) && data.length > 0) setPostCategories(data)
+      const data = await res.json()
+      const cleaned = sanitizeCategoryRows(data)
+      if (cleaned.length > 0) setPostCategories(cleaned)
     } catch {
       // mantener defaults
     }
@@ -537,8 +539,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch('/api/categories/publicidad')
       if (!res.ok) return
-      const data = (await res.json()) as NamedCategoryRow[]
-      if (Array.isArray(data) && data.length > 0) setPublicidadCategories(data)
+      const data = await res.json()
+      const cleaned = sanitizeCategoryRows(data)
+      if (cleaned.length > 0) setPublicidadCategories(cleaned)
     } catch {
       // mantener defaults
     }

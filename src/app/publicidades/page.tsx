@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from '@/app/components/ui/popover'
 import { OPCION_TODAS } from '@/lib/categorias-publicidad'
+import { sanitizeCategoryRows } from '@/lib/category-defaults'
 import { useApp } from '@/app/providers'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadModal } from '@/components/PublicidadModal'
@@ -20,8 +21,15 @@ import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 
 type SortOrder = 'reciente' | 'antiguo'
 
+function parsePublicidadCreatedAt(raw: unknown): Date {
+  if (raw == null) return new Date(0)
+  const d = new Date(typeof raw === 'string' || typeof raw === 'number' ? raw : '')
+  return Number.isFinite(d.getTime()) ? d : new Date(0)
+}
+
 export default function PublicidadesPage() {
   const { publicidadCategories, refreshPublicidadCategories } = useApp()
+  const pubCats = useMemo(() => sanitizeCategoryRows(publicidadCategories), [publicidadCategories])
   const [publicidades, setPublicidades] = useState<PublicidadDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOrder, setSortOrder] = useState<SortOrder>('reciente')
@@ -43,7 +51,7 @@ export default function PublicidadesPage() {
           title: String(r.title ?? ''),
           description: String(r.description ?? ''),
           category: String(r.category ?? ''),
-          createdAt: new Date(r.createdAt),
+          createdAt: parsePublicidadCreatedAt(r.createdAt),
           imageUrl: r.imageUrl ? String(r.imageUrl) : undefined,
           images: Array.isArray(r.images)
             ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
@@ -59,9 +67,11 @@ export default function PublicidadesPage() {
   const publicidadFilterOptions = useMemo(
     () => [
       OPCION_TODAS,
-      ...publicidadCategories.map((c) => ({ value: c.slug, label: c.label })),
+      ...pubCats
+        .filter((c) => c.slug !== 'all')
+        .map((c) => ({ value: c.slug, label: c.label })),
     ],
-    [publicidadCategories]
+    [pubCats]
   )
   const [searchVisible, setSearchVisible] = useState(false)
   const [selectedPublicidad, setSelectedPublicidad] = useState<PublicidadDisplay | null>(null)
@@ -73,7 +83,7 @@ export default function PublicidadesPage() {
       matchesPublicidadSearch(
         p,
         searchQuery,
-        publicidadCategories.find((c) => c.slug === p.category)?.label
+        pubCats.find((c) => c.slug === p.category)?.label
       )
     )
 
@@ -82,13 +92,13 @@ export default function PublicidadesPage() {
     }
 
     list.sort((a, b) => {
-      const tA = a.createdAt.getTime()
-      const tB = b.createdAt.getTime()
+      const tA = Number.isFinite(a.createdAt.getTime()) ? a.createdAt.getTime() : 0
+      const tB = Number.isFinite(b.createdAt.getTime()) ? b.createdAt.getTime() : 0
       return sortOrder === 'reciente' ? tB - tA : tA - tB
     })
 
     return list
-  }, [searchQuery, categoryFilter, sortOrder, publicidades, publicidadCategories])
+  }, [searchQuery, categoryFilter, sortOrder, publicidades, pubCats])
 
   return (
     <DashboardLayout>
@@ -234,7 +244,7 @@ export default function PublicidadesPage() {
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium text-amber-800 dark:text-amber-200/90 mb-1.5 w-fit rounded-full bg-amber-100 dark:bg-amber-900/40 px-2.5 py-0.5">
-                    {publicidadCategories.find((c) => c.slug === p.category)?.label ?? p.category}
+                    {pubCats.find((c) => c.slug === p.category)?.label ?? p.category}
                   </p>
                   <p className="font-semibold text-slate-900 dark:text-white">
                     {p.title}
