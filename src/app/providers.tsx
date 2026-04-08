@@ -185,7 +185,7 @@ interface AppContextType {
   deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
 
   comments: Comment[]
-  addComment: (postId: string, text: string) => void
+  addComment: (postId: string, text: string) => Promise<{ ok: boolean; error?: string }>
 
   users: User[]
   toggleBlockUser: (userId: string) => void
@@ -386,36 +386,6 @@ const MOCK_POSTS: Post[] = [
   },
 ]
 
-const MOCK_COMMENTS: Comment[] = [
-  {
-    id: '1',
-    postId: '1',
-    authorId: '3',
-    authorName: 'Carlos Rodríguez',
-    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
-    text: 'Vi un perro similar cerca del parque esta mañana. Te envié mensaje por WhatsApp.',
-    createdAt: new Date('2026-02-05T14:00:00'),
-  },
-  {
-    id: '2',
-    postId: '1',
-    authorId: '2',
-    authorName: 'María González',
-    authorAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
-    text: 'Muchas gracias Carlos! Espero que sea él.',
-    createdAt: new Date('2026-02-05T14:30:00'),
-  },
-  {
-    id: '3',
-    postId: '4',
-    authorId: '3',
-    authorName: 'Carlos Rodríguez',
-    authorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop',
-    text: 'Excelente iniciativa! Ahí estaré.',
-    createdAt: new Date('2026-02-07T17:00:00'),
-  },
-]
-
 const DEFAULT_CONFIG: AppConfig = {
   commentsEnabled: true,
   whatsappEnabled: true,
@@ -551,7 +521,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void refreshPostCategories()
     void refreshPublicidadCategories()
   }, [refreshPostCategories, refreshPublicidadCategories])
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS)
+  const [comments, setComments] = useState<Comment[]>([])
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
@@ -781,6 +751,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser?.isAdmin, currentUser?.isModerator, supabase])
 
+  const loadComments = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
+        .order('created_at', { ascending: true })
+      if (error) {
+        console.warn('loadComments:', error.message)
+        return
+      }
+      const mapped: Comment[] = (data ?? []).map((row: unknown) => {
+        const r = row as {
+          id: string
+          post_id: string
+          author_id: string
+          text: string
+          created_at: string
+          profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+        }
+        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+        return {
+          id: String(r.id),
+          postId: String(r.post_id),
+          authorId: String(r.author_id),
+          authorName: profile?.name?.trim() || 'Usuario',
+          authorAvatar: profile?.avatar_url ?? undefined,
+          text: r.text,
+          createdAt: new Date(r.created_at),
+        }
+      })
+      setComments(mapped)
+    } catch (e) {
+      console.warn('loadComments', e)
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    void loadComments()
+  }, [loadComments])
+
   const refreshPosts = async () => {
     try {
       const { data, error } = await supabase
@@ -825,6 +835,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
+    await loadComments()
   }
 
   useEffect(() => {
@@ -1257,21 +1268,53 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { ok: true }
   }
 
-  const addComment = (postId: string, text: string) => {
-    if (!currentUser || !config.commentsEnabled) return
-    if (currentUser.suspendedUntil && new Date(currentUser.suspendedUntil) > new Date()) return
+  const addComment = async (
+    postId: string,
+    text: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!currentUser || !config.commentsEnabled) return { ok: false, error: 'Comentarios deshabilitados' }
+    if (currentUser.suspendedUntil && new Date(currentUser.suspendedUntil) > new Date()) {
+      return { ok: false, error: 'Tu cuenta no puede comentar por el momento' }
+    }
+    const trimmed = text.trim()
+    if (!trimmed) return { ok: false, error: 'Escribí un comentario' }
 
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      postId,
-      authorId: currentUser.id,
-      authorName: currentUser.name,
-      authorAvatar: currentUser.avatar,
-      text,
-      createdAt: new Date(),
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({
+        post_id: postId,
+        author_id: currentUser.id,
+        text: trimmed,
+      })
+      .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
+      .single()
+
+    if (error) {
+      return { ok: false, error: error.message ?? 'No se pudo publicar el comentario' }
     }
 
-    setComments([...comments, newComment])
+    const r = data as {
+      id: string
+      post_id: string
+      author_id: string
+      text: string
+      created_at: string
+      profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+    }
+    const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+    const newComment: Comment = {
+      id: String(r.id),
+      postId: String(r.post_id),
+      authorId: String(r.author_id),
+      authorName: profile?.name?.trim() || currentUser.name,
+      authorAvatar: profile?.avatar_url ?? currentUser.avatar,
+      text: r.text,
+      createdAt: new Date(r.created_at),
+    }
+    setComments((prev) =>
+      [...prev, newComment].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    )
+    return { ok: true }
   }
 
   const toggleBlockUser = (userId: string) => {

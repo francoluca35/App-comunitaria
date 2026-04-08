@@ -16,16 +16,25 @@ function WhatsAppMark({ className }: { className?: string }) {
 }
 
 const touchRow =
-  'flex w-full flex-row items-stretch overflow-hidden rounded-none border-t border-[#CED0D4] bg-white divide-x divide-[#CED0D4]'
+  'flex w-full flex-row items-stretch overflow-hidden  bg-white divide-x divide-[#CED0D4]'
 
 const commentBtn =
   '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
 
+const commentBtnCompact =
+  '!h-auto min-h-8 min-w-0 flex-1 basis-0 justify-center gap-1 rounded-none border-0 bg-transparent px-1.5 py-1.5 text-[12px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-9 sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px]'
+
 const waBtn =
   '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
 
+const waBtnCompact =
+  '!h-auto min-h-8 min-w-0 flex-1 basis-0 justify-center gap-1 rounded-none border-0 bg-transparent px-1.5 py-1.5 text-[12px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-9 sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px]'
+
 const shareBtn =
   '!h-auto min-h-10 min-w-0 flex-1 basis-0 justify-center gap-1.5 rounded-none border-0 bg-transparent px-2 py-2 text-[13px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-11 sm:gap-2 sm:px-3 sm:py-2.5 sm:text-sm'
+
+const shareBtnCompact =
+  '!h-auto min-h-8 min-w-0 flex-1 basis-0 justify-center gap-1 rounded-none border-0 bg-transparent px-1.5 py-1.5 text-[12px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-9 sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px]'
 
 export type PostPublicationActionsProps = {
   postId: string
@@ -34,9 +43,14 @@ export type PostPublicationActionsProps = {
   /** En el detalle del post usar "#comments" */
   commentsHref?: string
   showComments?: boolean
+  /** Texto del botón si no pasás `commentCount` */
   commentsLabel?: string
+  /** Muestra "Comentar (n)" cuando hay comentarios habilitados */
+  commentCount?: number
   /** Compartir enlace absoluto a `/post/{id}` (solo URL). Por defecto activo. */
   showShare?: boolean
+  /** Fila de acciones más baja y junta (p. ej. detalle del post) */
+  compact?: boolean
 }
 
 export function PostPublicationActions({
@@ -46,7 +60,9 @@ export function PostPublicationActions({
   commentsHref: commentsHrefProp,
   showComments = true,
   commentsLabel = 'Comentar',
+  commentCount,
   showShare = true,
+  compact = false,
 }: PostPublicationActionsProps) {
   const wa = whatsappNumber?.replace(/\D/g, '') ?? ''
   const hasWa = wa.length > 0
@@ -75,12 +91,23 @@ export function PostPublicationActions({
     }
   }
 
+  const commentLine =
+    typeof commentCount === 'number' ? `Comentar (${commentCount})` : commentsLabel
+
+  const iconMsg = compact ? 'h-4 w-4 sm:h-5 sm:w-5' : 'h-[18px] w-[18px] sm:h-7 sm:w-7'
+  const iconWa = compact ? 'h-4 w-4 sm:h-5 sm:w-5' : 'h-[18px] w-[18px] sm:h-7 sm:w-7'
+  const iconShare = compact ? 'h-4 w-4 sm:h-5 sm:w-5' : 'h-[18px] w-[18px] sm:h-7 sm:w-7'
+
   const commentTrigger = (
     <>
-      <MessageCircle className="h-[18px] w-[18px] shrink-0 sm:h-7 sm:w-7" strokeWidth={2.25} aria-hidden />
-      <span className="max-w-[9rem] truncate text-center">{commentsLabel}</span>
+      <MessageCircle className={cn('shrink-0', iconMsg)} strokeWidth={2.25} aria-hidden />
+      <span className="max-w-[10rem] truncate text-center">{commentLine}</span>
     </>
   )
+
+  const cBtn = compact ? commentBtnCompact : commentBtn
+  const wBtn = compact ? waBtnCompact : waBtn
+  const sBtn = compact ? shareBtnCompact : shareBtn
 
   return (
     <div
@@ -89,7 +116,7 @@ export function PostPublicationActions({
       className={cn(touchRow, className)}
     >
       {showComments ? (
-        <Button asChild variant="ghost" className={commentBtn}>
+        <Button asChild variant="ghost" className={cBtn}>
           {isHashLink ? (
             <a href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
               {commentTrigger}
@@ -102,23 +129,23 @@ export function PostPublicationActions({
         </Button>
       ) : null}
       {hasWa ? (
-        <Button asChild variant="ghost" className={waBtn}>
+        <Button asChild variant="ghost" className={wBtn}>
           <a
             href={`https://wa.me/${wa}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 sm:gap-3"
           >
-            <WhatsAppMark className="h-[18px] w-[18px] shrink-0 text-[#25D366] sm:h-7 sm:w-7" />
+            <WhatsAppMark className={cn('shrink-0 text-[#25D366]', iconWa)} />
             <span className="text-center sm:hidden">WhatsApp</span>
             <span className="hidden text-center sm:inline">Contactar por WhatsApp</span>
           </a>
         </Button>
       ) : null}
       {showShare ? (
-        <Button type="button" variant="ghost" className={shareBtn} onClick={() => void handleShare()}>
+        <Button type="button" variant="ghost" className={sBtn} onClick={() => void handleShare()}>
           <span className="inline-flex items-center justify-center gap-2 sm:gap-3">
-            <Share2 className="h-[18px] w-[18px] shrink-0 sm:h-7 sm:w-7" strokeWidth={2.25} aria-hidden />
+            <Share2 className={cn('shrink-0', iconShare)} strokeWidth={2.25} aria-hidden />
             <span className="max-w-[9rem] truncate text-center">Compartir</span>
           </span>
         </Button>

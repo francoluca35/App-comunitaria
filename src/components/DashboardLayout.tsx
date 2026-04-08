@@ -333,7 +333,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 visibleLateralAds.map((p) => (
                   <div
                     key={p.id}
-                    className="overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white shadow-sm transition-shadow hover:shadow-md hover:shadow-[#5A000E]/10"
+                    className="overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white"
                   >
                     <button
                       type="button"

@@ -128,7 +128,7 @@ function FeedListSkeleton() {
     >
       {[0, 1, 2].map((i) => (
         <li key={i}>
-          <div className="overflow-hidden bg-white shadow-sm sm:rounded-none sm:border sm:border-[#D8D2CC] sm:hover:shadow-md sm:hover:shadow-[#5A000E]/08">
+          <div className="overflow-hidden bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
             <div className="flex items-start gap-3 p-4 pb-3">
               <Skeleton className="h-11 w-11 shrink-0 rounded-full border-2 border-[#D8D2CC]/40 bg-[#D4CEC8]/55" />
               <div className="min-w-0 flex-1 space-y-2 pt-0.5">
@@ -271,6 +271,7 @@ export default function HomePage() {
 function HomePageContent() {
   const {
     posts,
+    comments,
     currentUser,
     refreshUser,
     authLoading,
@@ -681,6 +682,7 @@ function HomePageContent() {
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
+                  const postCommentCount = comments.filter((c) => c.postId === post.id).length
                   const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
                   const isMine = currentUser?.id === post.authorId
                   return (
@@ -690,7 +692,7 @@ function HomePageContent() {
                           <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
                         </div>
                       ) : null}
-                      <div className="overflow-hidden bg-white shadow-sm transition-shadow sm:rounded-none sm:border sm:border-[#D8D2CC] sm:hover:shadow-md sm:hover:shadow-[#5A000E]/08">
+                      <div className="overflow-hidden bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
                         <Link
                           href={`/post/${post.id}`}
                           className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8B0015]/25"
@@ -734,6 +736,7 @@ function HomePageContent() {
                             postId={post.id}
                             whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
                             showComments={config.commentsEnabled}
+                            commentCount={config.commentsEnabled ? postCommentCount : undefined}
                           />
                         </div>
                       </div>
