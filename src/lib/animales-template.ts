@@ -20,15 +20,18 @@ export function buildAnimalesDescription(params: {
   ubicacion: string
   fechaIso: string
   telefono: string
+  /** Solo “Perdí”: texto único tras “responde a nombre de …” */
+  respondeNombre?: string
 }): string {
-  const { caso, referente, ubicacion, fechaIso, telefono } = params
+  const { caso, referente, ubicacion, fechaIso, telefono, respondeNombre } = params
   const fecha = formatFechaAR(fechaIso)
   const u = ubicacion.trim()
   const t = telefono.trim()
   if (caso === 'encontrado') {
     return `Hola ${referente}, encontré una mascota en ${u}, el ${fecha}. Buscamos al dueño o a la familia. Comunicarse al teléfono ${t}.`
   }
-  return `Hola ${referente}, perdí mi mascota. Última zona donde se la vio: ${u}, el ${fecha}. Comunicarse al teléfono ${t} si tenés novedades.`
+  const rn = (respondeNombre ?? '').trim()
+  return `Hola ${referente}, perdí mi mascota responde a nombre de ${rn}. Última zona donde se la vio: ${u}, el ${fecha}. Comunicarse al teléfono ${t} si tenés novedades.`
 }
 
 export function buildAnimalesTitle(caso: AnimalCaso, ubicacion: string): string {

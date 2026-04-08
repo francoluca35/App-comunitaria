@@ -87,7 +87,7 @@ function CategoriaPageInner({ category }: { category: Category | 'all' }) {
       ) : (
         <div className="space-y-4">
           {filteredPosts.map((post) => (
-            <PostCard key={post.id} post={post} showStatus />
+            <PostCard key={post.id} post={post} />
           ))}
         </div>
       )}

@@ -39,6 +39,7 @@ export default function CreateAnimalesPage() {
   const router = useRouter()
   const { addPost, currentUser, config, postCategories } = useApp()
   const [caso, setCaso] = useState<AnimalCaso>('encontrado')
+  const [respondeNombre, setRespondeNombre] = useState('')
   const [ubicacion, setUbicacion] = useState('')
   const [fechaIso, setFechaIso] = useState(todayIsoDate)
   const [telefono, setTelefono] = useState('')
@@ -54,19 +55,18 @@ export default function CreateAnimalesPage() {
 
   const maxImagesMascotas = POST_MEDIA_LIMITS.maxImagesMascotas
 
-  const previewDescription = useMemo(
-    () =>
-      ubicacion.trim() && telefono.trim()
-        ? buildAnimalesDescription({
-            caso,
-            referente: nombreReferente,
-            ubicacion: ubicacion.trim(),
-            fechaIso,
-            telefono: telefono.trim(),
-          })
-        : null,
-    [caso, nombreReferente, ubicacion, fechaIso, telefono]
-  )
+  const previewDescription = useMemo(() => {
+    if (!ubicacion.trim() || !telefono.trim()) return null
+    if (caso === 'perdido' && !respondeNombre.trim()) return null
+    return buildAnimalesDescription({
+      caso,
+      referente: nombreReferente,
+      ubicacion: ubicacion.trim(),
+      fechaIso,
+      telefono: telefono.trim(),
+      respondeNombre: respondeNombre.trim(),
+    })
+  }, [caso, nombreReferente, ubicacion, fechaIso, telefono, respondeNombre])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -133,6 +133,10 @@ export default function CreateAnimalesPage() {
       toast.error('No hay categoría de mascotas disponible')
       return
     }
+    if (caso === 'perdido' && !respondeNombre.trim()) {
+      toast.error('Completá “responde a nombre de”')
+      return
+    }
     if (!ubicacion.trim()) {
       toast.error('Indicá en qué calle o zona fue')
       return
@@ -153,6 +157,7 @@ export default function CreateAnimalesPage() {
       ubicacion: ubicacion.trim(),
       fechaIso,
       telefono: telefono.trim(),
+      respondeNombre: respondeNombre.trim(),
     })
 
     setSending(true)
@@ -246,7 +251,7 @@ export default function CreateAnimalesPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             type="button"
             onClick={() => setCaso('encontrado')}
@@ -277,6 +282,21 @@ export default function CreateAnimalesPage() {
           </button>
         </div>
 
+        {caso === 'perdido' ? (
+          <div className="mb-6 space-y-2">
+            <Label htmlFor="responde-nombre" className="text-[#2C241C]">
+              Responde a nombre de <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="responde-nombre"
+              placeholder="Ej.: Lola, Princesa…"
+              value={respondeNombre}
+              onChange={(e) => setRespondeNombre(e.target.value)}
+              className="h-12 rounded-xl border-2 border-[#D8D2CC]"
+            />
+          </div>
+        ) : null}
+
         <Card className="mb-6 border-[#D8D2CC] bg-white">
           <CardContent className="p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-[#9A8F84] mb-2">Texto que se envía</p>
@@ -284,7 +304,9 @@ export default function CreateAnimalesPage() {
               <p className="text-sm leading-relaxed text-[#2C241C] whitespace-pre-wrap">{previewDescription}</p>
             ) : (
               <p className="text-sm text-[#6B5F54]">
-                Completá calle o barrio, fecha y teléfono para ver el mensaje listo para enviar a {nombreReferente}.
+                {caso === 'perdido'
+                  ? `Completá “responde a nombre de”, calle o barrio, fecha y teléfono para ver el mensaje para ${nombreReferente}.`
+                  : `Completá calle o barrio, fecha y teléfono para ver el mensaje listo para enviar a ${nombreReferente}.`}
               </p>
             )}
             {fechaIso && (
