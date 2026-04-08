@@ -67,7 +67,7 @@ export function PublicidadFeedCard({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-md bg-[#d6d6d6] text-[#000000] shadow-lg ring-1 ring-black/30',
+        'overflow-hidden rounded-md bg-[#d6d6d6] text-[#000000] ring-1 ring-black/30',
         'sm:rounded-md',
       )}
     >

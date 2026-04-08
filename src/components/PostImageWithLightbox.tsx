@@ -187,7 +187,7 @@ export function PostImageWithLightbox({
   }
 
   const maxH =
-    variant === 'detail' ? 'min(88vh, 720px)' : 'min(75vh, 560px)'
+    variant === 'detail' ? 'min(42vh, 360px)' : 'min(75vh, 560px)'
 
   if (n === 0) return null
 
@@ -199,7 +199,7 @@ export function PostImageWithLightbox({
         className={cn(
           'relative w-full bg-[#E8E4E0]',
           variant === 'feed' && 'flex flex-col rounded-none leading-none',
-          variant === 'detail' && 'overflow-hidden rounded-2xl ring-1 ring-[#D8D2CC]',
+          variant === 'detail' && 'overflow-hidden rounded-none border border-[#D8D2CC]',
           className
         )}
       >
@@ -379,9 +379,7 @@ function SingleMediaPreview({
       type="button"
       onClick={onOpen}
       className={cn(
-        'group relative grid w-full cursor-zoom-in place-items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]',
-        variant === 'feed' ? 'px-0 py-0' : 'px-2 py-3',
-        variant === 'detail' && 'rounded-2xl'
+        'group relative grid w-full cursor-zoom-in place-items-center px-0 py-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]'
       )}
       style={{ minHeight: maxH }}
       aria-label={previewIsVideo ? `Ver video: ${alt}` : `Ver imagen: ${alt}`}
@@ -389,8 +387,8 @@ function SingleMediaPreview({
       {!previewLoaded ? (
         <Skeleton
           className={cn(
-            'pointer-events-none absolute z-0 border border-[#D8D2CC]/40 bg-[#D4CEC8]/65',
-            variant === 'feed' ? 'inset-0 rounded-none border-0' : 'inset-x-2 top-3 bottom-3 rounded-xl'
+            'pointer-events-none absolute inset-0 z-0 rounded-none ',
+            variant === 'feed' ? 'border-0' : 'border '
           )}
           aria-hidden
         />
@@ -465,7 +463,7 @@ function MultiMediaCollage({
   /** Altura cómoda en feed / detalle (tipo muro) */
   const collageHeight =
     variant === 'detail'
-      ? 'clamp(260px, 50vh, 520px)'
+      ? 'clamp(160px, 36vh, 320px)'
       : 'clamp(240px, 52vw, 480px)'
 
   const collageShell =
