@@ -1,37 +1,40 @@
 import type { ReactNode } from 'react'
 import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Filter } from 'lucide-react'
 
-/** Icono y color por slug conocido; el resto usa estilo genérico */
+const NEUTRAL_ICON_WRAP =
+  'flex items-center justify-center rounded-xl bg-[#EDEAE7] text-[#3D3D3D] dark:bg-[#2a2a2a] dark:text-[#e5e5e5]'
+
+/** Icono por slug; envoltorio neutro (sin gradientes ni color por categoría). */
 export function getPostCategoryVisual(slug: string): {
   icon: ReactNode
   iconClass: string
 } {
   const map: Record<string, { icon: ReactNode; iconClass: string }> = {
     mascotas: {
-      icon: <Dog className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-400 dark:to-orange-400',
+      icon: <Dog className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     },
     alertas: {
-      icon: <AlertTriangle className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-rose-500 to-red-500 dark:from-rose-400 dark:to-red-400',
+      icon: <AlertTriangle className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     },
     avisos: {
-      icon: <Megaphone className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-blue-500 to-indigo-500 dark:from-blue-400 dark:to-indigo-400',
+      icon: <Megaphone className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     },
     objetos: {
-      icon: <Package className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-purple-500 to-violet-500 dark:from-purple-400 dark:to-violet-400',
+      icon: <Package className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     },
     noticias: {
-      icon: <Newspaper className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-emerald-500 to-teal-500 dark:from-emerald-400 dark:to-teal-400',
+      icon: <Newspaper className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     },
   }
   return (
     map[slug] ?? {
-      icon: <Filter className="w-6 h-6" />,
-      iconClass: 'bg-gradient-to-br from-slate-500 to-slate-600 dark:from-slate-400 dark:to-slate-500',
+      icon: <Filter className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
     }
   )
 }
