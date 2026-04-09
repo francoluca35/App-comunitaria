@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { useApp } from '@/app/providers'
+import { useAuth } from '@/app/providers/auth-context'
 import { createClient } from '@/lib/supabase/client'
 import { showSystemNotification } from '@/lib/notifications'
 
@@ -12,7 +12,7 @@ import { showSystemNotification } from '@/lib/notifications'
  * - Moderator: nueva publicación a moderar, "X te respondió el mensaje"
  */
 export function RealtimeNotificationSubscriptions() {
-  const { currentUser } = useApp()
+  const { currentUser } = useAuth()
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
