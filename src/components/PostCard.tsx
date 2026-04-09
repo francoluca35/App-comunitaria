@@ -1,6 +1,5 @@
 'use client'
 
-import { useMemo } from 'react'
 import Link from 'next/link'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { Post, useApp } from '@/app/providers'
@@ -18,12 +17,12 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const { config, currentUser, comments } = useApp()
+  const { config, currentUser, commentCountByPostId } = useApp()
   const isMine = currentUser?.id === post.authorId
-  const commentCount = useMemo(
-    () => comments.filter((c) => c.postId === post.id).length,
-    [comments, post.id]
-  )
+  const commentCount =
+    config.commentsEnabled && Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
+      ? commentCountByPostId[post.id]
+      : undefined
 
   const statusBadge =
     post.status === 'pending' ? (
@@ -82,7 +81,7 @@ export function PostCard({ post }: PostCardProps) {
           postId={post.id}
           whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
           showComments={config.commentsEnabled}
-          commentCount={config.commentsEnabled ? commentCount : undefined}
+          commentCount={commentCount}
         />
       </CardFooter>
     </Card>

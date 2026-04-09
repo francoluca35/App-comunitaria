@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
@@ -22,15 +22,57 @@ import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 export default function PostDetailPage() {
   const params = useParams<{ postId: string }>()
   const router = useRouter()
-  const { posts, comments, addComment, currentUser, config } = useApp()
+  const {
+    posts,
+    comments,
+    addComment,
+    currentUser,
+    config,
+    hydratePostFromServer,
+    loadCommentsForPost,
+    commentCountByPostId,
+  } = useApp()
 
   const [commentText, setCommentText] = useState('')
+  const [hydrateDone, setHydrateDone] = useState(false)
+  const [commentsLoading, setCommentsLoading] = useState(false)
 
   const postId = Array.isArray(params.postId) ? params.postId[0] : params.postId
   const post = posts.find((p) => p.id === postId)
   const postComments = comments.filter((c) => c.postId === postId)
 
+  useEffect(() => {
+    if (!postId) return
+    if (post) {
+      setHydrateDone(true)
+      return
+    }
+    let cancelled = false
+    setHydrateDone(false)
+    void hydratePostFromServer(postId).finally(() => {
+      if (!cancelled) setHydrateDone(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [postId, post, hydratePostFromServer])
+
+  useEffect(() => {
+    if (!postId || !post) return
+    setCommentsLoading(true)
+    void loadCommentsForPost(postId).finally(() => setCommentsLoading(false))
+  }, [postId, post?.id, loadCommentsForPost])
+
   if (!post) {
+    if (!hydrateDone) {
+      return (
+        <DashboardLayout>
+          <div className="max-w-2xl mx-auto text-center py-16">
+            <p className="text-slate-500 dark:text-gray-400">Cargando publicación…</p>
+          </div>
+        </DashboardLayout>
+      )
+    }
     return (
       <DashboardLayout>
         <div className="max-w-2xl mx-auto text-center py-16">
@@ -136,7 +178,13 @@ export default function PostDetailPage() {
             whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
             showComments={config.commentsEnabled}
             commentsHref="#comments"
-            commentCount={config.commentsEnabled ? postComments.length : undefined}
+            commentCount={
+              config.commentsEnabled
+                ? commentsLoading
+                  ? commentCountByPostId[postId]
+                  : postComments.length
+                : undefined
+            }
             compact
           />
         </div>
@@ -145,11 +193,15 @@ export default function PostDetailPage() {
           <Card className="rounded-xl border-slate-200/80 dark:border-gray-700/80 shadow-sm" id="comments">
             <CardContent className="p-3 sm:p-4">
               <h3 className="mb-2 text-sm font-semibold text-card-foreground">
-                Comentarios ({postComments.length})
+                {commentsLoading ? 'Comentarios' : `Comentarios (${postComments.length})`}
               </h3>
 
               <div className="space-y-2 mb-3">
-                {postComments.length === 0 ? (
+                {commentsLoading ? (
+                  <p className="text-center text-xs text-slate-500 dark:text-gray-400 py-4 rounded-lg bg-slate-50 dark:bg-gray-800/30">
+                    Cargando comentarios…
+                  </p>
+                ) : postComments.length === 0 ? (
                   <p className="text-center text-xs text-slate-500 dark:text-gray-400 py-4 rounded-lg bg-slate-50 dark:bg-gray-800/30">
                     No hay comentarios aún. ¡Sé el primero!
                   </p>

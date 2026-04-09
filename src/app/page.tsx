@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useMemo } from 'react'
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useApp, type Category, type Post } from './providers'
 import {
@@ -98,7 +98,7 @@ function interleavePostsWithPublicidades(posts: Post[], publicidades: Publicidad
 }
 
 /** Imagen fija del referente en el banner si no hay URL en configuración (`public/Assets/mario.png`). */
-const HERO_REFERENT_IMAGE = '/Assets/mario.png'
+const HERO_REFERENT_IMAGE = '/Assets/mario2.png'
 
 function getCategoryCount(posts: { category: Category }[], value: Category | 'all') {
   if (value === 'all') return posts.length
@@ -116,6 +116,95 @@ function authorInitials(name: string) {
     .slice(0, 2)
     .map((p) => p[0]!.toUpperCase())
     .join('')
+}
+
+type CommunityHeroBannerProps = {
+  heroTitle: string
+  heroSubtitle: string
+  heroReferentName: string
+  heroReferentPhotoUrl: string
+  currentUserFirstName: string | null
+}
+
+function CommunityHeroBanner({
+  heroTitle,
+  heroSubtitle,
+  heroReferentName,
+  heroReferentPhotoUrl,
+  currentUserFirstName,
+}: CommunityHeroBannerProps) {
+  const referentFirst = firstName(heroReferentName || 'Mario')
+  const ctaMobileLabel = `habla con ${referentFirst.toLowerCase()}`
+
+  const welcomeLine =
+    currentUserFirstName != null && currentUserFirstName !== ''
+      ? `Hola ${currentUserFirstName}, ${heroSubtitle}`
+      : heroSubtitle
+
+  const ctaClass =
+    'flex w-full items-center justify-center rounded-lg bg-[#8B0015] py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#6d0010] active:scale-[0.99]'
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-2xl bg-[#E0E0E0] shadow-sm ring-1 ring-black/[0.07]">
+      {/* Mobile: centrado — título, bajada, referente, CTA (diseño mockup) */}
+      <div className="px-5 pb-7 pt-7 sm:hidden">
+        <div className="mx-auto flex max-w-sm flex-col items-center text-center">
+          <h2 className="font-hero-display text-balance text-[1.35rem] font-bold uppercase leading-[1.15] tracking-[0.02em] text-[#8B0015]">
+            {heroTitle}
+          </h2>
+          <p className="mt-3 text-sm font-medium leading-snug text-[#1a1a1a]">{welcomeLine}</p>
+
+          <Avatar className="mt-6 h-[7.25rem] w-[7.25rem] border-4 border-[#8B0015] shadow-md">
+            <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+            <AvatarFallback
+              className="text-2xl font-bold text-white"
+              style={{ backgroundColor: CST.bordo }}
+            >
+              {authorInitials(heroReferentName || 'MS')}
+            </AvatarFallback>
+          </Avatar>
+          <p className="mt-4 text-base font-bold text-[#8B0015]">{heroReferentName}</p>
+          <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#1a1a1a]">
+            Referente oficial
+          </p>
+
+          <Link href="/message" className={`${ctaClass} mt-7 max-w-[17.5rem]`}>
+            {ctaMobileLabel}
+          </Link>
+        </div>
+      </div>
+
+      {/* Desktop: dos columnas — contenido a la izquierda, referente a la derecha */}
+      <div className="hidden gap-10 px-8 py-8 sm:flex sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-4">
+          <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#1a1a1a]">Tu comunidad</p>
+          <h2 className="font-hero-display max-w-xl text-balance text-3xl font-bold uppercase leading-tight tracking-wide text-[#8B0015] lg:text-[2rem]">
+            {heroTitle}
+          </h2>
+          <p className="max-w-lg pt-1 text-base font-medium leading-snug text-[#1a1a1a]">{welcomeLine}</p>
+          <Link href="/message" className={`${ctaClass} mt-2 max-w-md`}>
+            Habla con {referentFirst}!
+          </Link>
+        </div>
+
+        <div className="flex w-[13.5rem] shrink-0 flex-col items-center border-l border-black/10 pl-10">
+          <Avatar className="h-32 w-32 border-4 border-[#8B0015] shadow-md">
+            <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+            <AvatarFallback
+              className="text-3xl font-bold text-white"
+              style={{ backgroundColor: CST.bordo }}
+            >
+              {authorInitials(heroReferentName || 'MS')}
+            </AvatarFallback>
+          </Avatar>
+          <p className="mt-5 text-center text-lg font-bold text-[#8B0015]">{heroReferentName}</p>
+          <p className="mt-1 text-center text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#1a1a1a]">
+            Referente oficial
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /** Placeholder del feed mientras llegan publicaciones / publicidades (servidor lento o red). */
@@ -271,7 +360,6 @@ export default function HomePage() {
 function HomePageContent() {
   const {
     posts,
-    comments,
     currentUser,
     refreshUser,
     authLoading,
@@ -279,6 +367,11 @@ function HomePageContent() {
     publicidadCategories,
     refreshPublicidadCategories,
     config,
+    postsLoading,
+    postsHasMore,
+    postsLoadingMore,
+    loadMorePosts,
+    commentCountByPostId,
   } = useApp()
   const { query: searchQuery } = useFeedSearch()
   const approvedPosts = posts.filter((p) => p.status === 'approved')
@@ -416,6 +509,27 @@ function HomePageContent() {
     return interleavePostsWithPublicidades(postsForFeed, filteredPublicidades)
   }, [feedFilter, postsForFeed, filteredPublicidades])
 
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null)
+  const onLoadMore = useCallback(() => {
+    void loadMorePosts()
+  }, [loadMorePosts])
+
+  useEffect(() => {
+    if (feedFilter === FEED_FILTER_SOLO_PUBLICIDADES) return
+    if (!postsHasMore || postsLoadingMore) return
+    const el = loadMoreSentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const hit = entries.some((e) => e.isIntersecting)
+        if (hit) onLoadMore()
+      },
+      { root: null, rootMargin: '280px', threshold: 0 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [feedFilter, postsHasMore, postsLoadingMore, onLoadMore, combinedFeed.length])
+
   return (
     <>
       <PublicidadModal
@@ -467,72 +581,14 @@ function HomePageContent() {
       </Dialog>
 
       <div className="relative w-full pb-28">
-        {/* Banner identidad (estilo hero tipo marketplace): comunidad + referente oficial */}
-        <div className="mb-6 overflow-hidden rounded-[1.25rem] shadow-md ring-1 ring-[#8B0015]/10">
-          <div
-            className="relative bg-gradient-to-br from-[#F4EFEA] via-[#EBE6E1] to-[#E0D8D4] px-5 py-5 sm:px-6 sm:py-6"
-            style={{
-              backgroundImage:
-                'radial-gradient(ellipse 120% 80% at 100% 0%, rgba(255,255,255,0.5) 0%, transparent 55%)',
-            }}
-          >
-            <div
-              className="pointer-events-none absolute -right-6 -top-6 h-32 w-32 rounded-full bg-[#8B0015]/12 blur-2xl"
-              aria-hidden
-            />
-            <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <div className="min-w-0 flex-1">
-                <p className="font-hero-display text-[1.35rem] leading-tight text-[#8B0015] sm:text-[1.75rem]">
-                  {config.heroTitle}
-                </p>
-                <p className="mt-2 max-w-xl text-sm font-semibold leading-snug text-[#2B2B2B] sm:text-base">
-                  {config.heroSubtitle}
-                </p>
-                <p className="mt-3 text-xs leading-relaxed text-[#7A5C52] sm:text-sm">
-                  {currentUser ? (
-                    <>
-                      Hola, <span className="font-semibold">{firstName(currentUser.name)}</span>.{' '}
-                    </>
-                  ) : null}
-                  {newPostsCount === 0
-                    ? 'No hay publicaciones nuevas en las últimas 48 h.'
-                    : newPostsCount === 1
-                      ? 'Hay 1 nueva publicación en la comunidad.'
-                      : `Hay ${newPostsCount} nuevas publicaciones en la comunidad.`}
-                </p>
-                <Link
-                  href="/message"
-                  className="mt-4 inline-flex items-center rounded-full bg-[#8B0015] px-4 py-2 text-xs font-bold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#5A000E] active:scale-[0.98]"
-                >
-                  Habla con Mario!
-                  <span className="ml-1" aria-hidden>
-                    ›
-                  </span>
-                </Link>
-              </div>
-              <div className="flex shrink-0 flex-row items-center gap-4 self-center sm:flex-col sm:gap-2">
-                <Avatar className="h-[5.5rem] w-[5.5rem] border-4 border-white shadow-lg sm:h-28 sm:w-28">
-                  <AvatarImage
-                    src={config.heroReferentPhotoUrl.trim() || HERO_REFERENT_IMAGE}
-                    alt={config.heroReferentName}
-                  />
-                  <AvatarFallback
-                    className="text-xl font-bold sm:text-2xl"
-                    style={{ backgroundColor: CST.bordo, color: 'white' }}
-                  >
-                    {authorInitials(config.heroReferentName || 'MS')}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-center sm:max-w-[8rem]">
-                  <p className="text-sm font-bold leading-tight text-[#2B2B2B]">{config.heroReferentName}</p>
-                  <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-[#7A5C52]">
-                    Referente oficial
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Banner: layout distinto en mobile (centrado) vs desktop (dos columnas), según diseño */}
+        <CommunityHeroBanner
+          heroTitle={config.heroTitle}
+          heroSubtitle={config.heroSubtitle}
+          heroReferentName={config.heroReferentName}
+          heroReferentPhotoUrl={config.heroReferentPhotoUrl.trim() || HERO_REFERENT_IMAGE}
+          currentUserFirstName={currentUser ? firstName(currentUser.name) : null}
+        />
 
         {/* Tarjetas de acción */}
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -654,7 +710,7 @@ function HomePageContent() {
             ) : null}
           </div>
 
-          {feedPubLoading && combinedFeed.length === 0 && !hasSearch ? (
+          {(feedPubLoading || postsLoading) && combinedFeed.length === 0 && !hasSearch ? (
             <FeedListSkeleton />
           ) : combinedFeed.length === 0 ? (
             <div className="rounded-[1.25rem] border border-[#D8D2CC] bg-white p-8 text-center shadow-sm">
@@ -682,9 +738,13 @@ function HomePageContent() {
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
-                  const postCommentCount = comments.filter((c) => c.postId === post.id).length
                   const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
                   const isMine = currentUser?.id === post.authorId
+                  const feedCommentCount =
+                    config.commentsEnabled &&
+                    Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
+                      ? commentCountByPostId[post.id]
+                      : undefined
                   return (
                     <li key={`post-${post.id}`} className="relative">
                       {isMine ? (
@@ -736,7 +796,7 @@ function HomePageContent() {
                             postId={post.id}
                             whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
                             showComments={config.commentsEnabled}
-                            commentCount={config.commentsEnabled ? postCommentCount : undefined}
+                            commentCount={feedCommentCount}
                           />
                         </div>
                       </div>
@@ -759,6 +819,14 @@ function HomePageContent() {
                   </li>
                 )
               })}
+              {feedFilter !== FEED_FILTER_SOLO_PUBLICIDADES && postsHasMore ? (
+                <li className="flex flex-col items-center gap-2 py-4" aria-live="polite">
+                  <div ref={loadMoreSentinelRef} className="h-1 w-full shrink-0" />
+                  {postsLoadingMore ? (
+                    <span className="text-xs font-medium text-[#7A5C52]">Cargando más publicaciones…</span>
+                  ) : null}
+                </li>
+              ) : null}
             </ul>
           )}
         </section>

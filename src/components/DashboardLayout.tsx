@@ -198,12 +198,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             className="sticky top-0 z-20 border-b border-white/15 backdrop-blur-md"
             style={{ backgroundColor: `${CST.bordo}f0` }}
           >
-            <div className="flex flex-col gap-3 px-3 py-3 sm:px-4 lg:px-6">
+            <div className="flex flex-col gap-2 px-3 py-2.5 sm:gap-2.5 sm:px-4 sm:py-3 lg:px-6">
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(true)}
-                  className="p-2 rounded-2xl text-white hover:bg-white/12 lg:hidden"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white hover:bg-white/12 lg:hidden"
                   aria-label="Abrir menú"
                 >
                   <Menu className="h-6 w-6" />
@@ -211,19 +211,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
                 <Link
                   href="/"
-                  className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 lg:flex-initial lg:min-w-[200px]"
+                  className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-2.5 md:flex-initial md:justify-start lg:min-w-[200px] lg:flex-initial"
                 >
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white shadow-sm"
-                  >
-                    <House className="h-5 w-5" strokeWidth={2} />
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white shadow-sm sm:h-10 sm:w-10">
+                    <House className="h-[1.15rem] w-[1.15rem] sm:h-5 sm:w-5" strokeWidth={2} />
                   </span>
-                  <span className="font-montserrat-only truncate font-bold tracking-tight text-white text-base sm:text-lg">
+                  <span className="font-montserrat-only min-w-0 max-w-[calc(100vw-11rem)] truncate text-center font-bold tracking-tight text-white text-[0.92rem] sm:max-w-none sm:text-base md:text-left md:text-lg">
                     CST Comunidad
                   </span>
                 </Link>
 
-                <div className="hidden min-w-0 flex-1 justify-center px-4 md:flex">
+                <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex md:px-4">
                   <label className="relative w-full max-w-xl">
                     <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52]" />
                     <input
@@ -237,13 +235,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                  <Link
-                    href="/create"
-                    className={`${headerIconBtn} hidden md:flex`}
-                    aria-label="Nueva publicación"
-                  >
-                    <Type className="h-5 w-5" />
-                  </Link>
+                
                   {currentUser && (
                     <NotificationBell
                       triggerClassName="rounded-2xl border border-white/25 bg-white text-[#2B2B2B] shadow-sm hover:bg-white/95"
@@ -282,13 +274,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
               <div className="md:hidden">
                 <label className="relative block w-full">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52]" />
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52]" />
                   <input
                     type="search"
                     value={feedQuery}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Buscar en publicaciones…"
-                    className="w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-10 pr-3 text-sm placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 text-[#2B2B2B]"
+                    className="h-10 w-full rounded-xl border border-white/25 bg-white/95 py-0 pl-10 pr-3 text-sm text-[#2B2B2B] shadow-sm outline-none ring-1 ring-black/5 placeholder:text-[#7A5C52]/75 focus:border-white focus:ring-2 focus:ring-white/40"
                   />
                 </label>
               </div>
