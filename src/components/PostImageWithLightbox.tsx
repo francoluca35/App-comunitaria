@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ImageOff, Video } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
@@ -148,6 +148,7 @@ export function PostImageWithLightbox({
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [failed, setFailed] = useState<Record<number, boolean>>({})
   const [lightboxLoaded, setLightboxLoaded] = useState(false)
+  const lightboxVideoRef = useRef<HTMLVideoElement | null>(null)
 
   const n = media.length
   const lbIdx = normIndex(lightboxIndex, n)
@@ -176,6 +177,27 @@ export function PostImageWithLightbox({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [lightboxOpen, goLightbox])
+
+  useEffect(() => {
+    if (!lightboxOpen || !lbIsVideo || !lightboxLoaded) return
+    const v = lightboxVideoRef.current
+    if (!v) return
+    v.muted = false
+    const run = () => {
+      v.play().catch(() => {
+        v.muted = true
+        void v.play().catch(() => {})
+      })
+    }
+    requestAnimationFrame(run)
+    return () => {
+      v.pause()
+    }
+  }, [lightboxOpen, lbIsVideo, lightboxLoaded, lbSrc, lbIdx])
+
+  useEffect(() => {
+    if (!lightboxOpen) lightboxVideoRef.current?.pause()
+  }, [lightboxOpen])
 
   const openLightbox = (startIndex: number) => {
     setLightboxIndex(normIndex(startIndex, n))
@@ -233,6 +255,7 @@ export function PostImageWithLightbox({
           overlayClassName="bg-black/90 backdrop-blur-[1px]"
           className="data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100 duration-150"
           showCloseButton={false}
+          onClick={() => handleDialogOpenChange(false)}
         >
           <DialogTitle className="sr-only">
             {alt} — {lbIsVideo ? 'video' : 'imagen'} ampliada {n > 1 ? `(${lbIdx + 1} de ${n})` : ''}
@@ -243,7 +266,10 @@ export function PostImageWithLightbox({
             variant="ghost"
             size="icon"
             className="absolute right-2 top-2 z-[60] h-12 w-12 rounded-full border border-white/30 bg-black/50 text-white hover:bg-black/70 sm:right-4 sm:top-4"
-            onClick={() => handleDialogOpenChange(false)}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDialogOpenChange(false)
+            }}
             aria-label="Cerrar"
           >
             <span className="text-2xl leading-none" aria-hidden>
@@ -258,7 +284,10 @@ export function PostImageWithLightbox({
                 variant="ghost"
                 size="icon"
                 className="absolute left-1 top-1/2 z-[60] h-12 w-12 -translate-y-1/2 rounded-full border border-white/25 bg-black/45 text-white hover:bg-black/65 sm:left-3"
-                onClick={() => goLightbox(-1)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goLightbox(-1)
+                }}
                 aria-label="Anterior"
               >
                 <ChevronLeft className="h-7 w-7" />
@@ -268,7 +297,10 @@ export function PostImageWithLightbox({
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 z-[60] h-12 w-12 -translate-y-1/2 rounded-full border border-white/25 bg-black/45 text-white hover:bg-black/65 sm:right-3"
-                onClick={() => goLightbox(1)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  goLightbox(1)
+                }}
                 aria-label="Siguiente"
               >
                 <ChevronRight className="h-7 w-7" />
@@ -290,10 +322,12 @@ export function PostImageWithLightbox({
                 ) : null}
                 {lbIsVideo ? (
                   <video
+                    ref={lightboxVideoRef}
                     key={lbSrc}
                     src={lbSrc}
                     controls
                     playsInline
+                    autoPlay
                     className={cn(
                       'relative z-[1] mx-auto h-auto max-h-[calc(100dvh-5.5rem)] w-auto max-w-[min(100vw-1.5rem,calc(100dvh-5.5rem))] object-contain transition-opacity duration-200',
                       lightboxLoaded ? 'opacity-100' : 'opacity-0'
