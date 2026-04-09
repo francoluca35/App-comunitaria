@@ -1,6 +1,15 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+  ReactNode,
+} from 'react'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -113,6 +122,44 @@ function dedupePostsById(posts: Post[]): Post[] {
   return out
 }
 
+const POSTS_FEED_PAGE_SIZE = 20
+
+const POSTS_SELECT =
+  'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
+
+type SupabasePostRow = {
+  id: string
+  title: string
+  description: string
+  category: string
+  proposed_category_label: string | null
+  status: string
+  whatsapp_number: string | null
+  created_at: string
+  author_id: string
+  profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+  post_media?: { url: string; position: number; type?: string | null }[] | null
+}
+
+function mapSupabasePostRow(row: SupabasePostRow): Post {
+  const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+  const media = normalizePostMediaRows(row.post_media)
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    category: row.category,
+    proposedCategoryLabel: row.proposed_category_label ?? undefined,
+    media,
+    authorId: row.author_id,
+    authorName: profile?.name ?? row.author_id.slice(0, 8),
+    authorAvatar: profile?.avatar_url ?? undefined,
+    status: row.status as PostStatus,
+    createdAt: new Date(row.created_at),
+    whatsappNumber: row.whatsapp_number ?? undefined,
+  }
+}
+
 export interface Comment {
   id: string
   postId: string
@@ -177,6 +224,12 @@ interface AppContextType {
 
   posts: Post[]
   postsLoading: boolean
+  /** Hay más filas en el feed global (no aplica si admin/moderador cargó el listado completo). */
+  postsHasMore: boolean
+  postsLoadingMore: boolean
+  loadMorePosts: () => Promise<void>
+  /** Trae un post por id si no está en memoria (p. ej. enlace directo a /post/[id]). */
+  hydratePostFromServer: (postId: string) => Promise<boolean>
   refreshPosts: () => Promise<void>
   addPost: (
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
@@ -185,6 +238,10 @@ interface AppContextType {
   deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
 
   comments: Comment[]
+  /** Conteos por publicación (solo `post_id` en red, sin cargar el texto de cada comentario). */
+  commentCountByPostId: Record<string, number>
+  /** Carga comentarios de una publicación (p. ej. al abrir /post/[id]). */
+  loadCommentsForPost: (postId: string) => Promise<void>
   addComment: (postId: string, text: string) => Promise<{ ok: boolean; error?: string }>
 
   users: User[]
@@ -489,6 +546,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true)
   const [posts, setPosts] = useState<Post[]>([])
   const [postsLoading, setPostsLoading] = useState(true)
+  const [postsHasMore, setPostsHasMore] = useState(false)
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false)
+  const feedNextOffsetRef = useRef(0)
+  const currentUserRef = useRef<User | null>(null)
+  const postsRef = useRef<Post[]>([])
+  const postsHasMoreRef = useRef(false)
+  const loadMoreInFlightRef = useRef(false)
+
+  useEffect(() => {
+    currentUserRef.current = currentUser
+  }, [currentUser])
+
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
+
+  useEffect(() => {
+    postsHasMoreRef.current = postsHasMore
+  }, [postsHasMore])
   const [postCategories, setPostCategories] = useState<NamedCategoryRow[]>(DEFAULT_POST_CATEGORIES)
   const [publicidadCategories, setPublicidadCategories] =
     useState<NamedCategoryRow[]>(DEFAULT_PUBLICIDAD_CATEGORIES)
@@ -522,6 +598,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void refreshPublicidadCategories()
   }, [refreshPostCategories, refreshPublicidadCategories])
   const [comments, setComments] = useState<Comment[]>([])
+  const [commentCountByPostId, setCommentCountByPostId] = useState<Record<string, number>>({})
+  const fetchedCommentCountIdsRef = useRef<Set<string>>(new Set())
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
@@ -613,63 +691,131 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [supabase])
 
-  useEffect(() => {
-    let cancelled = false
-    const loadPosts = async () => {
+  const fetchPostsIntoState = useCallback(
+    async (showLoading: boolean, isCancelled?: () => boolean) => {
+      const bail = () => isCancelled?.() ?? false
+      if (showLoading) setPostsLoading(true)
+      feedNextOffsetRef.current = 0
       try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select(
-            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
-          )
-          .order('created_at', { ascending: false })
-        if (cancelled) return
-        if (error) {
-          setPosts(MOCK_POSTS)
-          setPostsLoading(false)
+        const u = currentUserRef.current
+        if (u?.isAdmin || u?.isModerator) {
+          const { data, error } = await supabase
+            .from('posts')
+            .select(POSTS_SELECT)
+            .order('created_at', { ascending: false })
+          if (bail()) return
+          if (error) {
+            if (showLoading) {
+              setPosts(MOCK_POSTS)
+              setPostsHasMore(false)
+            }
+            return
+          }
+          const mapped = (data ?? []).map((row) => mapSupabasePostRow(row as SupabasePostRow))
+          if (bail()) return
+          setPosts(dedupePostsById(mapped))
+          feedNextOffsetRef.current = mapped.length
+          setPostsHasMore(false)
           return
         }
-        const mapped: Post[] = (data ?? []).map((row: unknown) => {
-          const r = row as {
-            id: string
-            title: string
-            description: string
-            category: string
-            proposed_category_label: string | null
-            status: string
-            whatsapp_number: string | null
-            created_at: string
-            author_id: string
-            profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-            post_media?: { url: string; position: number; type?: string | null }[] | null
+
+        const { data, error } = await supabase
+          .from('posts')
+          .select(POSTS_SELECT)
+          .order('created_at', { ascending: false })
+          .range(0, POSTS_FEED_PAGE_SIZE - 1)
+
+        if (bail()) return
+        if (error) {
+          if (showLoading) {
+            setPosts(MOCK_POSTS)
+            setPostsHasMore(false)
           }
-          const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-          const media = normalizePostMediaRows(r.post_media)
-          return {
-            id: r.id,
-            title: r.title,
-            description: r.description,
-            category: r.category,
-            proposedCategoryLabel: r.proposed_category_label ?? undefined,
-            media,
-            authorId: r.author_id,
-            authorName: profile?.name ?? r.author_id.slice(0, 8),
-            authorAvatar: profile?.avatar_url ?? undefined,
-            status: r.status as PostStatus,
-            createdAt: new Date(r.created_at),
-            whatsappNumber: r.whatsapp_number ?? undefined,
+          return
+        }
+
+        let list = (data ?? []).map((row) => mapSupabasePostRow(row as SupabasePostRow))
+        feedNextOffsetRef.current = list.length
+        setPostsHasMore(list.length === POSTS_FEED_PAGE_SIZE)
+
+        if (u?.id) {
+          const { data: mine, error: mineErr } = await supabase
+            .from('posts')
+            .select(POSTS_SELECT)
+            .eq('author_id', u.id)
+            .order('created_at', { ascending: false })
+          if (bail()) return
+          if (!mineErr && mine?.length) {
+            const mineMapped = mine.map((row) => mapSupabasePostRow(row as SupabasePostRow))
+            list = dedupePostsById([...mineMapped, ...list])
           }
-        })
-        setPosts(dedupePostsById(mapped))
+        }
+
+        if (bail()) return
+        setPosts(list)
       } catch {
-        if (!cancelled) setPosts(MOCK_POSTS)
+        if (showLoading) {
+          setPosts(MOCK_POSTS)
+          setPostsHasMore(false)
+        }
       } finally {
-        if (!cancelled) setPostsLoading(false)
+        if (showLoading && !bail()) setPostsLoading(false)
       }
+    },
+    [supabase]
+  )
+
+  const loadMorePosts = useCallback(async () => {
+    const u = currentUserRef.current
+    if (u?.isAdmin || u?.isModerator) return
+    if (loadMoreInFlightRef.current || !postsHasMoreRef.current) return
+    loadMoreInFlightRef.current = true
+    setPostsLoadingMore(true)
+    try {
+      const from = feedNextOffsetRef.current
+      const to = from + POSTS_FEED_PAGE_SIZE - 1
+      const { data, error } = await supabase
+        .from('posts')
+        .select(POSTS_SELECT)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (error) return
+      const mapped = (data ?? []).map((row) => mapSupabasePostRow(row as SupabasePostRow))
+      feedNextOffsetRef.current = from + mapped.length
+      setPostsHasMore(mapped.length === POSTS_FEED_PAGE_SIZE)
+      setPosts((prev) => dedupePostsById([...prev, ...mapped]))
+    } finally {
+      loadMoreInFlightRef.current = false
+      setPostsLoadingMore(false)
     }
-    loadPosts()
-    return () => { cancelled = true }
   }, [supabase])
+
+  const hydratePostFromServer = useCallback(
+    async (postId: string) => {
+      if (postsRef.current.some((p) => p.id === postId)) return true
+      const { data, error } = await supabase.from('posts').select(POSTS_SELECT).eq('id', postId).maybeSingle()
+      if (error || !data) return false
+      const mapped = mapSupabasePostRow(data as SupabasePostRow)
+      setPosts((prev) => (prev.some((p) => p.id === mapped.id) ? prev : dedupePostsById([...prev, mapped])))
+      return true
+    },
+    [supabase]
+  )
+
+  useEffect(() => {
+    if (authLoading) return
+    let cancelled = false
+    void fetchPostsIntoState(true, () => cancelled)
+    return () => {
+      cancelled = true
+    }
+  }, [
+    authLoading,
+    fetchPostsIntoState,
+    currentUser?.id,
+    currentUser?.isAdmin,
+    currentUser?.isModerator,
+  ])
 
   // Realtime: lista de posts en vivo para admin/moderador (sin refrescar)
   useEffect(() => {
@@ -680,42 +826,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const row = payload.new as { id: string }
         supabase
           .from('posts')
-          .select(
-            'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
-          )
+          .select(POSTS_SELECT)
           .eq('id', row.id)
           .single()
           .then(({ data, error }) => {
             if (error || !data) return
-            const r = data as {
-              id: string
-              title: string
-              description: string
-              category: string
-              proposed_category_label: string | null
-              status: string
-              whatsapp_number: string | null
-              created_at: string
-              author_id: string
-              profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-              post_media?: { url: string; position: number; type?: string | null }[] | null
-            }
-            const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-            const media = normalizePostMediaRows(r.post_media)
-            const newPost: Post = {
-              id: r.id,
-              title: r.title,
-              description: r.description,
-              category: r.category,
-              proposedCategoryLabel: r.proposed_category_label ?? undefined,
-              media,
-              authorId: r.author_id,
-              authorName: profile?.name ?? r.author_id.slice(0, 8),
-              authorAvatar: profile?.avatar_url ?? undefined,
-              status: r.status as PostStatus,
-              createdAt: new Date(r.created_at),
-              whatsappNumber: r.whatsapp_number ?? undefined,
-            }
+            const newPost = mapSupabasePostRow(data as SupabasePostRow)
             setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
           })
       })
@@ -751,91 +867,111 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser?.isAdmin, currentUser?.isModerator, supabase])
 
-  const loadComments = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('comments')
-        .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
-        .order('created_at', { ascending: true })
-      if (error) {
-        console.warn('loadComments:', error.message)
-        return
+  const refreshCommentCountsForPostIds = useCallback(
+    async (postIds: string[]) => {
+      const unique = [...new Set(postIds)].filter(Boolean)
+      if (unique.length === 0) return
+      const CHUNK = 100
+      try {
+        const merged: Record<string, number> = {}
+        for (let i = 0; i < unique.length; i += CHUNK) {
+          const chunk = unique.slice(i, i + CHUNK)
+          const { data, error } = await supabase.from('comments').select('post_id').in('post_id', chunk)
+          if (error) {
+            console.warn('refreshCommentCountsForPostIds:', error.message)
+            continue
+          }
+          for (const row of data ?? []) {
+            const pid = String((row as { post_id: string }).post_id)
+            merged[pid] = (merged[pid] ?? 0) + 1
+          }
+        }
+        setCommentCountByPostId((prev) => {
+          const next = { ...prev }
+          for (const id of unique) {
+            next[id] = merged[id] ?? 0
+          }
+          return next
+        })
+      } catch (e) {
+        console.warn('refreshCommentCountsForPostIds', e)
       }
-      const mapped: Comment[] = (data ?? []).map((row: unknown) => {
-        const r = row as {
-          id: string
-          post_id: string
-          author_id: string
-          text: string
-          created_at: string
-          profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-        }
-        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        return {
-          id: String(r.id),
-          postId: String(r.post_id),
-          authorId: String(r.author_id),
-          authorName: profile?.name?.trim() || 'Usuario',
-          authorAvatar: profile?.avatar_url ?? undefined,
-          text: r.text,
-          createdAt: new Date(r.created_at),
-        }
-      })
-      setComments(mapped)
-    } catch (e) {
-      console.warn('loadComments', e)
-    }
-  }, [supabase])
+    },
+    [supabase]
+  )
+
+  const postIdsKey = useMemo(
+    () => [...new Set(posts.map((p) => p.id))].sort().join(','),
+    [posts]
+  )
 
   useEffect(() => {
-    void loadComments()
-  }, [loadComments])
+    const ids = postIdsKey ? postIdsKey.split(',').filter(Boolean) : []
+    const allow = new Set(ids)
+
+    for (const id of [...fetchedCommentCountIdsRef.current]) {
+      if (!allow.has(id)) fetchedCommentCountIdsRef.current.delete(id)
+    }
+
+    setCommentCountByPostId((prev) => {
+      const next: Record<string, number> = {}
+      for (const id of ids) {
+        if (Object.prototype.hasOwnProperty.call(prev, id)) next[id] = prev[id]!
+      }
+      return next
+    })
+
+    const newIds = ids.filter((id) => !fetchedCommentCountIdsRef.current.has(id))
+    for (const id of newIds) fetchedCommentCountIdsRef.current.add(id)
+    if (newIds.length > 0) void refreshCommentCountsForPostIds(newIds)
+  }, [postIdsKey, refreshCommentCountsForPostIds])
+
+  const loadCommentsForPost = useCallback(
+    async (postId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('comments')
+          .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
+          .eq('post_id', postId)
+          .order('created_at', { ascending: true })
+        if (error) {
+          console.warn('loadCommentsForPost:', error.message)
+          return
+        }
+        const mapped: Comment[] = (data ?? []).map((row: unknown) => {
+          const r = row as {
+            id: string
+            post_id: string
+            author_id: string
+            text: string
+            created_at: string
+            profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
+          }
+          const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
+          return {
+            id: String(r.id),
+            postId: String(r.post_id),
+            authorId: String(r.author_id),
+            authorName: profile?.name?.trim() || 'Usuario',
+            authorAvatar: profile?.avatar_url ?? undefined,
+            text: r.text,
+            createdAt: new Date(r.created_at),
+          }
+        })
+        setComments((prev) => {
+          const rest = prev.filter((c) => c.postId !== postId)
+          return [...rest, ...mapped].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+        })
+        setCommentCountByPostId((prev) => ({ ...prev, [postId]: mapped.length }))
+      } catch (e) {
+        console.warn('loadCommentsForPost', e)
+      }
+    },
+    [supabase]
+  )
 
   const refreshPosts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select(
-          'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
-        )
-        .order('created_at', { ascending: false })
-      if (error) return
-      const mapped: Post[] = (data ?? []).map((row: unknown) => {
-        const r = row as {
-          id: string
-          title: string
-          description: string
-          category: string
-          proposed_category_label: string | null
-          status: string
-          whatsapp_number: string | null
-          created_at: string
-          author_id: string
-          profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
-          post_media?: { url: string; position: number; type?: string | null }[] | null
-        }
-        const profile = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles
-        const media = normalizePostMediaRows(r.post_media)
-        return {
-          id: r.id,
-          title: r.title,
-          description: r.description,
-          category: r.category,
-          proposedCategoryLabel: r.proposed_category_label ?? undefined,
-          media,
-          authorId: r.author_id,
-          authorName: profile?.name ?? r.author_id.slice(0, 8),
-          authorAvatar: profile?.avatar_url ?? undefined,
-          status: r.status as PostStatus,
-          createdAt: new Date(r.created_at),
-          whatsappNumber: r.whatsapp_number ?? undefined,
-        }
-      })
-      setPosts(dedupePostsById(mapped))
-    } catch {
-      // ignore
-    }
-    await loadComments()
+    await fetchPostsIntoState(false)
   }
 
   useEffect(() => {
@@ -1265,6 +1401,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (error) return { ok: false, error: error.message }
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     setComments((prev) => prev.filter((c) => c.postId !== postId))
+    fetchedCommentCountIdsRef.current.delete(postId)
+    setCommentCountByPostId((prev) => {
+      const next = { ...prev }
+      delete next[postId]
+      return next
+    })
     return { ok: true }
   }
 
@@ -1314,6 +1456,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setComments((prev) =>
       [...prev, newComment].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
     )
+    setCommentCountByPostId((prev) => ({
+      ...prev,
+      [postId]: (prev[postId] ?? 0) + 1,
+    }))
     return { ok: true }
   }
 
@@ -1346,11 +1492,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNotificationPreference,
     posts,
     postsLoading,
+    postsHasMore,
+    postsLoadingMore,
+    loadMorePosts,
+    hydratePostFromServer,
     refreshPosts,
     addPost,
     updatePostStatus,
     deletePost,
     comments,
+    commentCountByPostId,
+    loadCommentsForPost,
     addComment,
     users,
     toggleBlockUser,

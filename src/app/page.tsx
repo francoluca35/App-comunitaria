@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, useMemo } from 'react'
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useApp, type Category, type Post } from './providers'
 import {
@@ -271,7 +271,6 @@ export default function HomePage() {
 function HomePageContent() {
   const {
     posts,
-    comments,
     currentUser,
     refreshUser,
     authLoading,
@@ -279,6 +278,11 @@ function HomePageContent() {
     publicidadCategories,
     refreshPublicidadCategories,
     config,
+    postsLoading,
+    postsHasMore,
+    postsLoadingMore,
+    loadMorePosts,
+    commentCountByPostId,
   } = useApp()
   const { query: searchQuery } = useFeedSearch()
   const approvedPosts = posts.filter((p) => p.status === 'approved')
@@ -415,6 +419,27 @@ function HomePageContent() {
     }
     return interleavePostsWithPublicidades(postsForFeed, filteredPublicidades)
   }, [feedFilter, postsForFeed, filteredPublicidades])
+
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null)
+  const onLoadMore = useCallback(() => {
+    void loadMorePosts()
+  }, [loadMorePosts])
+
+  useEffect(() => {
+    if (feedFilter === FEED_FILTER_SOLO_PUBLICIDADES) return
+    if (!postsHasMore || postsLoadingMore) return
+    const el = loadMoreSentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const hit = entries.some((e) => e.isIntersecting)
+        if (hit) onLoadMore()
+      },
+      { root: null, rootMargin: '280px', threshold: 0 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [feedFilter, postsHasMore, postsLoadingMore, onLoadMore, combinedFeed.length])
 
   return (
     <>
@@ -654,7 +679,7 @@ function HomePageContent() {
             ) : null}
           </div>
 
-          {feedPubLoading && combinedFeed.length === 0 && !hasSearch ? (
+          {(feedPubLoading || postsLoading) && combinedFeed.length === 0 && !hasSearch ? (
             <FeedListSkeleton />
           ) : combinedFeed.length === 0 ? (
             <div className="rounded-[1.25rem] border border-[#D8D2CC] bg-white p-8 text-center shadow-sm">
@@ -682,9 +707,13 @@ function HomePageContent() {
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
-                  const postCommentCount = comments.filter((c) => c.postId === post.id).length
                   const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
                   const isMine = currentUser?.id === post.authorId
+                  const feedCommentCount =
+                    config.commentsEnabled &&
+                    Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
+                      ? commentCountByPostId[post.id]
+                      : undefined
                   return (
                     <li key={`post-${post.id}`} className="relative">
                       {isMine ? (
@@ -736,7 +765,7 @@ function HomePageContent() {
                             postId={post.id}
                             whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
                             showComments={config.commentsEnabled}
-                            commentCount={config.commentsEnabled ? postCommentCount : undefined}
+                            commentCount={feedCommentCount}
                           />
                         </div>
                       </div>
@@ -759,6 +788,14 @@ function HomePageContent() {
                   </li>
                 )
               })}
+              {feedFilter !== FEED_FILTER_SOLO_PUBLICIDADES && postsHasMore ? (
+                <li className="flex flex-col items-center gap-2 py-4" aria-live="polite">
+                  <div ref={loadMoreSentinelRef} className="h-1 w-full shrink-0" />
+                  {postsLoadingMore ? (
+                    <span className="text-xs font-medium text-[#7A5C52]">Cargando más publicaciones…</span>
+                  ) : null}
+                </li>
+              ) : null}
             </ul>
           )}
         </section>
