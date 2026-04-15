@@ -307,7 +307,7 @@ export function NotificationBell({
           {unreadCount > 0 && (
             <span
               className={cn(
-                'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white',
+                'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#8B0015] text-[10px] font-bold text-white',
                 badgeClassName
               )}
             >
@@ -358,7 +358,7 @@ export function NotificationBell({
                       <div
                         className={cn(
                           'w-full flex gap-3 px-4 py-3 text-left border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-indigo-50/50 dark:bg-indigo-900/10'
+                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20'
                         )}
                       >
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-gray-700 text-slate-600 dark:text-gray-300">
@@ -390,7 +390,7 @@ export function NotificationBell({
                             )}
                             <Button
                               size="sm"
-                              className="text-xs h-7 bg-indigo-600 hover:bg-indigo-700"
+                              className="text-xs h-7 bg-[#8B0015] hover:bg-[#5A000E]"
                               disabled={sendingWelcomeId === n.id}
                               onClick={() => sendWelcomeMessage(n)}
                             >
@@ -412,7 +412,7 @@ export function NotificationBell({
                         onClick={() => handleNotificationClick(n)}
                         className={cn(
                           'w-full flex gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-indigo-50/50 dark:bg-indigo-900/10',
+                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
                           n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 pl-3'
                         )}
                       >

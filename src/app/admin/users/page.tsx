@@ -175,7 +175,7 @@ export default function AdminUsersPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-slate-900 dark:text-white">{profile.name ?? profile.email}</span>
                         {profile.role === 'admin' && (
-                          <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
+                          <Badge variant="secondary" className="bg-[#8B0015]/10 dark:bg-[#8B0015]/25 text-[#8B0015] dark:text-[#F3C9D0]">
                             <Shield className="w-3 h-3 mr-1" />
                             Admin
                           </Badge>
@@ -211,7 +211,7 @@ export default function AdminUsersPage() {
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 flex-wrap">
                     <span>{selected.name ?? selected.email}</span>
-                    {selected.role === 'admin' && <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Admin</Badge>}
+                    {selected.role === 'admin' && <Badge className="bg-[#8B0015]/10 text-[#8B0015] dark:bg-[#8B0015]/25 dark:text-[#F3C9D0]">Admin</Badge>}
                     {selected.role === 'moderator' && <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">Moderador</Badge>}
                     {selected.status === 'blocked' && <Badge variant="destructive">Bloqueado</Badge>}
                     {isSuspended(selected) && <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30">Suspendido</Badge>}

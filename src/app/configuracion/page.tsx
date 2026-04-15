@@ -69,7 +69,7 @@ export default function ConfiguracionPage() {
                 ).map(({ value, label }) => (
                   <label
                     key={value}
-                    className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-gray-700 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50 dark:has-[:checked]:bg-indigo-900/20"
+                    className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-gray-700 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800/50 has-[:checked]:border-[#8B0015] has-[:checked]:bg-[#8B0015]/10 dark:has-[:checked]:bg-[#8B0015]/20"
                   >
                     <input
                       type="radio"
@@ -90,7 +90,7 @@ export default function ConfiguracionPage() {
                           })
                         } else toast.error(result.error ?? 'Error al guardar')
                       }}
-                      className="rounded-full border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded-full border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
                     />
                     <span className="text-sm font-medium text-slate-900 dark:text-white">{label}</span>
                   </label>

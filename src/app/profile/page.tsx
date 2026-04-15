@@ -224,7 +224,7 @@ export default function ProfilePage() {
                 tabIndex={0}
                 onClick={handleAvatarClick}
                 onKeyDown={(e) => e.key === 'Enter' && handleAvatarClick()}
-                className="w-24 h-24 rounded-full overflow-hidden flex-shrink-0 cursor-pointer ring-2 ring-slate-200 dark:ring-gray-700 hover:ring-indigo-400 dark:hover:ring-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-60 mb-4"
+                className="w-24 h-24 rounded-full overflow-hidden flex-shrink-0 cursor-pointer ring-2 ring-slate-200 dark:ring-gray-700 hover:ring-[#8B0015] dark:hover:ring-[#8B0015] focus:outline-none focus:ring-2 focus:ring-[#8B0015] focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-60 mb-4"
                 aria-label="Ver o cambiar foto de perfil"
               >
                 <Avatar className="w-full h-full rounded-none">
@@ -239,7 +239,7 @@ export default function ProfilePage() {
               <h2 className="text-2xl mb-1">{currentUser.name}</h2>
 
               {currentUser.isAdmin && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-sm mb-3">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#8B0015]/10 dark:bg-[#8B0015]/25 text-[#8B0015] dark:text-[#F3C9D0] rounded-full text-sm mb-3">
                   <Shield className="w-3.5 h-3.5" />
                   Administrador
                 </div>
@@ -322,7 +322,7 @@ export default function ProfilePage() {
         </Card>
 
         {currentUser.isAdmin && (
-          <Card className="border-blue-200 dark:border-blue-800">
+          <Card className="border-[#8B0015]/25 dark:border-[#8B0015]/50">
             <CardContent className="p-4">
               <Button variant="outline" className="w-full" onClick={() => router.push('/admin')}>
                 <Shield className="w-4 h-4 mr-2" />

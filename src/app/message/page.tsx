@@ -248,12 +248,12 @@ export default function MessagePage() {
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                         isMine
-                          ? 'bg-indigo-500 text-white rounded-br-md'
+                          ? 'bg-[#8B0015] text-white rounded-br-md'
                           : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600 rounded-bl-md'
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                      <p className={`text-xs mt-1 ${isMine ? 'text-indigo-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                      <p className={`text-xs mt-1 ${isMine ? 'text-[#F3C9D0]' : 'text-slate-500 dark:text-slate-400'}`}>
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
                       </p>
                     </div>

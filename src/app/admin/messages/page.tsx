@@ -110,7 +110,7 @@ export default function AdminMessagesPage() {
                       {profile.phone && <p className="text-xs text-slate-500 dark:text-slate-400">Tel: {profile.phone}</p>}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                      <Button size="sm" variant="outline" asChild className="text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20">
+                      <Button size="sm" variant="outline" asChild className="text-[#8B0015] dark:text-[#F3C9D0] border-[#8B0015]/30 dark:border-[#8B0015]/60 hover:bg-[#8B0015]/10 dark:hover:bg-[#8B0015]/20">
                         <Link href={`/admin/messages/chat/${profile.id}`}>
                           <MessageSquare className="w-4 h-4 mr-2" />
                           Por la app

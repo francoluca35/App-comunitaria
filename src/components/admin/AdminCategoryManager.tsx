@@ -180,7 +180,7 @@ export function AdminCategoryManager({
 
       {loading ? (
         <div className="flex justify-center py-6">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#8B0015]" />
         </div>
       ) : (
         <ul className="space-y-2">
@@ -259,7 +259,7 @@ export function AdminCategoryManager({
         </ul>
       )}
 
-      <div className="rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 p-4 space-y-3 bg-indigo-50/50 dark:bg-indigo-950/20">
+      <div className="rounded-lg border border-dashed border-[#8B0015]/35 dark:border-[#8B0015]/60 p-4 space-y-3 bg-[#8B0015]/10 dark:bg-[#8B0015]/20">
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Nueva categoría</p>
         <p className="text-xs text-slate-600 dark:text-slate-400">
           {categoryKind === 'publicidad' ? (

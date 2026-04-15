@@ -108,16 +108,15 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     ? `Vecino/a • ${currentUser.locality}`
     : 'Tu espacio en la comunidad'
 
-  const navInactive = 'text-[#2B2B2B] hover:bg-[#F4EFEA]'
+  const navInactive =
+    'text-[#2B2B2B] hover:bg-[#F4EFEA] dark:text-[#e4e6eb] dark:hover:bg-[#3a3b3c]'
   const navActive = 'text-white shadow-md'
-  const iconMuted = 'text-[#7A5C52]'
+  const iconMuted = 'text-[#7A5C52] dark:text-[#b0b3b8]'
   const iconActive = 'text-white'
 
   return (
-    <aside
-      className="flex h-full min-h-screen w-64 shrink-0 flex-col border-r border-[#D8D2CC] bg-white"
-    >
-      <div className="border-b border-[#D8D2CC] bg-[#F4EFEA] p-4">
+    <aside className="flex h-full min-h-screen w-64 shrink-0 flex-col bg-white dark:bg-[#18191a]">
+      <div className="bg-[#F4EFEA] px-4 pb-4 pt-4 dark:bg-[#242526]">
         {currentUser ? (
           <div className="flex flex-col items-center text-center">
             <Avatar className="mb-3 h-[4.5rem] w-[4.5rem] border-4 border-white shadow-md">
@@ -131,12 +130,14 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {currentUser.name?.[0]?.toUpperCase() ?? '?'}
               </AvatarFallback>
             </Avatar>
-            <p className="w-full truncate font-bold text-[#2B2B2B] font-montserrat-only">{currentUser.name}</p>
-            <p className="mt-0.5 text-xs text-[#7A5C52]">{subline}</p>
+            <p className="w-full truncate font-bold text-[#2B2B2B] font-montserrat-only dark:text-[#e4e6eb]">
+              {currentUser.name}
+            </p>
+            <p className="mt-0.5 text-xs text-[#7A5C52] dark:text-[#b0b3b8]">{subline}</p>
             <Link
               href="/profile"
               onClick={onNavigate}
-              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#8B0015] hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#8B0015] hover:underline dark:text-[#8B0015]"
             >
               Ver perfil
               <ChevronRight className="h-4 w-4" />
@@ -152,7 +153,9 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             >
               <Users2 className="h-8 w-8" />
             </div>
-            <p className="text-sm font-semibold text-[#2B2B2B] font-montserrat-only">CST Comunidad</p>
+            <p className="text-sm font-semibold text-[#2B2B2B] font-montserrat-only dark:text-[#e4e6eb]">
+              CST Comunidad
+            </p>
             <Link
               href="/login"
               onClick={onNavigate}
@@ -165,11 +168,11 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto bg-white/90 px-0 py-2 dark:bg-[#18191a]">
         <Link
           href="/"
           onClick={onNavigate}
-          className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+          className={`mx-0 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-semibold transition-colors ${
             pathname === '/' ? navActive : navInactive
           }`}
           style={pathname === '/' ? { backgroundColor: CST.bordo } : undefined}
@@ -181,7 +184,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/mis-publicaciones"
           onClick={onNavigate}
-          className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+          className={`mx-0 flex items-center justify-between gap-2 rounded-none px-4 py-2.5 text-sm font-semibold transition-colors ${
             isActivePath('/mis-publicaciones')
               ? `${navActive}`
               : navInactive
@@ -209,7 +212,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/mis-publicidades"
           onClick={onNavigate}
-          className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+          className={`mx-0 flex items-center justify-between gap-2 rounded-none px-4 py-2.5 text-sm font-semibold transition-colors ${
             isActivePath('/mis-publicidades')
               ? `${navActive}`
               : navInactive
@@ -235,7 +238,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
 
         <div className="pt-4 pb-2">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest text-[#7A5C52] font-montserrat-only">
+          <p className="px-4 text-[10px] font-bold uppercase tracking-widest text-[#7A5C52] font-montserrat-only">
             Categorías
           </p>
         </div>
@@ -250,7 +253,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={slug}
               href={href}
               onClick={onNavigate}
-              className={`flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition-colors ${
+              className={`mx-0 flex items-center justify-between gap-2 rounded-none px-4 py-2 text-sm font-medium transition-colors ${
                 active ? navActive : navInactive
               }`}
               style={active ? { backgroundColor: CST.bordo } : undefined}
@@ -280,7 +283,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/cartelera"
           onClick={onNavigate}
-          className={`mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-[#634942] active:scale-[0.98] ring-offset-[#F4EFEA] ${
+          className={`mt-3 mx-2 flex w-auto items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-[#634942] active:scale-[0.98] ring-offset-[#F4EFEA] dark:ring-offset-[#18191a] ${
             isActivePath('/cartelera')
               ? 'ring-2 ring-[#5A000E] ring-offset-2'
               : ''
@@ -294,12 +297,12 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           Publicidades
         </Link>
 
-        <div className="mt-4 border-t border-[#D8D2CC] pt-4">
+        <div className="mt-4 pt-4">
           {currentUser && !currentUser.isAdmin && (
             <Link
               href="/message"
               onClick={onNavigate}
-              className={`mb-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`mx-0 mb-1 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
                 isActivePath('/message')
                   ? `${navActive}`
                   : navInactive
@@ -315,7 +318,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/configuracion"
             onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`mx-0 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
               isActivePath('/configuracion')
                 ? `${navActive}`
                 : navInactive
@@ -333,7 +336,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           <Link
             href="/admin"
             onClick={onNavigate}
-            className={`mt-1 flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`mx-0 mt-1 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
               isActivePath('/admin') ? `${navActive}` : navInactive
             }`}
             style={isActivePath('/admin') ? { backgroundColor: CST.bordo } : undefined}
@@ -347,7 +350,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {currentUser && (
-        <div className="border-t border-[#D8D2CC] p-3">
+        <div className="px-2 py-3">
           <button
             type="button"
             onClick={async () => {
@@ -355,7 +358,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               onNavigate?.()
               router.push('/login')
             }}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50"
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-[#3a3b3c]"
           >
             <LogOut className="h-5 w-5 shrink-0" />
             Cerrar sesión

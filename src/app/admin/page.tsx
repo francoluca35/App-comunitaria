@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="w-full py-4 px-5 rounded-xl bg-indigo-600 text-white text-lg font-medium"
+              className="w-full py-4 px-5 rounded-xl bg-[#8B0015] text-white text-lg font-medium"
             >
               Volver al inicio
             </button>
@@ -118,8 +118,8 @@ export default function AdminDashboardPage() {
               href="/admin/users"
               className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
             >
-              <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
-                <Users className="w-6 h-6 text-blue-700 dark:text-blue-400" />
+              <div className="w-12 h-12 rounded-xl bg-[#8B0015]/10 dark:bg-[#8B0015]/25 flex items-center justify-center shrink-0">
+                <Users className="w-6 h-6 text-[#8B0015] dark:text-[#F3C9D0]" />
               </div>
               <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Usuarios</span>
               <span className="text-xs text-slate-500 dark:text-slate-400">{blockedUsers.length} bloq.</span>

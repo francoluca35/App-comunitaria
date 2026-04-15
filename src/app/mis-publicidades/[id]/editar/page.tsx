@@ -505,7 +505,7 @@ export default function EditarPublicidadPage() {
                     </div>
                   )}
 
-                  <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
+                  <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-[#8B0015] dark:hover:border-[#8B0015] transition-colors">
                     <input
                       type="file"
                       accept="image/*"
