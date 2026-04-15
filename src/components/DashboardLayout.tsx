@@ -266,9 +266,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <div
-          className={`fixed bottom-0 left-0 top-0 z-40 flex h-[100dvh] w-64 max-h-[100dvh] flex-col overflow-hidden lg:top-16 lg:z-20 lg:h-auto lg:max-h-none lg:flex-none ${
-            sidebarOpen ? 'block' : 'hidden'
-          } lg:block`}
+          className={`fixed bottom-0 left-0 top-0 z-40 flex w-64 flex-col overflow-hidden overscroll-contain lg:top-16 lg:z-20 lg:bottom-0 lg:h-auto ${
+            sidebarOpen ? 'flex' : 'hidden'
+          } lg:flex`}
         >
           <DashboardSidebar onNavigate={() => setSidebarOpen(false)} />
         </div>

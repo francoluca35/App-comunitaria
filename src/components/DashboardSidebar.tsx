@@ -114,9 +114,15 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const iconMuted = 'text-[#7A5C52] dark:text-[#b0b3b8]'
   const iconActive = 'text-white'
 
+  const handleLogout = async () => {
+    await logout()
+    onNavigate?.()
+    router.push('/login')
+  }
+
   return (
-    <aside className="flex h-full min-h-screen w-64 shrink-0 flex-col bg-white dark:bg-[#18191a]">
-      <div className="bg-[#F4EFEA] px-4 pb-4 pt-4 dark:bg-[#242526]">
+    <aside className="flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col overflow-hidden bg-white dark:bg-[#18191a]">
+      <div className="shrink-0 bg-[#F4EFEA] px-4 pb-4 pt-4 dark:bg-[#242526]">
         {currentUser ? (
           <div className="flex flex-col items-center text-center">
             <Avatar className="mb-3 h-[4.5rem] w-[4.5rem] border-4 border-white shadow-md">
@@ -168,7 +174,10 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto bg-white/90 px-0 py-2 dark:bg-[#18191a]">
+      <nav
+        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-y-contain bg-white/90 px-0 py-2 dark:bg-[#18191a]"
+        aria-label="Navegación principal"
+      >
         <Link
           href="/"
           onClick={onNavigate}
@@ -330,9 +339,7 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             />
             Configuración
           </Link>
-        </div>
-
-        {currentUser?.isAdmin && (
+          {currentUser?.isAdmin && (
           <Link
             href="/admin"
             onClick={onNavigate}
@@ -347,24 +354,20 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             Acceso admin
           </Link>
         )}
-      </nav>
-
-      {currentUser && (
-        <div className="px-2 py-3">
-          <button
-            type="button"
-            onClick={async () => {
-              await logout()
-              onNavigate?.()
-              router.push('/login')
-            }}
-            className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-[#3a3b3c]"
-          >
-            <LogOut className="h-5 w-5 shrink-0" />
-            Cerrar sesión
-          </button>
+          {currentUser && (
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="mx-0 flex w-full items-center gap-3 rounded-none px-4 py-2.5 text-left text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 dark:text-red-300 dark:hover:bg-[#3a3b3c]"
+            >
+              <LogOut className="h-5 w-5 shrink-0" />
+              Cerrar sesión
+            </button>
+          )}
         </div>
-      )}
+
+       
+      </nav>
     </aside>
   )
 }
