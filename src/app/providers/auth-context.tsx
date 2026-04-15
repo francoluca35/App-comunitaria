@@ -239,6 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !error
   }, [supabase])
 
+  const loginWithFacebook = useCallback(async (): Promise<boolean> => {
+    const { error } = await supabase.auth
+      .signInWithOAuth({
+        provider: 'facebook',
+        options: { redirectTo: `${window.location.origin}/` },
+      })
+      .catch(() => ({ error: { message: 'AbortError' } }))
+    return !error
+  }, [supabase])
+
   const logout = useCallback(async () => {
     setCurrentUser(null)
     const maxRetries = 3
@@ -362,6 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authLoading,
       login,
       loginWithGoogle,
+      loginWithFacebook,
       logout,
       register,
       refreshUser,
@@ -372,6 +383,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authLoading,
       login,
       loginWithGoogle,
+      loginWithFacebook,
       logout,
       register,
       refreshUser,

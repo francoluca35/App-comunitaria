@@ -14,7 +14,7 @@ export function BottomNav() {
   const linkClass = (active: boolean) =>
     `flex flex-col items-center gap-1 py-2.5 px-4 rounded-xl transition-all duration-200 ${
       active
-        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50'
+        ? 'text-[#8B0015] dark:text-[#8B0015] bg-[#8B0015]/10 dark:bg-[#8B0015]/20'
         : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-800/50'
     }`
 

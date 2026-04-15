@@ -105,6 +105,7 @@ export interface AuthContextType {
   authLoading: boolean
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
   loginWithGoogle: () => Promise<boolean>
+  loginWithFacebook: () => Promise<boolean>
   logout: () => void | Promise<void>
   register: (data: {
     name: string

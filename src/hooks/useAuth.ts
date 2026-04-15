@@ -15,5 +15,6 @@ export function useAuth() {
     logout: ctx.logout,
     register: ctx.register,
     loginWithGoogle: ctx.loginWithGoogle,
+    loginWithFacebook: ctx.loginWithFacebook,
   }
 }

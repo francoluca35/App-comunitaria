@@ -4,7 +4,6 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useApp, type Category, type Post } from './providers'
 import {
-  CircleHelp,
   Filter,
   LayoutGrid,
   Megaphone,
@@ -24,6 +23,8 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
+import { Textarea } from '@/app/components/ui/textarea'
+import { Card, CardContent } from '@/app/components/ui/card'
 import { Carousel, CarouselContent, CarouselItem } from '@/app/components/ui/carousel'
 import type { CarouselApi } from '@/app/components/ui/carousel'
 import { createClient } from '@/lib/supabase/client'
@@ -38,6 +39,7 @@ import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
 import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Skeleton } from '@/app/components/ui/skeleton'
+import { Send } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { matchesPostSearch, matchesPublicidadSearch, searchTokens } from '@/lib/community-search'
@@ -145,62 +147,67 @@ function CommunityHeroBanner({
     'flex w-full items-center justify-center rounded-lg bg-[#8B0015] py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#6d0010] active:scale-[0.99]'
 
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl bg-[#E0E0E0] shadow-sm ring-1 ring-black/[0.07]">
-      {/* Mobile: centrado — título, bajada, referente, CTA (diseño mockup) */}
-      <div className="px-5 pb-7 pt-7 sm:hidden">
+    <div className="mb-6 overflow-hidden rounded-2xl bg-[#1c2130] bg-[url('/Assets/fondo-inicio-m.png')] bg-contain bg-top bg-no-repeat shadow-sm ring-1 ring-black/[0.07] sm:bg-[url('/Assets/fondo-inicio.png')] sm:bg-cover sm:[background-position:center_center]">
+      {/* Mobile: composición centrada como referencia */}
+      <div className="px-4 pb-5 pt-[7.1rem] sm:hidden">
         <div className="mx-auto flex max-w-sm flex-col items-center text-center">
-          <h2 className="font-hero-display text-balance text-[1.35rem] font-bold uppercase leading-[1.15] tracking-[0.02em] text-[#8B0015]">
-            {heroTitle}
-          </h2>
-          <p className="mt-3 text-sm font-medium leading-snug text-[#1a1a1a]">{welcomeLine}</p>
-
-          <Avatar className="mt-6 h-[7.25rem] w-[7.25rem] border-4 border-[#8B0015] shadow-md">
+          <Avatar className="h-[6.4rem] w-[6.4rem] border-[3px] border-[#8B0015] shadow-md">
             <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
             <AvatarFallback
-              className="text-2xl font-bold text-white"
+              className="text-xl font-bold text-white"
               style={{ backgroundColor: CST.bordo }}
             >
               {authorInitials(heroReferentName || 'MS')}
             </AvatarFallback>
           </Avatar>
-          <p className="mt-4 text-base font-bold text-[#8B0015]">{heroReferentName}</p>
-          <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#1a1a1a]">
+          <p className="mt-2.5 text-[1.9rem] font-extrabold leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
+            {heroReferentName}
+          </p>
+          <p className="mt-1 text-[1.25rem] font-semibold uppercase leading-none tracking-[0.02em] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
             Referente oficial
           </p>
+          <p className="mt-2 text-[1.25rem] font-medium leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
+            Hola "{currentUserFirstName || 'vecino'}", bienvenido
+          </p>
 
-          <Link href="/message" className={`${ctaClass} mt-7 max-w-[17.5rem]`}>
-            {ctaMobileLabel}
+          <Link href="/message" className="mt-3.5 flex h-[46px] w-full max-w-[260px] items-center justify-center rounded-lg bg-[#8B3A3A] text-[1.05rem] font-medium text-white transition hover:bg-[#7a3232]">
+            Habla con {referentFirst}
           </Link>
         </div>
       </div>
 
-      {/* Desktop: dos columnas — contenido a la izquierda, referente a la derecha */}
-      <div className="hidden gap-10 px-8 py-8 sm:flex sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-4">
-          <p className="text-[0.7rem] font-bold uppercase tracking-[0.2em] text-[#1a1a1a]">Tu comunidad</p>
-          <h2 className="font-hero-display max-w-xl text-balance text-3xl font-bold uppercase leading-tight tracking-wide text-[#8B0015] lg:text-[2rem]">
-            {heroTitle}
-          </h2>
-          <p className="max-w-lg pt-1 text-base font-medium leading-snug text-[#1a1a1a]">{welcomeLine}</p>
-          <Link href="/message" className={`${ctaClass} mt-2 max-w-md`}>
-            Habla con {referentFirst}!
-          </Link>
-        </div>
-
-        <div className="flex w-[13.5rem] shrink-0 flex-col items-center border-l border-black/10 pl-10">
-          <Avatar className="h-32 w-32 border-4 border-[#8B0015] shadow-md">
+      {/* Desktop: avatar izquierda + texto y botón a la derecha */}
+      <div className="relative hidden min-h-[320px] items-end px-8 pb-9 pt-6 sm:flex">
+        <div className="flex items-end gap-5">
+          <Avatar className="mb-2 h-[150px] w-[150px] border-4 border-[#8B0015] shadow-lg">
             <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
             <AvatarFallback
-              className="text-3xl font-bold text-white"
+              className="text-4xl font-bold text-white"
               style={{ backgroundColor: CST.bordo }}
             >
               {authorInitials(heroReferentName || 'MS')}
             </AvatarFallback>
           </Avatar>
-          <p className="mt-5 text-center text-lg font-bold text-[#8B0015]">{heroReferentName}</p>
-          <p className="mt-1 text-center text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#1a1a1a]">
-            Referente oficial
-          </p>
+
+          <div className="h-[175px] w-[5px] rounded-full bg-[#A51414]" />
+
+          <div className="pb-1">
+            <p className="text-[42px] font-black leading-[0.98] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+              {heroReferentName}
+            </p>
+            <p className="mt-1 text-[20px] font-bold uppercase leading-none text-white">
+              Referente oficial
+            </p>
+            <p className="mt-2 text-[24px] font-medium leading-none text-white">
+              Hola {currentUserFirstName || 'vecino'}, bienvenido
+            </p>
+            <Link
+              href="/message"
+              className="mt-3 flex h-[48px] w-[300px] items-center uppercase justify-center rounded-xl bg-[#8B3A3A] text-[20px] font-medium text-white transition hover:bg-[#7a3232]"
+            >
+              Habla con {referentFirst}
+            </Link>
+          </div>
         </div>
       </div>
     </div>
@@ -371,6 +378,9 @@ function HomePageContent() {
     postsHasMore,
     postsLoadingMore,
     loadMorePosts,
+    comments,
+    addComment,
+    loadCommentsForPost,
     commentCountByPostId,
   } = useApp()
   const { query: searchQuery } = useFeedSearch()
@@ -380,6 +390,9 @@ function HomePageContent() {
   const [feedPubLoading, setFeedPubLoading] = useState(true)
   const [selectedFeedPublicidad, setSelectedFeedPublicidad] = useState<PublicidadDisplay | null>(null)
   const [feedFilter, setFeedFilter] = useState<string>(FEED_FILTER_ALL)
+  const [selectedPostModal, setSelectedPostModal] = useState<Post | null>(null)
+  const [postModalCommentText, setPostModalCommentText] = useState('')
+  const [postModalCommentsLoading, setPostModalCommentsLoading] = useState(false)
 
   useEffect(() => {
     void refreshPublicidadCategories()
@@ -530,6 +543,38 @@ function HomePageContent() {
     return () => obs.disconnect()
   }, [feedFilter, postsHasMore, postsLoadingMore, onLoadMore, combinedFeed.length])
 
+  const selectedPostComments = useMemo(() => {
+    if (!selectedPostModal) return []
+    return comments.filter((c) => c.postId === selectedPostModal.id)
+  }, [comments, selectedPostModal])
+
+  useEffect(() => {
+    if (!selectedPostModal) return
+    setPostModalCommentText('')
+    setPostModalCommentsLoading(true)
+    void loadCommentsForPost(selectedPostModal.id).finally(() => setPostModalCommentsLoading(false))
+  }, [selectedPostModal, loadCommentsForPost])
+
+  const handleSubmitModalComment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!selectedPostModal) return
+    if (!currentUser) {
+      toast.error('Debés iniciar sesión para comentar')
+      return
+    }
+    if (!postModalCommentText.trim()) {
+      toast.error('Escribí un comentario')
+      return
+    }
+    const result = await addComment(selectedPostModal.id, postModalCommentText)
+    if (!result.ok) {
+      toast.error(result.error ?? 'No se pudo publicar')
+      return
+    }
+    setPostModalCommentText('')
+    toast.success('Comentario agregado')
+  }
+
   return (
     <>
       <PublicidadModal
@@ -537,6 +582,158 @@ function HomePageContent() {
         onOpenChange={(open) => !open && setSelectedFeedPublicidad(null)}
         publicidad={selectedFeedPublicidad}
       />
+      <Dialog open={!!selectedPostModal} onOpenChange={(open) => !open && setSelectedPostModal(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-[#D8D2CC] p-0 sm:max-w-2xl">
+          {selectedPostModal ? (
+            <div className="bg-white">
+              <DialogTitle className="sr-only">
+                Publicación de {selectedPostModal.authorName}
+              </DialogTitle>
+              <div className="flex items-start gap-3 px-4 pb-2 pt-4">
+                <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
+                  <AvatarImage src={selectedPostModal.authorAvatar} alt={selectedPostModal.authorName} />
+                  <AvatarFallback
+                    className="text-xs font-bold text-white"
+                    style={{ backgroundColor: CST.acento }}
+                  >
+                    {authorInitials(selectedPostModal.authorName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <PostAuthorNameCategoryRow
+                    authorName={selectedPostModal.authorName}
+                    category={selectedPostModal.category}
+                    nameClassName="font-semibold"
+                  />
+                  <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">
+                    {formatDistanceToNow(selectedPostModal.createdAt, { addSuffix: true, locale: es })}
+                  </p>
+                </div>
+              </div>
+              <div className="px-4 pb-3 pt-0">
+                <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">
+                  {selectedPostModal.title}
+                </h3>
+                {selectedPostModal.description ? (
+                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-[#2B2B2B]">
+                    {selectedPostModal.description}
+                  </p>
+                ) : null}
+              </div>
+              {selectedPostModal.media.length > 0 ? (
+                <PostImageWithLightbox
+                  media={selectedPostModal.media}
+                  alt={selectedPostModal.title}
+                  variant="detail"
+                  priority
+                />
+              ) : null}
+              <div className="bg-white px-0 py-0">
+                <PostPublicationActions
+                  postId={selectedPostModal.id}
+                  whatsappNumber={
+                    config.whatsappEnabled ? selectedPostModal.whatsappNumber : undefined
+                  }
+                  showComments={config.commentsEnabled}
+                  onCommentsClick={() => {
+                    const commentsEl = document.getElementById('post-modal-comments')
+                    commentsEl?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                  commentCount={
+                    config.commentsEnabled
+                      ? postModalCommentsLoading
+                        ? commentCountByPostId[selectedPostModal.id]
+                        : selectedPostComments.length
+                      : undefined
+                  }
+                />
+              </div>
+              {config.commentsEnabled ? (
+                <div className="border-t border-[#D8D2CC] bg-[#F8F6F3] p-4" id="post-modal-comments">
+                  <Card className="rounded-xl border-slate-200/80 shadow-sm">
+                    <CardContent className="p-3 sm:p-4">
+                      <h3 className="mb-2 text-sm font-semibold text-card-foreground">
+                        {postModalCommentsLoading
+                          ? 'Comentarios'
+                          : `Comentarios (${selectedPostComments.length})`}
+                      </h3>
+                      <div className="mb-3 space-y-2">
+                        {postModalCommentsLoading ? (
+                          <p className="rounded-lg bg-slate-50 py-4 text-center text-xs text-slate-500">
+                            Cargando comentarios…
+                          </p>
+                        ) : selectedPostComments.length === 0 ? (
+                          <p className="rounded-lg bg-slate-50 py-4 text-center text-xs text-slate-500">
+                            No hay comentarios aún. ¡Sé el primero!
+                          </p>
+                        ) : (
+                          selectedPostComments.map((comment) => (
+                            <div key={comment.id} className="flex gap-2">
+                              <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                                <AvatarImage src={comment.authorAvatar} />
+                                <AvatarFallback className="rounded-lg text-xs">
+                                  {comment.authorName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
+                                <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
+                                  <span className="text-xs font-medium text-slate-900">
+                                    {comment.authorName}
+                                  </span>
+                                  <span className="text-[11px] text-slate-500">
+                                    {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
+                                  </span>
+                                </div>
+                                <p className="text-xs leading-snug text-slate-600">{comment.text}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {currentUser ? (
+                        <form onSubmit={(e) => void handleSubmitModalComment(e)}>
+                          <div className="flex gap-2">
+                            <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                              <AvatarImage src={currentUser.avatar} />
+                              <AvatarFallback className="rounded-lg text-xs">
+                                {currentUser.name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 space-y-1.5">
+                              <Textarea
+                                placeholder="Escribí un comentario…"
+                                value={postModalCommentText}
+                                onChange={(e) => setPostModalCommentText(e.target.value)}
+                                rows={2}
+                                className="min-h-0 resize-none rounded-lg border-slate-200 py-2 text-sm"
+                              />
+                              <Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
+                                <Send className="mr-1.5 h-3.5 w-3.5" />
+                                Enviar
+                              </Button>
+                            </div>
+                          </div>
+                        </form>
+                      ) : (
+                        <Card className="rounded-lg border-slate-200 bg-slate-50">
+                          <CardContent className="p-3 text-center">
+                            <p className="mb-2 text-xs text-slate-600">
+                              Iniciá sesión para dejar un comentario
+                            </p>
+                            <Button asChild size="sm" className="h-8 rounded-lg text-xs">
+                              <Link href="/login">Iniciar sesión</Link>
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
       <Dialog open={showAvatarPrompt} onOpenChange={(open) => !open && setAvatarDismissed(true)}>
         <DialogContent className="sm:max-w-md rounded-2xl border-[#D8D2CC]">
           <DialogHeader>
@@ -753,36 +950,31 @@ function HomePageContent() {
                         </div>
                       ) : null}
                       <div className="overflow-hidden bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
-                        <Link
-                          href={`/post/${post.id}`}
-                          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#8B0015]/25"
-                        >
-                          <div className={`flex items-start gap-3 p-4 pb-2 ${isMine ? 'pr-14' : ''}`}>
-                            <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
-                              <AvatarImage src={post.authorAvatar} alt={post.authorName} />
-                              <AvatarFallback
-                                className="text-xs font-bold text-white"
-                                style={{ backgroundColor: CST.acento }}
-                              >
-                                {authorInitials(post.authorName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <PostAuthorNameCategoryRow
-                                authorName={post.authorName}
-                                category={post.category}
-                                nameClassName="font-semibold"
-                              />
-                              <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">{when}</p>
-                            </div>
+                        <div className={`flex items-start gap-3 p-4 pb-2 ${isMine ? 'pr-14' : ''}`}>
+                          <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
+                            <AvatarImage src={post.authorAvatar} alt={post.authorName} />
+                            <AvatarFallback
+                              className="text-xs font-bold text-white"
+                              style={{ backgroundColor: CST.acento }}
+                            >
+                              {authorInitials(post.authorName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <PostAuthorNameCategoryRow
+                              authorName={post.authorName}
+                              category={post.category}
+                              nameClassName="font-semibold"
+                            />
+                            <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">{when}</p>
                           </div>
-                          <div className="px-4 pb-3 pt-0">
-                            <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">{post.title}</h3>
-                            {post.description ? (
-                              <p className="mt-0.5 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
-                            ) : null}
-                          </div>
-                        </Link>
+                        </div>
+                        <div className="px-4 pb-3 pt-0">
+                          <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">{post.title}</h3>
+                          {post.description ? (
+                            <p className="mt-0.5 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
+                          ) : null}
+                        </div>
                         {post.media.length > 0 ? (
                           <PostImageWithLightbox
                             media={post.media}
@@ -796,6 +988,7 @@ function HomePageContent() {
                             postId={post.id}
                             whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
                             showComments={config.commentsEnabled}
+                            onCommentsClick={() => setSelectedPostModal(post)}
                             commentCount={feedCommentCount}
                           />
                         </div>
@@ -855,14 +1048,6 @@ function HomePageContent() {
             aria-label="Crear publicación"
           >
             <PenLine className="h-6 w-6" />
-          </Link>
-          <Link
-            href="/configuracion"
-            className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-            style={{ backgroundColor: CST.bordoDark }}
-            aria-label="Ayuda y configuración"
-          >
-            <CircleHelp className="h-5 w-5" />
           </Link>
         </div>
       </div>

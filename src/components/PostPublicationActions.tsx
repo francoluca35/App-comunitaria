@@ -40,6 +40,7 @@ export type PostPublicationActionsProps = {
   postId: string
   whatsappNumber?: string | null | undefined
   className?: string
+	onCommentsClick?: () => void
   /** En el detalle del post usar "#comments" */
   commentsHref?: string
   showComments?: boolean
@@ -57,6 +58,7 @@ export function PostPublicationActions({
   postId,
   whatsappNumber,
   className,
+	onCommentsClick,
   commentsHref: commentsHrefProp,
   showComments = true,
   commentsLabel = 'Comentar',
@@ -116,17 +118,25 @@ export function PostPublicationActions({
       className={cn(touchRow, className)}
     >
       {showComments ? (
-        <Button asChild variant="ghost" className={cBtn}>
-          {isHashLink ? (
-            <a href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
-              {commentTrigger}
-            </a>
-          ) : (
-            <Link href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
-              {commentTrigger}
-            </Link>
-          )}
-        </Button>
+			onCommentsClick ? (
+				<Button type="button" variant="ghost" className={cBtn} onClick={onCommentsClick}>
+					<span className="inline-flex items-center justify-center gap-2 sm:gap-3">
+						{commentTrigger}
+					</span>
+				</Button>
+			) : (
+				<Button asChild variant="ghost" className={cBtn}>
+					{isHashLink ? (
+						<a href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
+							{commentTrigger}
+						</a>
+					) : (
+						<Link href={commentsHref} className="inline-flex items-center justify-center gap-2 sm:gap-3">
+							{commentTrigger}
+						</Link>
+					)}
+				</Button>
+			)
       ) : null}
       {hasWa ? (
         <Button asChild variant="ghost" className={wBtn}>

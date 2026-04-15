@@ -306,17 +306,17 @@ function CreateOtroForm() {
           </h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <Card className="bg-[#8B0015]/10 dark:bg-[#8B0015]/20 border-[#8B0015]/25 dark:border-[#8B0015]/50">
             <CardContent className="p-4">
               <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900 dark:text-blue-300">
+                <AlertCircle className="w-5 h-5 text-[#8B0015] dark:text-[#F3C9D0] flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-[#5A000E] dark:text-[#F3C9D0]">
                   <p className="mb-1">
                     {isProposedCategoryFlow
                       ? 'Escribí cómo te gustaría que se llame la categoría y el contenido. Si un moderador aprueba, se crea esa categoría en la comunidad y tu aviso queda publicado ahí.'
                       : 'Tu publicación será revisada por un administrador antes de hacerse pública.'}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-400">{config.termsOfService}</p>
+                  <p className="text-xs text-[#8B0015] dark:text-[#F3C9D0]">{config.termsOfService}</p>
                 </div>
               </div>
             </CardContent>
@@ -601,7 +601,7 @@ function CreateOtroForm() {
               </div>
             )}
             {canAddAttachments && (
-              <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
+              <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-[#8B0015] dark:hover:border-[#8B0015] transition-colors">
                 <input
                   type="file"
                   accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"

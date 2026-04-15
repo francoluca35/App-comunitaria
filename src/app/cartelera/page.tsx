@@ -195,7 +195,7 @@ export default function PublicidadesPage() {
                       type="button"
                       className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                         categoryFilter === cat.value
-                          ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                          ? 'bg-[#8B0015]/10 dark:bg-[#8B0015]/25 text-[#8B0015] dark:text-[#F3C9D0]'
                           : 'hover:bg-slate-100 dark:hover:bg-gray-800 text-slate-700 dark:text-gray-300'
                       }`}
                       onClick={() => setCategoryFilter(cat.value)}
