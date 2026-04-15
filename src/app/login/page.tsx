@@ -12,6 +12,7 @@ export default function LoginPage() {
 	const { login, register, loginWithGoogle, loginWithFacebook } = useAuth()
 	const [loading, setLoading] = useState(false)
 	const [mode, setMode] = useState<'signup' | 'signin'>('signin')
+	const [mobileStep, setMobileStep] = useState<'welcome' | 'signin' | 'signup'>('welcome')
 	const [panelAnimation, setPanelAnimation] = useState<'slide-left' | 'slide-right'>('slide-right')
 	const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle')
 	const [provider, setProvider] = useState<'google' | 'facebook'>('google')
@@ -136,13 +137,320 @@ export default function LoginPage() {
 				setSwapPhase('idle')
 			}, 360)
 		}, 220)
+		setMobileStep(nextMode)
 	}
 
 	return (
 		<div className="min-h-screen w-screen bg-[#e8e7f2]">
 			<div className="min-h-screen w-full overflow-hidden bg-[#f4f3f8] md:relative md:h-screen">
+				<section className="relative min-h-screen overflow-hidden bg-[#0f1014] text-white os-light:bg-[#f6f4f1] os-light:text-[#2B2B2B] md:hidden">
+					<div className="absolute inset-0 bg-[url('/Assets/fondo-login-mobile-n.png')] bg-cover bg-center opacity-95 os-light:bg-[url('/Assets/fondo-login-mobile-b.png')] os-light:opacity-100" />
+					<div className="absolute inset-0 bg-black/30 os-light:bg-white/20" />
+
+					<div className="relative z-10 flex min-h-screen flex-col px-6 pb-8 pt-10">
+						<div className="mb-8 flex flex-col items-center text-center">
+							<img src="/Assets/cst.png" alt="Logo CST" className="w-52 max-w-full" />
+							<h1 className="mt-4 text-2xl font-semibold tracking-tight text-white os-light:text-[#2B2B2B]">Bienvenidos</h1>
+						</div>
+
+						{mobileStep === 'welcome' ? (
+							<div className="mt-auto rounded-lg border border-white/10 bg-black/30 p-5 os-light:border-[#D8D2CC] os-light:bg-white/92 os-light:shadow-sm">
+								<h2 className="text-center text-lg font-semibold text-white os-light:text-[#2B2B2B]">Entrá o registrate</h2>
+								<p className="mt-2 text-center text-sm leading-relaxed text-white/65 os-light:text-[#5c5652]">
+									Si ya tenés cuenta, iniciá sesión. Si no, podés crear una en unos pasos.
+								</p>
+								<div className="mt-5 space-y-2.5">
+									<Button
+										type="button"
+										variant="default"
+										onClick={() => {
+											setMode('signin')
+											setMobileStep('signin')
+										}}
+										className="h-11 w-full rounded-lg text-sm font-medium"
+									>
+										Tengo cuenta
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											setMode('signup')
+											setMobileStep('signup')
+										}}
+										className="h-11 w-full rounded-lg border-white/25 bg-transparent text-sm font-medium text-white hover:bg-white/5 hover:text-white dark:border-white/25 dark:bg-transparent dark:hover:bg-white/5 os-light:border-[#8B0015]/40 os-light:text-[#8B0015] os-light:hover:bg-[#8B0015]/8 os-light:hover:text-[#5A000E]"
+									>
+										Crear cuenta
+									</Button>
+								</div>
+							</div>
+						) : mobileStep === 'signin' ? (
+							<div className="mt-auto rounded-lg border border-white/10 bg-black/30 p-5 os-light:border-[#D8D2CC] os-light:bg-white/92 os-light:shadow-sm">
+								<h2 className="text-center text-lg font-semibold text-white os-light:text-[#2B2B2B]">Iniciar sesión</h2>
+								<form onSubmit={handlePasswordLogin} className="mt-4 space-y-3.5">
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-login-email" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Usuario o correo
+										</Label>
+										<Input
+											id="mobile-login-email"
+											type="email"
+											value={loginEmail}
+											onChange={(e) => setLoginEmail(e.target.value)}
+											placeholder="tu@email.com"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-login-password" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Contraseña
+										</Label>
+										<Input
+											id="mobile-login-password"
+											type="password"
+											value={loginPassword}
+											onChange={(e) => setLoginPassword(e.target.value)}
+											placeholder="••••••••"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<Button type="submit" variant="default" disabled={loading} className="h-11 w-full rounded-lg text-sm font-medium">
+										{loading ? 'Ingresando...' : 'Entrar'}
+									</Button>
+								</form>
+								<div className="my-4 flex items-center gap-3">
+									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
+									<span className="text-xs text-white/45 os-light:text-[#7A5C52]">o con</span>
+									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
+								</div>
+								<div className="grid grid-cols-2 gap-2.5">
+									<button
+										type="button"
+										onClick={() => {
+											setProvider('google')
+											void handleAuth()
+										}}
+										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
+										aria-label="Google"
+										title="Google"
+									>
+										<Chrome className="h-4 w-4 text-[#ea4335]" />
+										<span>Google</span>
+									</button>
+									<button
+										type="button"
+										onClick={() => {
+											setProvider('facebook')
+											void handleAuth()
+										}}
+										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
+										aria-label="Facebook"
+										title="Facebook"
+									>
+										<Facebook className="h-4 w-4 text-[#8B0015]" />
+										<span>Facebook</span>
+									</button>
+								</div>
+								<div className="mt-4 flex flex-col items-center gap-2 text-sm">
+									<button
+										type="button"
+										onClick={() => {
+											setMode('signup')
+											setMobileStep('signup')
+										}}
+										className="text-white/75 underline underline-offset-2 hover:text-white os-light:text-[#8B0015] os-light:hover:text-[#5A000E]"
+									>
+										No tengo cuenta, crear una
+									</button>
+									<button
+										type="button"
+										onClick={() => setMobileStep('welcome')}
+										className="text-xs text-white/45 hover:text-white/65 os-light:text-[#7A5C52] os-light:hover:text-[#5c5652]"
+									>
+										Volver
+									</button>
+								</div>
+							</div>
+						) : (
+							<div className="mt-auto rounded-lg border border-white/10 bg-black/30 p-5 os-light:border-[#D8D2CC] os-light:bg-white/92 os-light:shadow-sm">
+								<h2 className="text-center text-lg font-semibold text-white os-light:text-[#2B2B2B]">Crear cuenta</h2>
+								<form onSubmit={handleRegister} className="mt-4 space-y-3">
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-name" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Nombre completo
+										</Label>
+										<Input
+											id="mobile-register-name"
+											type="text"
+											value={registerName}
+											onChange={(e) => setRegisterName(e.target.value)}
+											placeholder="Nombre y apellido"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-birthdate" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Fecha de nacimiento
+										</Label>
+										<Input
+											id="mobile-register-birthdate"
+											type="date"
+											value={registerBirthDate}
+											onChange={(e) => setRegisterBirthDate(e.target.value)}
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-phone" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Teléfono
+										</Label>
+										<Input
+											id="mobile-register-phone"
+											type="tel"
+											value={registerPhone}
+											onChange={(e) => setRegisterPhone(e.target.value)}
+											placeholder="Ej: 11 1234-5678"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-province" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Provincia
+										</Label>
+										<Input
+											id="mobile-register-province"
+											type="text"
+											value={registerProvince}
+											onChange={(e) => setRegisterProvince(e.target.value)}
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-locality" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Localidad
+										</Label>
+										<Input
+											id="mobile-register-locality"
+											type="text"
+											value={registerLocality}
+											onChange={(e) => setRegisterLocality(e.target.value)}
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-email" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Correo electrónico
+										</Label>
+										<Input
+											id="mobile-register-email"
+											type="email"
+											value={registerEmail}
+											onChange={(e) => setRegisterEmail(e.target.value)}
+											placeholder="tu@email.com"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label htmlFor="mobile-register-password" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+											Contraseña
+										</Label>
+										<Input
+											id="mobile-register-password"
+											type="password"
+											value={registerPassword}
+											onChange={(e) => setRegisterPassword(e.target.value)}
+											placeholder="Mínimo 6 caracteres"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label
+											htmlFor="mobile-register-password-confirm"
+											className="text-xs font-medium text-white/60 os-light:text-[#5c5652]"
+										>
+											Confirmar contraseña
+										</Label>
+										<Input
+											id="mobile-register-password-confirm"
+											type="password"
+											value={registerPasswordConfirm}
+											onChange={(e) => setRegisterPasswordConfirm(e.target.value)}
+											placeholder="Repetí la contraseña"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
+											required
+										/>
+									</div>
+									<Button type="submit" variant="default" disabled={loading} className="h-11 w-full rounded-lg text-sm font-medium">
+										{loading ? 'Creando cuenta...' : 'Registrarme'}
+									</Button>
+								</form>
+								<div className="my-4 flex items-center gap-3">
+									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
+									<span className="text-xs text-white/45 os-light:text-[#7A5C52]">o con</span>
+									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
+								</div>
+								<div className="grid grid-cols-2 gap-2.5">
+									<button
+										type="button"
+										onClick={() => {
+											setProvider('google')
+											void handleAuth()
+										}}
+										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
+										aria-label="Google"
+										title="Google"
+									>
+										<Chrome className="h-4 w-4 text-[#ea4335]" />
+										<span>Google</span>
+									</button>
+									<button
+										type="button"
+										onClick={() => {
+											setProvider('facebook')
+											void handleAuth()
+										}}
+										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
+										aria-label="Facebook"
+										title="Facebook"
+									>
+										<Facebook className="h-4 w-4 text-[#8B0015]" />
+										<span>Facebook</span>
+									</button>
+								</div>
+								<div className="mt-4 flex flex-col items-center gap-2 text-sm">
+									<button
+										type="button"
+										onClick={() => {
+											setMode('signin')
+											setMobileStep('signin')
+										}}
+										className="text-white/75 underline underline-offset-2 hover:text-white os-light:text-[#8B0015] os-light:hover:text-[#5A000E]"
+									>
+										Ya tengo cuenta
+									</button>
+									<button
+										type="button"
+										onClick={() => setMobileStep('welcome')}
+										className="text-xs text-white/45 hover:text-white/65 os-light:text-[#7A5C52] os-light:hover:text-[#5c5652]"
+									>
+										Volver
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+				</section>
 				<section
-					className={`relative overflow-hidden transition-[opacity,transform] duration-300 ease-out md:absolute md:top-0 md:h-full md:w-[56%] md:p-3 lg:p-4 ${
+					className={`relative hidden overflow-hidden transition-[opacity,transform] duration-300 ease-out md:absolute md:top-0 md:block md:h-full md:w-[56%] md:p-3 lg:p-4 ${
 						mode === 'signup' ? 'md:left-[44%]' : 'md:left-0'
 					} ${swapPhase === 'out' ? 'opacity-0 md:translate-y-2 md:scale-[0.985]' : 'opacity-100 md:translate-y-0 md:scale-100'} ${
 						swapPhase === 'in' ? 'duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]' : ''
@@ -193,7 +501,7 @@ export default function LoginPage() {
 				</section>
 
 				<section
-					className={`flex items-center justify-center px-4 py-6 transition-[opacity,transform] duration-300 ease-out sm:px-7 sm:py-8 md:absolute md:top-0 md:h-full md:w-[44%] md:justify-center md:px-6 lg:px-10 ${
+					className={`hidden items-center justify-center px-4 py-6 transition-[opacity,transform] duration-300 ease-out sm:px-7 sm:py-8 md:absolute md:top-0 md:flex md:h-full md:w-[44%] md:justify-center md:px-6 lg:px-10 ${
 						mode === 'signup' ? 'md:left-0' : 'md:left-[56%]'
 					} ${swapPhase === 'out' ? 'opacity-0 md:-translate-y-2 md:scale-[0.985]' : 'opacity-100 md:translate-y-0 md:scale-100'} ${
 						swapPhase === 'in' ? 'duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]' : ''

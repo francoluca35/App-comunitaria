@@ -3,6 +3,8 @@
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
+/* Login mobile: respeta tema del sistema (independiente de la clase .dark de la app) */
+@custom-variant os-light (@media (prefers-color-scheme: light));
 
 /* Título del banner de identidad — Montserrat, marca fuerte */
 .font-hero-display {
