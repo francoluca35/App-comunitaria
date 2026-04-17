@@ -7,6 +7,7 @@ import {
   Filter,
   LayoutGrid,
   Megaphone,
+  MessageCircle,
   PenLine,
   Sparkles,
   Tag,
@@ -23,7 +24,6 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
-import { Textarea } from '@/app/components/ui/textarea'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Carousel, CarouselContent, CarouselItem } from '@/app/components/ui/carousel'
 import type { CarouselApi } from '@/app/components/ui/carousel'
@@ -39,7 +39,8 @@ import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
 import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Skeleton } from '@/app/components/ui/skeleton'
-import { Send } from 'lucide-react'
+import { PostCommentsModal } from '@/components/PostCommentsModal'
+import { AvatarImageCropDialog } from '@/components/AvatarImageCropDialog'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { matchesPostSearch, matchesPublicidadSearch, searchTokens } from '@/lib/community-search'
@@ -130,84 +131,103 @@ type CommunityHeroBannerProps = {
 
 function CommunityHeroBanner({
   heroTitle,
-  heroSubtitle,
+  heroSubtitle: _heroSubtitle,
   heroReferentName,
   heroReferentPhotoUrl,
-  currentUserFirstName,
+  currentUserFirstName: _currentUserFirstName,
 }: CommunityHeroBannerProps) {
   const referentFirst = firstName(heroReferentName || 'Mario')
-  const ctaMobileLabel = `habla con ${referentFirst.toLowerCase()}`
-
-  const welcomeLine =
-    currentUserFirstName != null && currentUserFirstName !== ''
-      ? `Hola ${currentUserFirstName}, ${heroSubtitle}`
-      : heroSubtitle
-
-  const ctaClass =
-    'flex w-full items-center justify-center rounded-lg bg-[#8B0015] py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#6d0010] active:scale-[0.99]'
 
   return (
-    <div className="mb-6 overflow-hidden rounded-2xl bg-[#1c2130] bg-[url('/Assets/fondo-inicio-m.png')] bg-contain bg-top bg-no-repeat shadow-sm ring-1 ring-black/[0.07] sm:bg-[url('/Assets/fondo-inicio.png')] sm:bg-cover sm:[background-position:center_center]">
-      {/* Mobile: composición centrada como referencia */}
-      <div className="px-4 pb-5 pt-[7.1rem] sm:hidden">
-        <div className="mx-auto flex max-w-sm flex-col items-center text-center">
-          <Avatar className="h-[6.4rem] w-[6.4rem] border-[3px] border-[#8B0015] shadow-md">
+    <div className="relative mb-6 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
+			{/* Móvil: fondo a todo el bloque (sin franja oscura ni “doble marco” alrededor de la tarjeta) */}
+			<div
+				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat sm:hidden"
+				style={{ backgroundImage: "url('/Assets/fondo-inicio-m.png')" }}
+				aria-hidden
+			/>
+			<div className="pointer-events-none absolute inset-0 z-0 bg-[#0b0e16]/50 sm:hidden" aria-hidden />
+			{/* Escritorio: imagen a pantalla completa en el banner (cover = sin franjas; recorte suave vertical si hace falta) */}
+			{/* eslint-disable-next-line @next/next/no-img-element */}
+			<img
+				src="/Assets/fondo-inicio1.png"
+				alt=""
+				className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full select-none object-cover object-[center_40%] sm:block"
+				aria-hidden
+			/>
+			{/* Mobile: tarjeta referente (mismo lenguaje visual que el mockup de chat) */}
+			<div className="relative z-[1] px-0 pb-4 pt-3 sm:hidden">
+				<div className="relative z-[1] p-4">
+					<div className="flex items-start gap-3.5">
+						<Avatar className="h-14 w-14 shrink-0 border-[3px] border-[#8B0015] shadow-md">
+							<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+							<AvatarFallback
+								className="text-base font-bold text-white"
+								style={{ backgroundColor: CST.bordo }}
+							>
+								{authorInitials(heroReferentName || 'MS')}
+							</AvatarFallback>
+						</Avatar>
+						<div className="min-w-0 flex-1 pt-0.5">
+							<span className="inline-flex max-w-full rounded-md border border-[#8B0015]/70 bg-[#8B0015]/25 px-2 py-0.5 text-[0.6rem] font-bold uppercase leading-none tracking-[0.12em] text-[#F3C9D0]">
+								Referente oficial
+							</span>
+							<p className="font-montserrat-only mt-2 text-lg font-bold leading-tight text-white">
+								{heroReferentName}
+							</p>
+							<p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-400">
+								<span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-400 ring-1 ring-emerald-300/70" aria-hidden />
+								<span className="min-w-0 leading-snug">
+									En línea · <span className="text-slate-300">{heroTitle}</span>
+								</span>
+							</p>
+						</div>
+					</div>
+					<div className="my-4 h-px w-full bg-white/[0.1]" aria-hidden />
+					<Link
+						href="/message"
+						className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/35 bg-transparent text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/[0.04] active:bg-white/[0.07]"
+					>
+						<MessageCircle className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.25} aria-hidden />
+						Hablar con {referentFirst}
+					</Link>
+				</div>
+			</div>
+
+      {/* Desktop: barra tipo cabecera de chat — contenido sobre fondo-inicio (sin panel sólido) */}
+      <div className="relative z-[1] hidden min-h-[260px] w-full items-center px-6 py-8 sm:flex lg:min-h-[280px] lg:px-10">
+        <div className="flex w-full min-w-0 items-center gap-5 lg:gap-8">
+          <div className="h-[5.5rem] w-1 shrink-0 rounded-full bg-[#A51414] shadow-[0_0_12px_rgba(165,20,20,0.45)]" aria-hidden />
+          <Avatar className="h-[5.5rem] w-[5.5rem] shrink-0 border-[3px] border-[#8B0015] shadow-lg ring-2 ring-black/10 lg:h-24 lg:w-24">
             <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
             <AvatarFallback
-              className="text-xl font-bold text-white"
+              className="text-3xl font-bold text-white lg:text-4xl"
               style={{ backgroundColor: CST.bordo }}
             >
               {authorInitials(heroReferentName || 'MS')}
             </AvatarFallback>
           </Avatar>
-          <p className="mt-2.5 text-[1.9rem] font-extrabold leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
-            {heroReferentName}
-          </p>
-          <p className="mt-1 text-[1.25rem] font-semibold uppercase leading-none tracking-[0.02em] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
-            Referente oficial
-          </p>
-          <p className="mt-2 text-[1.25rem] font-medium leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.45)]">
-            Hola "{currentUserFirstName || 'vecino'}", bienvenido
-          </p>
-
-          <Link href="/message" className="mt-3.5 flex h-[46px] w-full max-w-[260px] items-center justify-center rounded-lg bg-[#8B3A3A] text-[1.05rem] font-medium text-white transition hover:bg-[#7a3232]">
-            Habla con {referentFirst}
-          </Link>
-        </div>
-      </div>
-
-      {/* Desktop: avatar izquierda + texto y botón a la derecha */}
-      <div className="relative hidden min-h-[320px] items-end px-8 pb-9 pt-6 sm:flex">
-        <div className="flex items-end gap-5">
-          <Avatar className="mb-2 h-[150px] w-[150px] border-4 border-[#8B0015] shadow-lg">
-            <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
-            <AvatarFallback
-              className="text-4xl font-bold text-white"
-              style={{ backgroundColor: CST.bordo }}
-            >
-              {authorInitials(heroReferentName || 'MS')}
-            </AvatarFallback>
-          </Avatar>
-
-          <div className="h-[175px] w-[5px] rounded-full bg-[#A51414]" />
-
-          <div className="pb-1">
-            <p className="text-[42px] font-black leading-[0.98] text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+          <div className="min-w-0 flex-1">
+            <span className="inline-flex max-w-full rounded-md border border-[#8B0015]/60 bg-[#8B0015]/35 px-2.5 py-1 text-[0.65rem] font-bold uppercase leading-none tracking-[0.14em] text-[#F5D0D6] shadow-sm backdrop-blur-[2px]">
+              Referente oficial
+            </span>
+            <p className="font-montserrat-only mt-2 truncate text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] lg:text-3xl">
               {heroReferentName}
             </p>
-            <p className="mt-1 text-[20px] font-bold uppercase leading-none text-white">
-              Referente oficial
+            <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm font-medium text-white/80 drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]">
+              <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-300/60" aria-hidden />
+              <span className="min-w-0">
+                En línea · <span className="text-white/90">{heroTitle}</span>
+              </span>
             </p>
-            <p className="mt-2 text-[24px] font-medium leading-none text-white">
-              Hola {currentUserFirstName || 'vecino'}, bienvenido
-            </p>
-            <Link
-              href="/message"
-              className="mt-3 flex h-[48px] w-[300px] items-center uppercase justify-center rounded-xl bg-[#8B3A3A] text-[20px] font-medium text-white transition hover:bg-[#7a3232]"
-            >
-              Habla con {referentFirst}
-            </Link>
           </div>
+          <Link
+            href="/message"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/45 bg-black/20 px-5 py-2.5 text-sm font-semibold text-white shadow-md backdrop-blur-md transition hover:border-white/65 hover:bg-black/35 lg:px-6 lg:text-base"
+          >
+            <MessageCircle className="h-[1.05rem] w-[1.05rem] opacity-95" strokeWidth={2.25} aria-hidden />
+            Habla con Mario!
+          </Link>
         </div>
       </div>
     </div>
@@ -378,9 +398,6 @@ function HomePageContent() {
     postsHasMore,
     postsLoadingMore,
     loadMorePosts,
-    comments,
-    addComment,
-    loadCommentsForPost,
     commentCountByPostId,
   } = useApp()
   const { query: searchQuery } = useFeedSearch()
@@ -391,8 +408,6 @@ function HomePageContent() {
   const [selectedFeedPublicidad, setSelectedFeedPublicidad] = useState<PublicidadDisplay | null>(null)
   const [feedFilter, setFeedFilter] = useState<string>(FEED_FILTER_ALL)
   const [selectedPostModal, setSelectedPostModal] = useState<Post | null>(null)
-  const [postModalCommentText, setPostModalCommentText] = useState('')
-  const [postModalCommentsLoading, setPostModalCommentsLoading] = useState(false)
 
   useEffect(() => {
     void refreshPublicidadCategories()
@@ -437,18 +452,14 @@ function HomePageContent() {
   const [avatarDismissed, setAvatarDismissed] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [cropOpen, setCropOpen] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const showAvatarPrompt =
     !authLoading && !!currentUser && !currentUser.avatar && !avatarDismissed
 
-  const handleAvatarSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const file = fileInputRef.current?.files?.[0]
-    if (!file) {
-      setUploadError('Elegí una imagen')
-      return
-    }
+  const uploadAvatarFile = async (file: File) => {
     setUploadError(null)
     setUploading(true)
     try {
@@ -457,8 +468,10 @@ function HomePageContent() {
         data: { session },
       } = await supabase.auth.getSession()
       if (!session?.access_token) {
-        setUploadError('Sesión expirada. Volvé a iniciar sesión.')
-        return
+        const msg = 'Sesión expirada. Volvé a iniciar sesión.'
+        setUploadError(msg)
+        toast.error(msg)
+        throw new Error('Sin sesión')
       }
       const formData = new FormData()
       formData.append('avatar', file)
@@ -469,18 +482,34 @@ function HomePageContent() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setUploadError(data.error ?? 'Error al subir la foto')
-        return
+        const msg = typeof data.error === 'string' ? data.error : 'Error al subir la foto'
+        setUploadError(msg)
+        toast.error(msg)
+        throw new Error('Subida rechazada')
       }
       await refreshUser()
       toast.success('Foto de perfil actualizada')
       setAvatarDismissed(true)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch {
-      setUploadError('Error de conexión. Intentá de nuevo.')
+    } catch (err) {
+      const known =
+        err instanceof Error && (err.message === 'Subida rechazada' || err.message === 'Sin sesión')
+      if (!known) {
+        setUploadError('Error de conexión. Intentá de nuevo.')
+        toast.error('Error de conexión. Intentá de nuevo.')
+      }
+      throw err
     } finally {
       setUploading(false)
     }
+  }
+
+  const handleAvatarFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadError(null)
+    setCropFile(file)
+    setCropOpen(true)
   }
 
   const now = Date.now()
@@ -543,38 +572,6 @@ function HomePageContent() {
     return () => obs.disconnect()
   }, [feedFilter, postsHasMore, postsLoadingMore, onLoadMore, combinedFeed.length])
 
-  const selectedPostComments = useMemo(() => {
-    if (!selectedPostModal) return []
-    return comments.filter((c) => c.postId === selectedPostModal.id)
-  }, [comments, selectedPostModal])
-
-  useEffect(() => {
-    if (!selectedPostModal) return
-    setPostModalCommentText('')
-    setPostModalCommentsLoading(true)
-    void loadCommentsForPost(selectedPostModal.id).finally(() => setPostModalCommentsLoading(false))
-  }, [selectedPostModal, loadCommentsForPost])
-
-  const handleSubmitModalComment = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!selectedPostModal) return
-    if (!currentUser) {
-      toast.error('Debés iniciar sesión para comentar')
-      return
-    }
-    if (!postModalCommentText.trim()) {
-      toast.error('Escribí un comentario')
-      return
-    }
-    const result = await addComment(selectedPostModal.id, postModalCommentText)
-    if (!result.ok) {
-      toast.error(result.error ?? 'No se pudo publicar')
-      return
-    }
-    setPostModalCommentText('')
-    toast.success('Comentario agregado')
-  }
-
   return (
     <>
       <PublicidadModal
@@ -582,198 +579,50 @@ function HomePageContent() {
         onOpenChange={(open) => !open && setSelectedFeedPublicidad(null)}
         publicidad={selectedFeedPublicidad}
       />
-      <Dialog open={!!selectedPostModal} onOpenChange={(open) => !open && setSelectedPostModal(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-[#D8D2CC] p-0 sm:max-w-2xl">
-          {selectedPostModal ? (
-            <div className="bg-white">
-              <DialogTitle className="sr-only">
-                Publicación de {selectedPostModal.authorName}
-              </DialogTitle>
-              <div className="flex items-start gap-3 px-4 pb-2 pt-4">
-                <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
-                  <AvatarImage src={selectedPostModal.authorAvatar} alt={selectedPostModal.authorName} />
-                  <AvatarFallback
-                    className="text-xs font-bold text-white"
-                    style={{ backgroundColor: CST.acento }}
-                  >
-                    {authorInitials(selectedPostModal.authorName)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <PostAuthorNameCategoryRow
-                    authorName={selectedPostModal.authorName}
-                    category={selectedPostModal.category}
-                    nameClassName="font-semibold"
-                  />
-                  <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">
-                    {formatDistanceToNow(selectedPostModal.createdAt, { addSuffix: true, locale: es })}
-                  </p>
-                </div>
-              </div>
-              <div className="px-4 pb-3 pt-0">
-                <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">
-                  {selectedPostModal.title}
-                </h3>
-                {selectedPostModal.description ? (
-                  <p className="mt-0.5 whitespace-pre-wrap text-sm text-[#2B2B2B]">
-                    {selectedPostModal.description}
-                  </p>
-                ) : null}
-              </div>
-              {selectedPostModal.media.length > 0 ? (
-                <PostImageWithLightbox
-                  media={selectedPostModal.media}
-                  alt={selectedPostModal.title}
-                  variant="detail"
-                  priority
-                />
-              ) : null}
-              <div className="bg-white px-0 py-0">
-                <PostPublicationActions
-                  postId={selectedPostModal.id}
-                  whatsappNumber={
-                    config.whatsappEnabled ? selectedPostModal.whatsappNumber : undefined
-                  }
-                  showComments={config.commentsEnabled}
-                  onCommentsClick={() => {
-                    const commentsEl = document.getElementById('post-modal-comments')
-                    commentsEl?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }}
-                  commentCount={
-                    config.commentsEnabled
-                      ? postModalCommentsLoading
-                        ? commentCountByPostId[selectedPostModal.id]
-                        : selectedPostComments.length
-                      : undefined
-                  }
-                />
-              </div>
-              {config.commentsEnabled ? (
-                <div className="border-t border-[#D8D2CC] bg-[#F8F6F3] p-4" id="post-modal-comments">
-                  <Card className="rounded-xl border-slate-200/80 shadow-sm">
-                    <CardContent className="p-3 sm:p-4">
-                      <h3 className="mb-2 text-sm font-semibold text-card-foreground">
-                        {postModalCommentsLoading
-                          ? 'Comentarios'
-                          : `Comentarios (${selectedPostComments.length})`}
-                      </h3>
-                      <div className="mb-3 space-y-2">
-                        {postModalCommentsLoading ? (
-                          <p className="rounded-lg bg-slate-50 py-4 text-center text-xs text-slate-500">
-                            Cargando comentarios…
-                          </p>
-                        ) : selectedPostComments.length === 0 ? (
-                          <p className="rounded-lg bg-slate-50 py-4 text-center text-xs text-slate-500">
-                            No hay comentarios aún. ¡Sé el primero!
-                          </p>
-                        ) : (
-                          selectedPostComments.map((comment) => (
-                            <div key={comment.id} className="flex gap-2">
-                              <Avatar className="h-8 w-8 shrink-0 rounded-lg">
-                                <AvatarImage src={comment.authorAvatar} />
-                                <AvatarFallback className="rounded-lg text-xs">
-                                  {comment.authorName[0]}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-2">
-                                <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-                                  <span className="text-xs font-medium text-slate-900">
-                                    {comment.authorName}
-                                  </span>
-                                  <span className="text-[11px] text-slate-500">
-                                    {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
-                                  </span>
-                                </div>
-                                <p className="text-xs leading-snug text-slate-600">{comment.text}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {currentUser ? (
-                        <form onSubmit={(e) => void handleSubmitModalComment(e)}>
-                          <div className="flex gap-2">
-                            <Avatar className="h-8 w-8 shrink-0 rounded-lg">
-                              <AvatarImage src={currentUser.avatar} />
-                              <AvatarFallback className="rounded-lg text-xs">
-                                {currentUser.name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 space-y-1.5">
-                              <Textarea
-                                placeholder="Escribí un comentario…"
-                                value={postModalCommentText}
-                                onChange={(e) => setPostModalCommentText(e.target.value)}
-                                rows={2}
-                                className="min-h-0 resize-none rounded-lg border-slate-200 py-2 text-sm"
-                              />
-                              <Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
-                                <Send className="mr-1.5 h-3.5 w-3.5" />
-                                Enviar
-                              </Button>
-                            </div>
-                          </div>
-                        </form>
-                      ) : (
-                        <Card className="rounded-lg border-slate-200 bg-slate-50">
-                          <CardContent className="p-3 text-center">
-                            <p className="mb-2 text-xs text-slate-600">
-                              Iniciá sesión para dejar un comentario
-                            </p>
-                            <Button asChild size="sm" className="h-8 rounded-lg text-xs">
-                              <Link href="/login">Iniciar sesión</Link>
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={showAvatarPrompt} onOpenChange={(open) => !open && setAvatarDismissed(true)}>
+			<PostCommentsModal post={selectedPostModal} onClose={() => setSelectedPostModal(null)} />
+      <AvatarImageCropDialog
+        open={cropOpen}
+        onOpenChange={(open) => {
+          setCropOpen(open)
+          if (!open) setCropFile(null)
+        }}
+        file={cropFile}
+        onConfirm={(file) => uploadAvatarFile(file)}
+      />
+      <Dialog open={showAvatarPrompt && !cropOpen} onOpenChange={(open) => !open && setAvatarDismissed(true)}>
         <DialogContent className="sm:max-w-md rounded-2xl border-[#D8D2CC]">
           <DialogHeader>
             <DialogTitle>Agregá tu foto de perfil</DialogTitle>
             <DialogDescription>
-              Así te identifican en la comunidad. Podés subir una imagen JPG, PNG o WebP (máx. 2 MB).
+              Así te identifican en la comunidad. Elegí una imagen JPG, PNG o WebP (máx. 2 MB); vas a poder moverla para
+              encuadrarla antes de guardar.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleAvatarSubmit} className="space-y-4">
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="block w-full text-sm text-[#7A5C52] file:mr-4 file:rounded-xl file:border-0 file:bg-[#8B0015] file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-[#5A000E]"
-                onChange={() => setUploadError(null)}
-              />
-            </div>
+          <div className="space-y-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleAvatarFilePicked}
+            />
             {uploadError && <p className="text-sm text-red-600">{uploadError}</p>}
-            <DialogFooter>
-              <Button type="button" variant="outline" className="rounded-xl" onClick={() => setAvatarDismissed(true)}>
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <Button
+                type="button"
+                className="w-full rounded-xl text-white hover:bg-[#5A000E]"
+                style={{ backgroundColor: CST.bordo }}
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Elegir imagen
+              </Button>
+              <Button type="button" variant="outline" className="w-full rounded-xl" onClick={() => setAvatarDismissed(true)}>
                 Más tarde
               </Button>
-              <Button
-                type="submit"
-                disabled={uploading}
-                className="rounded-xl text-white hover:bg-[#5A000E]"
-                style={{ backgroundColor: CST.bordo }}
-              >
-                {uploading ? (
-                  'Subiendo…'
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Subir foto
-                  </>
-                )}
-              </Button>
             </DialogFooter>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -831,80 +680,63 @@ function HomePageContent() {
           )}
         </div>
 
-        {/* Filtro: categorías de publicaciones o solo publicidades */}
-        <div
-          className="mb-6 rounded-[1.25rem] border border-[#8B0015]/12 p-4 shadow-sm sm:p-5"
-          style={{ backgroundColor: CST.fondo }}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-            <div className="flex min-w-0 items-start gap-3">
-              <span
-                className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
-                style={{ background: `linear-gradient(145deg, ${CST.bordo} 0%, ${CST.bordoDark} 100%)` }}
-              >
-                <Filter className="h-5 w-5" aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-[#8B0015] font-montserrat-only">¿Qué querés ver en el feed?</p>
-                <p className="mt-0.5 text-xs leading-snug text-[#7A5C52]">
-                  Filtrá por categoría (ventas, avisos, etc.) o mostrá solo publicidades.
-                </p>
-              </div>
-            </div>
-            <Select value={feedFilter} onValueChange={setFeedFilter}>
-              <SelectTrigger
-                size="default"
-                className="h-12 w-full min-w-0 rounded-2xl border-2 border-[#D8D2CC] bg-white px-4 text-left font-semibold text-[#2B2B2B] shadow-sm transition-[border-color,box-shadow] hover:border-[#8B0015]/35 hover:shadow data-[size=default]:h-12 focus-visible:border-[#8B0015] focus-visible:ring-[3px] focus-visible:ring-[#8B0015]/20 sm:max-w-[min(100%,22rem)]"
-              >
-                <SelectValue placeholder="Elegí una opción" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[min(70vh,24rem)] rounded-xl border-[#D8D2CC] shadow-xl">
-                <SelectGroup>
-                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
-                    General
-                  </SelectLabel>
-                  <SelectItem value={FEED_FILTER_ALL} className="cursor-pointer rounded-lg py-2.5 pl-2">
-                    <span className="flex items-center gap-2.5">
-                      <LayoutGrid className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
-                      Todas las categorías
-                    </span>
-                  </SelectItem>
-                  <SelectItem value={FEED_FILTER_SOLO_PUBLICIDADES} className="cursor-pointer rounded-lg py-2.5 pl-2">
-                    <span className="flex items-center gap-2.5">
-                      <Megaphone className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
-                      Solo publicidades
-                    </span>
-                  </SelectItem>
-                </SelectGroup>
-                <SelectSeparator className="my-1 bg-[#D8D2CC]" />
-                <SelectGroup>
-                  <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
-                    Por categoría
-                  </SelectLabel>
-                  {postCategories
-                    .filter((c) => c.slug !== 'propuesta')
-                    .map((c) => (
-                      <SelectItem key={c.slug} value={c.slug} className="cursor-pointer rounded-lg py-2.5">
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         {/* Feed: solo publicaciones; el buscador no filtra la barra de publicidad */}
         <section>
-          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="font-montserrat-only text-base font-bold text-[#8B0015]">
               {feedFilter === FEED_FILTER_SOLO_PUBLICIDADES ? 'Publicidades' : 'Últimas publicaciones'}
             </h2>
-            {hasSearch ? (
-              <span className="text-xs font-medium text-[#7A5C52]">
-                {combinedFeed.length} resultado{combinedFeed.length === 1 ? '' : 's'}
-              </span>
-            ) : null}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Select value={feedFilter} onValueChange={setFeedFilter}>
+                <SelectTrigger
+                  size="default"
+                  aria-label="Filtrar el feed por categoría o solo publicidades"
+                  className="h-11 w-11 shrink-0 justify-center rounded-2xl border-2 border-[#D8D2CC] bg-white p-0 shadow-sm transition-[border-color,box-shadow] hover:border-[#8B0015]/35 hover:shadow focus-visible:border-[#8B0015] focus-visible:ring-[3px] focus-visible:ring-[#8B0015]/20 data-[size=default]:h-11 [&>svg:last-child]:hidden"
+                >
+                  <Filter className="h-5 w-5 text-[#8B0015]" aria-hidden />
+                  <span className="sr-only">
+                    <SelectValue />
+                  </span>
+                </SelectTrigger>
+                <SelectContent className="max-h-[min(70vh,24rem)] rounded-xl border-[#D8D2CC] shadow-xl">
+                  <SelectGroup>
+                    <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
+                      General
+                    </SelectLabel>
+                    <SelectItem value={FEED_FILTER_ALL} className="cursor-pointer rounded-lg py-2.5 pl-2">
+                      <span className="flex items-center gap-2.5">
+                        <LayoutGrid className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
+                        Todas las categorías
+                      </span>
+                    </SelectItem>
+                    <SelectItem value={FEED_FILTER_SOLO_PUBLICIDADES} className="cursor-pointer rounded-lg py-2.5 pl-2">
+                      <span className="flex items-center gap-2.5">
+                        <Megaphone className="h-4 w-4 shrink-0 text-[#7A5C52]" aria-hidden />
+                        Solo publicidades
+                      </span>
+                    </SelectItem>
+                  </SelectGroup>
+                  <SelectSeparator className="my-1 bg-[#D8D2CC]" />
+                  <SelectGroup>
+                    <SelectLabel className="px-2 text-[11px] font-bold uppercase tracking-wider text-[#7A5C52]/90">
+                      Por categoría
+                    </SelectLabel>
+                    {postCategories
+                      .filter((c) => c.slug !== 'propuesta')
+                      .map((c) => (
+                        <SelectItem key={c.slug} value={c.slug} className="cursor-pointer rounded-lg py-2.5">
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              {hasSearch ? (
+                <span className="text-xs font-medium text-[#7A5C52]">
+                  {combinedFeed.length} resultado{combinedFeed.length === 1 ? '' : 's'}
+                </span>
+              ) : null}
+            </div>
           </div>
 
           {(feedPubLoading || postsLoading) && combinedFeed.length === 0 && !hasSearch ? (
@@ -917,7 +749,7 @@ function HomePageContent() {
                   : feedFilter === FEED_FILTER_SOLO_PUBLICIDADES
                     ? 'No hay publicidades activas por ahora.'
                     : feedFilter !== FEED_FILTER_ALL
-                      ? 'No hay publicaciones aprobadas en esta categoría. Probá con otra opción en el selector de arriba.'
+                      ? 'No hay publicaciones aprobadas en esta categoría. Probá con otra opción en el filtro.'
                       : 'Todavía no hay publicaciones aprobadas ni publicidades activas.'}
               </p>
               {!hasSearch && feedFilter === FEED_FILTER_ALL && (

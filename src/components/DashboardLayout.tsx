@@ -18,6 +18,7 @@ import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CST } from '@/lib/cst-theme'
+import { cn } from '@/app/components/ui/utils'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -41,7 +42,14 @@ function shortDisplayName(name: string) {
   return `${parts[0]} ${parts[1]?.[0]?.toUpperCase() ?? ''}.`
 }
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({
+  children,
+  contentClassName,
+}: {
+  children: React.ReactNode
+  /** Sustituye o amplía el ancho máximo del área de contenido (p. ej. `max-w-5xl` en perfil). */
+  contentClassName?: string
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [lateralAds, setLateralAds] = useState<PublicidadDisplay[]>([])
   const [lateralLoaded, setLateralLoaded] = useState(false)
@@ -284,7 +292,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <div className="flex min-w-0 flex-1 flex-col pt-24 md:pt-16 lg:ml-64 xl:mr-[280px]">
           <main className="flex flex-1 justify-center overflow-auto px-3 py-5 sm:px-4 lg:px-8">
-            <div className="w-full max-w-3xl">{children}</div>
+            <div className={cn('w-full', contentClassName ?? 'max-w-3xl')}>{children}</div>
           </main>
         </div>
 

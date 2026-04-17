@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useMemo } from 'react'
-import { useApp, type Category } from '@/app/providers'
+import { useMemo, useState } from 'react'
+import { useApp, type Category, type Post } from '@/app/providers'
 import { PostCard } from '@/components/PostCard'
+import { PostCommentsModal } from '@/components/PostCommentsModal'
 import { Button } from '@/app/components/ui/button'
 import { Filter, ArrowLeft } from 'lucide-react'
 import { DashboardLayout, useFeedSearch } from '@/components/DashboardLayout'
@@ -45,6 +46,7 @@ export default function CategoriaPage() {
 function CategoriaPageInner({ category }: { category: Category | 'all' }) {
   const { posts, currentUser, postCategories } = useApp()
   const { query: searchQuery } = useFeedSearch()
+	const [commentModalPost, setCommentModalPost] = useState<Post | null>(null)
 
   const filteredPosts = useMemo(() => {
     const approvedPosts = posts.filter((p) => p.status === 'approved')
@@ -72,6 +74,7 @@ function CategoriaPageInner({ category }: { category: Category | 'all' }) {
 
   return (
     <div className="max-w-2xl mx-auto">
+			<PostCommentsModal post={commentModalPost} onClose={() => setCommentModalPost(null)} />
       <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-6">{title}</h1>
 
       {filteredPosts.length === 0 ? (
@@ -87,7 +90,7 @@ function CategoriaPageInner({ category }: { category: Category | 'all' }) {
       ) : (
         <div className="space-y-4">
           {filteredPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+            <PostCard key={post.id} post={post} onOpenComments={setCommentModalPost} />
           ))}
         </div>
       )}

@@ -13,10 +13,12 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 interface PostCardProps {
-  post: Post
+	post: Post
+	/** Si está definido, "Comentar" abre el modal en lugar de ir a `/post/{id}`. */
+	onOpenComments?: (post: Post) => void
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, onOpenComments }: PostCardProps) {
   const { config, currentUser, commentCountByPostId } = useApp()
   const isMine = currentUser?.id === post.authorId
   const commentCount =
@@ -81,6 +83,7 @@ export function PostCard({ post }: PostCardProps) {
           postId={post.id}
           whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
           showComments={config.commentsEnabled}
+					onCommentsClick={onOpenComments ? () => onOpenComments(post) : undefined}
           commentCount={commentCount}
         />
       </CardFooter>

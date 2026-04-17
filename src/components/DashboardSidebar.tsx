@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Users2,
   Home,
-  FileText,
+  UserCircle,
   Filter,
   Dog,
   AlertTriangle,
@@ -93,11 +93,6 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
       }))
     return [...head, ...rest]
   }, [postCategories])
-
-  const myPostsCount = useMemo(() => {
-    if (!currentUser) return 0
-    return posts.filter((p) => p.authorId === currentUser.id).length
-  }, [currentUser, posts])
 
   const isActivePath = (path: string) => {
     if (path === '/') return pathname === '/'
@@ -191,31 +186,15 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
 
         <Link
-          href="/mis-publicaciones"
+          href="/profile"
           onClick={onNavigate}
-          className={`mx-0 flex items-center justify-between gap-2 rounded-none px-4 py-2.5 text-sm font-semibold transition-colors ${
-            isActivePath('/mis-publicaciones')
-              ? `${navActive}`
-              : navInactive
+          className={`mx-0 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-semibold transition-colors ${
+            isActivePath('/profile') ? `${navActive}` : navInactive
           }`}
-          style={
-            isActivePath('/mis-publicaciones') ? { backgroundColor: CST.bordo } : undefined
-          }
+          style={isActivePath('/profile') ? { backgroundColor: CST.bordo } : undefined}
         >
-          <span className="flex items-center gap-3 min-w-0">
-            <FileText
-              className={`h-5 w-5 shrink-0 ${isActivePath('/mis-publicaciones') ? iconActive : iconMuted}`}
-            />
-            <span className="truncate">Mis publicaciones</span>
-          </span>
-          {currentUser != null && (
-            <span
-              className="flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-bold text-white shrink-0"
-              style={{ backgroundColor: CST.acento }}
-            >
-              {myPostsCount > 99 ? '99+' : myPostsCount}
-            </span>
-          )}
+          <UserCircle className={`h-5 w-5 shrink-0 ${isActivePath('/profile') ? iconActive : iconMuted}`} />
+          <span className="truncate">Mi perfil</span>
         </Link>
 
         <Link
@@ -292,18 +271,20 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <Link
           href="/cartelera"
           onClick={onNavigate}
-          className={`mt-3 mx-2 flex w-auto items-center justify-center gap-2 rounded-xl px-3 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-[#634942] active:scale-[0.98] ring-offset-[#F4EFEA] dark:ring-offset-[#18191a] ${
+          className={`mx-0 flex items-center justify-between gap-2 rounded-none px-4 py-2 text-sm font-medium transition-colors ${
             isActivePath('/cartelera')
-              ? 'ring-2 ring-[#5A000E] ring-offset-2'
-              : ''
+              ? navActive
+              : 'text-[#8B0015] hover:bg-[#8B0015]/10 dark:text-[#f0a8b8] dark:hover:bg-[#8B0015]/18'
           }`}
-          style={{
-            backgroundColor: CST.acento,
-            boxShadow: '0 4px 16px rgba(122, 92, 82, 0.35)',
-          }}
+          style={isActivePath('/cartelera') ? { backgroundColor: CST.bordo } : undefined}
         >
-          <Megaphone className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-          Publicidades
+          <span className="flex min-w-0 items-center gap-3">
+            <Megaphone
+              className={`h-5 w-5 shrink-0 ${isActivePath('/cartelera') ? iconActive : 'text-[#8B0015] dark:text-[#f0a8b8]'}`}
+              strokeWidth={2}
+            />
+            <span className="truncate">Publicidades</span>
+          </span>
         </Link>
 
         <div className="mt-4 pt-4">
