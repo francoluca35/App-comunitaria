@@ -347,7 +347,9 @@ export default function ProfilePage() {
           <div className={compact ? 'space-y-2' : 'space-y-3'}>
             {previewPublicidades.map((p) => {
               const isActiveNow =
-                p.status === 'active' && p.end_at && new Date(p.end_at).getTime() > Date.now()
+                p.status === 'active' &&
+                !!p.end_at &&
+                new Date(p.end_at).getTime() > Date.now()
               const href = publicidadDetailHref(p, isActiveNow)
               return (
                 <Link
