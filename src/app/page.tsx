@@ -137,7 +137,7 @@ function CommunityHeroBanner({
   heroReferentPhotoUrl,
   currentUserFirstName: _currentUserFirstName,
 }: CommunityHeroBannerProps) {
-  const referentFirst = firstName(heroReferentName || 'Mario')
+  const referentFirst = 'Mario Stebler'
 
   return (
     <div className="relative mt-6 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-4 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
@@ -163,15 +163,13 @@ function CommunityHeroBanner({
 /> */}
 			{/* Mobile: texto + CTA fijados en zona superior para que no se desplacen */}
 			<div className="relative z-[1] top-5 min-h-[175px] px-4 sm:hidden">
-				<p className="absolute inset-x-0 top-2 text-center text-sm text-white">
-					Cualquier duda o sugerencia, podés contactarme
-				</p>
-				<div className="absolute inset-x-0 top-8 flex justify-center">
+				
+				<div className="absolute inset-x-0 mr-2 top-8 flex justify-center">
 					<Link
 						href="/message"
-						className="flex h-12 w-[65%] max-w-[320px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-4 text-lg font-medium tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-white/60 hover:bg-black/40 active:scale-[0.99]"
+						className="flex h-13 w-[70%] max-w-[330px] items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-4 text-base font-normal tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-white/60 hover:bg-black/40 active:scale-[0.99]"
 					>
-						<Avatar className="h-7 w-7 shrink-0 border border-white/45">
+						<Avatar className="h-10 w-10 shrink-0 border border-white/45">
 							<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
 							<AvatarFallback
 								className="text-[10px]  text-white"
@@ -180,7 +178,7 @@ function CommunityHeroBanner({
 								{authorInitials(heroReferentName || 'MS')}
 							</AvatarFallback>
 						</Avatar>
-						Habla con {referentFirst}!
+						Habla con Mario Stebler
 					</Link>
 				</div>
 			</div>
