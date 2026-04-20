@@ -18,6 +18,7 @@ import { useApp } from '@/app/providers'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadModal } from '@/components/PublicidadModal'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
+import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 
 type SortOrder = 'reciente' | 'antiguo'
 
@@ -28,7 +29,7 @@ function parsePublicidadCreatedAt(raw: unknown): Date {
 }
 
 export default function PublicidadesPage() {
-  const { publicidadCategories, refreshPublicidadCategories } = useApp()
+  const { publicidadCategories, refreshPublicidadCategories, currentUser } = useApp()
   const pubCats = useMemo(() => sanitizeCategoryRows(publicidadCategories), [publicidadCategories])
   const [publicidades, setPublicidades] = useState<PublicidadDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -75,6 +76,7 @@ export default function PublicidadesPage() {
   )
   const [searchVisible, setSearchVisible] = useState(false)
   const [selectedPublicidad, setSelectedPublicidad] = useState<PublicidadDisplay | null>(null)
+  const [selectedPublicidadComments, setSelectedPublicidadComments] = useState<PublicidadDisplay | null>(null)
 
   const filteredAndSorted = useMemo(() => {
     let list = [...publicidades]
@@ -106,6 +108,12 @@ export default function PublicidadesPage() {
         open={!!selectedPublicidad}
         onOpenChange={(open) => !open && setSelectedPublicidad(null)}
         publicidad={selectedPublicidad}
+      />
+      <PublicidadCommentsModal
+        open={!!selectedPublicidadComments}
+        onOpenChange={(open) => !open && setSelectedPublicidadComments(null)}
+        publicidad={selectedPublicidadComments}
+        isLoggedIn={!!currentUser}
       />
       <div className="max-w-2xl mx-auto p-4 lg:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -230,6 +238,7 @@ export default function PublicidadesPage() {
                     publicidad={p}
                     categoryLabel={pubCatLabel}
                     onOpenDetail={() => setSelectedPublicidad(p)}
+                    onOpenComments={() => setSelectedPublicidadComments(p)}
                     imagePriority={index < 2}
                   />
                 </li>

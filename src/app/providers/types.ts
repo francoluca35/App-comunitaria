@@ -72,6 +72,9 @@ export interface Comment {
   authorName: string
   authorAvatar?: string
   text: string
+  imageUrl?: string
+  likeCount: number
+  likedByMe: boolean
   createdAt: Date
 }
 
@@ -154,7 +157,8 @@ export interface CommunityContextType {
   comments: Comment[]
   commentCountByPostId: Record<string, number>
   loadCommentsForPost: (postId: string) => Promise<void>
-  addComment: (postId: string, text: string) => Promise<{ ok: boolean; error?: string }>
+  addComment: (postId: string, text: string, imageFile?: File | null) => Promise<{ ok: boolean; error?: string }>
+  toggleCommentLike: (commentId: string) => Promise<{ ok: boolean; error?: string }>
 
   users: User[]
   toggleBlockUser: (userId: string) => void

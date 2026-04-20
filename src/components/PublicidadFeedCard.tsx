@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import InstagramIcon from '@mui/icons-material/Instagram'
-import { Globe, Instagram, Megaphone, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react'
+import { Globe, Megaphone, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CoverImageWithSkeleton } from '@/components/CoverImageWithSkeleton'
 import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
@@ -22,6 +22,7 @@ type Props = {
   publicidad: PublicidadDisplay
   categoryLabel: string
   onOpenDetail: () => void
+  onOpenComments: () => void
   imagePriority?: boolean
 }
 
@@ -32,6 +33,7 @@ export function PublicidadFeedCard({
   publicidad: pub,
   categoryLabel,
   onOpenDetail,
+  onOpenComments,
   imagePriority = false,
 }: Props) {
   const [captionExpanded, setCaptionExpanded] = useState(false)
@@ -219,30 +221,17 @@ export function PublicidadFeedCard({
       {/* Barra de interacción estilo red social */}
       <div className="flex items-center justify-between border-t border-[#3E4042] bg-[#d6d6d6] px-2 py-2 text-[#000000]">
         <div className="flex min-w-0 flex-1 items-center gap-0.5 sm:gap-3">
-          {pub.whatsappUrl ? (
-            <a
-              href={pub.whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={stop}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-white/5"
-            >
+          <button
+            type="button"
+            onClick={(e) => {
+              stop(e)
+              onOpenComments()
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-white/5"
+          >
               <MessageCircle className="h-[18px] w-[18px]" aria-hidden />
               Comentar
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => {
-                stop(e)
-                onOpenDetail()
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium hover:bg-white/5"
-            >
-              <MessageCircle className="h-[18px] w-[18px]" aria-hidden />
-              Comentar
-            </button>
-          )}
+          </button>
           <button
             type="button"
             onClick={(e) => {
