@@ -23,6 +23,7 @@ import { adminProfileToUser } from '@/app/providers/user-mapper'
 import { commentCountsFromRpcRows } from '@/app/providers/comment-counts'
 import { useAuth } from '@/app/providers/auth-context'
 import { useAppConfig } from '@/app/providers/app-config-context'
+import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
 import type {
   AdminProfile,
   Comment,
@@ -69,9 +70,28 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [commentCountByPostId, setCommentCountByPostId] = useState<Record<string, number>>({})
   const fetchedCommentCountIdsRef = useRef<Set<string>>(new Set())
+  const commentCountsRpcUnavailableRef = useRef(false)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
+
+  const uploadCommentImage = useCallback(
+    async (userId: string, file: File): Promise<string> => {
+      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!baseUrl) throw new Error('Configuración de Storage no disponible')
+      const [compressed] = await compressImagesForCommunityUpload([file])
+      if (!compressed) throw new Error('No se pudo procesar la imagen')
+      const ext = storageExtensionFromFile(compressed)
+      const path = `comments/${userId}/${crypto.randomUUID()}.${ext}`
+      const { error } = await supabase.storage.from('publicaciones').upload(path, compressed, {
+        upsert: false,
+        contentType: compressed.type || 'image/jpeg',
+      })
+      if (error) throw error
+      return `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/publicaciones/${path}`
+    },
+    [supabase]
+  )
 
   const fetchPostsIntoState = useCallback(
     async (showLoading: boolean, isCancelled?: () => boolean) => {
@@ -251,13 +271,28 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         const merged: Record<string, number> = {}
         for (let i = 0; i < unique.length; i += CHUNK) {
           const chunk = unique.slice(i, i + CHUNK)
-          const { data: rpcRows, error: rpcError } = await supabase.rpc('comment_counts_for_posts', {
-            p_post_ids: chunk,
-          })
-          if (!rpcError && Array.isArray(rpcRows)) {
-            Object.assign(merged, commentCountsFromRpcRows(rpcRows))
+          let usedFallback = false
+          if (!commentCountsRpcUnavailableRef.current) {
+            const { data: rpcRows, error: rpcError } = await supabase.rpc('comment_counts_for_posts', {
+              p_post_ids: chunk,
+            })
+            if (!rpcError && Array.isArray(rpcRows)) {
+              Object.assign(merged, commentCountsFromRpcRows(rpcRows))
+            } else {
+              usedFallback = true
+              const msg = (rpcError?.message ?? '').toLowerCase()
+              if (msg.includes('not found') || msg.includes('404') || msg.includes('does not exist')) {
+                commentCountsRpcUnavailableRef.current = true
+              }
+              if (rpcError && !commentCountsRpcUnavailableRef.current) {
+                console.warn('comment_counts_for_posts (RPC):', rpcError.message)
+              }
+            }
           } else {
-            if (rpcError) console.warn('comment_counts_for_posts (RPC):', rpcError.message)
+            usedFallback = true
+          }
+
+          if (usedFallback) {
             const { data, error } = await supabase.from('comments').select('post_id').in('post_id', chunk)
             if (error) {
               console.warn('refreshCommentCountsForPostIds (fallback):', error.message)
@@ -312,11 +347,28 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const loadCommentsForPost = useCallback(
     async (postId: string) => {
       try {
-        const { data, error } = await supabase
+        let data: unknown[] | null = null
+        let error: { message?: string } | null = null
+
+        const withImage = await supabase
           .from('comments')
-          .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
+          .select('id, post_id, author_id, text, image_url, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
           .eq('post_id', postId)
           .order('created_at', { ascending: true })
+
+        if (withImage.error) {
+          const fallback = await supabase
+            .from('comments')
+            .select('id, post_id, author_id, text, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
+            .eq('post_id', postId)
+            .order('created_at', { ascending: true })
+          data = fallback.data as unknown[] | null
+          error = fallback.error as { message?: string } | null
+        } else {
+          data = withImage.data as unknown[] | null
+          error = null
+        }
+
         if (error) {
           console.warn('loadCommentsForPost:', error.message)
           return
@@ -327,6 +379,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             post_id: string
             author_id: string
             text: string
+            image_url?: string | null
             created_at: string
             profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
           }
@@ -338,9 +391,33 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             authorName: profile?.name?.trim() || 'Usuario',
             authorAvatar: profile?.avatar_url ?? undefined,
             text: r.text,
+            imageUrl: r.image_url ?? undefined,
+            likeCount: 0,
+            likedByMe: false,
             createdAt: new Date(r.created_at),
           }
         })
+        const commentIds = mapped.map((c) => c.id)
+        if (commentIds.length > 0) {
+          const { data: likesRows, error: likesError } = await supabase
+            .from('comment_likes')
+            .select('comment_id, user_id')
+            .in('comment_id', commentIds)
+          if (!likesError && Array.isArray(likesRows)) {
+            const likeCountByCommentId: Record<string, number> = {}
+            const likedByMe = new Set<string>()
+            for (const row of likesRows as { comment_id: string; user_id: string }[]) {
+              likeCountByCommentId[row.comment_id] = (likeCountByCommentId[row.comment_id] ?? 0) + 1
+              if (currentUserRef.current?.id && row.user_id === currentUserRef.current.id) {
+                likedByMe.add(row.comment_id)
+              }
+            }
+            for (const comment of mapped) {
+              comment.likeCount = likeCountByCommentId[comment.id] ?? 0
+              comment.likedByMe = likedByMe.has(comment.id)
+            }
+          }
+        }
         setComments((prev) => {
           const rest = prev.filter((c) => c.postId !== postId)
           return [...rest, ...mapped].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -593,7 +670,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   )
 
   const addComment = useCallback(
-    async (postId: string, text: string): Promise<{ ok: boolean; error?: string }> => {
+    async (postId: string, text: string, imageFile?: File | null): Promise<{ ok: boolean; error?: string }> => {
       const u = currentUserRef.current
       const cfg = configRef.current
       if (!u || !cfg.commentsEnabled) return { ok: false, error: 'Comentarios deshabilitados' }
@@ -601,17 +678,47 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: 'Tu cuenta no puede comentar por el momento' }
       }
       const trimmed = text.trim()
-      if (!trimmed) return { ok: false, error: 'Escribí un comentario' }
+      if (!trimmed && !imageFile) return { ok: false, error: 'Escribí un comentario o agregá una imagen' }
+      let imageUrl: string | null = null
+      if (imageFile) {
+        try {
+          imageUrl = await uploadCommentImage(u.id, imageFile)
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'No se pudo subir la imagen'
+          return { ok: false, error: msg }
+        }
+      }
 
-      const { data, error } = await supabase
+      let data: unknown = null
+      let error: { message?: string } | null = null
+
+      const withImageInsert = await supabase
         .from('comments')
         .insert({
           post_id: postId,
           author_id: u.id,
-          text: trimmed,
+          text: trimmed || '',
+          image_url: imageUrl,
         })
-        .select('id, post_id, author_id, text, created_at, profiles(name, avatar_url)')
+        .select('id, post_id, author_id, text, image_url, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
         .single()
+
+      if (withImageInsert.error) {
+        const fallbackInsert = await supabase
+          .from('comments')
+          .insert({
+            post_id: postId,
+            author_id: u.id,
+            text: trimmed || '',
+          })
+          .select('id, post_id, author_id, text, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
+          .single()
+        data = fallbackInsert.data
+        error = fallbackInsert.error as { message?: string } | null
+      } else {
+        data = withImageInsert.data
+        error = null
+      }
 
       if (error) {
         return { ok: false, error: error.message ?? 'No se pudo publicar el comentario' }
@@ -622,6 +729,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         post_id: string
         author_id: string
         text: string
+        image_url?: string | null
         created_at: string
         profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
       }
@@ -633,6 +741,9 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         authorName: profile?.name?.trim() || u.name,
         authorAvatar: profile?.avatar_url ?? u.avatar,
         text: r.text,
+        imageUrl: r.image_url ?? undefined,
+        likeCount: 0,
+        likedByMe: false,
         createdAt: new Date(r.created_at),
       }
       setComments((prev) =>
@@ -644,7 +755,33 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       }))
       return { ok: true }
     },
-    [supabase]
+    [supabase, uploadCommentImage]
+  )
+
+  const toggleCommentLike = useCallback(
+    async (commentId: string): Promise<{ ok: boolean; error?: string }> => {
+      const u = currentUserRef.current
+      if (!u) return { ok: false, error: 'Debés iniciar sesión para dar me gusta' }
+      const target = comments.find((c) => c.id === commentId)
+      if (!target) return { ok: false, error: 'Comentario no encontrado' }
+      if (target.likedByMe) {
+        const { error } = await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', u.id)
+        if (error) return { ok: false, error: error.message ?? 'No se pudo quitar el me gusta' }
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === commentId ? { ...c, likedByMe: false, likeCount: Math.max(0, c.likeCount - 1) } : c
+          )
+        )
+        return { ok: true }
+      }
+      const { error } = await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: u.id })
+      if (error) return { ok: false, error: error.message ?? 'No se pudo registrar el me gusta' }
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, likedByMe: true, likeCount: c.likeCount + 1 } : c))
+      )
+      return { ok: true }
+    },
+    [comments, supabase]
   )
 
   const toggleBlockUser = useCallback((userId: string) => {
@@ -667,6 +804,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       commentCountByPostId,
       loadCommentsForPost,
       addComment,
+      toggleCommentLike,
       users,
       toggleBlockUser,
       adminProfiles,
@@ -693,6 +831,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       commentCountByPostId,
       loadCommentsForPost,
       addComment,
+      toggleCommentLike,
       users,
       toggleBlockUser,
       adminProfiles,

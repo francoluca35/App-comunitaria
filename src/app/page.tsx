@@ -30,6 +30,7 @@ import type { CarouselApi } from '@/app/components/ui/carousel'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { PublicidadModal } from '@/components/PublicidadModal'
+import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { type PublicidadDisplay } from '@/lib/publicidad-display'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
@@ -139,7 +140,7 @@ function CommunityHeroBanner({
   const referentFirst = firstName(heroReferentName || 'Mario')
 
   return (
-    <div className="relative mb-6 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
+    <div className="relative mt-3.5 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-0 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
 			{/* Móvil: fondo a todo el bloque (sin franja oscura ni “doble marco” alrededor de la tarjeta) */}
 			<div
 				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat sm:hidden"
@@ -155,40 +156,28 @@ function CommunityHeroBanner({
 				className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full select-none object-cover object-[center_40%] sm:block"
 				aria-hidden
 			/>
-			{/* Mobile: tarjeta referente (mismo lenguaje visual que el mockup de chat) */}
+			{/* Mobile: composición simplificada (nombre + CTA con foto) */}
 			<div className="relative z-[1] px-0 pb-4 pt-3 sm:hidden">
 				<div className="relative z-[1] p-4">
-					<div className="flex items-start gap-3.5">
-						<Avatar className="h-14 w-14 shrink-0 border-[3px] border-[#8B0015] shadow-md">
+					<div className="text-center">
+						<p className="font-montserrat-only mt-2 text-lg font-bold leading-tight text-white">
+							{heroReferentName}
+						</p>
+					</div>
+					<div className="my-4 h-px w-full bg-white/[0.1]" aria-hidden />
+					<Link
+						href="/message"
+						className="mx-auto flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/35 bg-transparent text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/[0.04] active:bg-white/[0.07]"
+					>
+						<Avatar className="h-7 w-7 shrink-0 border border-white/45">
 							<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
 							<AvatarFallback
-								className="text-base font-bold text-white"
+								className="text-[10px] font-bold text-white"
 								style={{ backgroundColor: CST.bordo }}
 							>
 								{authorInitials(heroReferentName || 'MS')}
 							</AvatarFallback>
 						</Avatar>
-						<div className="min-w-0 flex-1 pt-0.5">
-							<span className="inline-flex max-w-full rounded-md border border-[#8B0015]/70 bg-[#8B0015]/25 px-2 py-0.5 text-[0.6rem] font-bold uppercase leading-none tracking-[0.12em] text-[#F3C9D0]">
-								Referente oficial
-							</span>
-							<p className="font-montserrat-only mt-2 text-lg font-bold leading-tight text-white">
-								{heroReferentName}
-							</p>
-							<p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-400">
-								<span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-400 ring-1 ring-emerald-300/70" aria-hidden />
-								<span className="min-w-0 leading-snug">
-									En línea · <span className="text-slate-300">{heroTitle}</span>
-								</span>
-							</p>
-						</div>
-					</div>
-					<div className="my-4 h-px w-full bg-white/[0.1]" aria-hidden />
-					<Link
-						href="/message"
-						className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/35 bg-transparent text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/[0.04] active:bg-white/[0.07]"
-					>
-						<MessageCircle className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.25} aria-hidden />
 						Hablar con {referentFirst}
 					</Link>
 				</div>
@@ -406,6 +395,7 @@ function HomePageContent() {
   const [feedPublicidades, setFeedPublicidades] = useState<PublicidadDisplay[]>([])
   const [feedPubLoading, setFeedPubLoading] = useState(true)
   const [selectedFeedPublicidad, setSelectedFeedPublicidad] = useState<PublicidadDisplay | null>(null)
+  const [selectedPublicidadComments, setSelectedPublicidadComments] = useState<PublicidadDisplay | null>(null)
   const [feedFilter, setFeedFilter] = useState<string>(FEED_FILTER_ALL)
   const [selectedPostModal, setSelectedPostModal] = useState<Post | null>(null)
 
@@ -579,6 +569,12 @@ function HomePageContent() {
         onOpenChange={(open) => !open && setSelectedFeedPublicidad(null)}
         publicidad={selectedFeedPublicidad}
       />
+      <PublicidadCommentsModal
+        open={!!selectedPublicidadComments}
+        onOpenChange={(open) => !open && setSelectedPublicidadComments(null)}
+        publicidad={selectedPublicidadComments}
+        isLoggedIn={!!currentUser}
+      />
 			<PostCommentsModal post={selectedPostModal} onClose={() => setSelectedPostModal(null)} />
       <AvatarImageCropDialog
         open={cropOpen}
@@ -637,7 +633,7 @@ function HomePageContent() {
         />
 
         {/* Tarjetas de acción */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-3.5 sm:mb-6 sm:gap-4 sm:grid-cols-2">
           <Link
             href="/create"
             className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
@@ -682,7 +678,7 @@ function HomePageContent() {
 
         {/* Feed: solo publicaciones; el buscador no filtra la barra de publicidad */}
         <section>
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-3 flex items-center justify-between sm:mb-4">
             <h2 className="font-montserrat-only text-base font-bold text-[#8B0015]">
               {feedFilter === FEED_FILTER_SOLO_PUBLICIDADES ? 'Publicidades' : 'Últimas publicaciones'}
             </h2>
@@ -763,7 +759,7 @@ function HomePageContent() {
               )}
             </div>
           ) : (
-            <ul className="-mx-3 m-0 flex w-[calc(100%+1.5rem)] list-none flex-col gap-8 p-0 sm:mx-0 sm:w-full sm:gap-5">
+            <ul className="-mx-3 m-0 flex w-[calc(100%+1.5rem)] list-none flex-col gap-5 p-0 sm:mx-0 sm:w-full sm:gap-5">
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
@@ -839,6 +835,7 @@ function HomePageContent() {
                       publicidad={pub}
                       categoryLabel={pubCatLabel}
                       onOpenDetail={() => setSelectedFeedPublicidad(pub)}
+                      onOpenComments={() => setSelectedPublicidadComments(pub)}
                       imagePriority={feedIndex < 2}
                     />
                   </li>

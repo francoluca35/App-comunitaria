@@ -45,10 +45,15 @@ export interface AppNotification {
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   message: MessageCircle,
   comment: FileText,
+  publicidad_comment: FileText,
   post_approved: CheckCircle,
   post_rejected: XCircle,
   post_deleted: Trash2,
   post_pending: Megaphone,
+  publicidad_pending: Megaphone,
+  publicidad_payment_link: Megaphone,
+  publicidad_rejected: XCircle,
+  publicidad_active: CheckCircle,
   new_profile: UserPlus,
   community_alert: AlertTriangle,
 }

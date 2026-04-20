@@ -10,6 +10,11 @@ export type NotificationType =
   | 'post_pending'
   | 'new_profile'
   | 'community_alert'
+  | 'publicidad_pending'
+  | 'publicidad_payment_link'
+  | 'publicidad_rejected'
+  | 'publicidad_active'
+  | 'publicidad_comment'
 
 export interface NotificationRow {
   id: string
