@@ -140,45 +140,47 @@ function CommunityHeroBanner({
   const referentFirst = firstName(heroReferentName || 'Mario')
 
   return (
-    <div className="relative mt-3.5 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-0 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
-			{/* Móvil: fondo a todo el bloque (sin franja oscura ni “doble marco” alrededor de la tarjeta) */}
+    <div className="relative mt-6 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-4 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
+			{/* Móvil: usar fondo-banner completo (sin recorte agresivo) */}
 			<div
 				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat sm:hidden"
-				style={{ backgroundImage: "url('/Assets/fondo-inicio-m.png')" }}
+				style={{ backgroundImage: "url('/Assets/fondo-banner.jpeg')" }}
 				aria-hidden
 			/>
-			<div className="pointer-events-none absolute inset-0 z-0 bg-[#0b0e16]/50 sm:hidden" aria-hidden />
+			<div className="pointer-events-none absolute inset-0 z-0 bg-black/40 sm:hidden" aria-hidden />
 			{/* Escritorio: imagen a pantalla completa en el banner (cover = sin franjas; recorte suave vertical si hace falta) */}
 			{/* eslint-disable-next-line @next/next/no-img-element */}
-			<img
-				src="/Assets/fondo-inicio1.png"
-				alt=""
-				className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full select-none object-cover object-[center_40%] sm:block"
-				aria-hidden
-			/>
-			{/* Mobile: composición simplificada (nombre + CTA con foto) */}
-			<div className="relative z-[1] px-0 pb-4 pt-3 sm:hidden">
-				<div className="relative z-[1] p-4">
-					<div className="text-center">
-						<p className="font-montserrat-only mt-2 text-lg font-bold leading-tight text-white">
-							{heroReferentName}
-						</p>
-					</div>
-					<div className="my-4 h-px w-full bg-white/[0.1]" aria-hidden />
+      <img
+  src="/Assets/fondo-inicio1.png"
+  alt=""
+  className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full select-none object-cover object-center sm:block"
+/>
+
+<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent sm:block" />
+	{/* <div
+  className="absolute inset-0 hidden sm:block bg-no-repeat bg-center bg-contain"
+  style={{ backgroundImage: "url('/Assets/fondo-inicio1.png')" }}
+/> */}
+			{/* Mobile: texto + CTA fijados en zona superior para que no se desplacen */}
+			<div className="relative z-[1] top-5 min-h-[175px] px-4 sm:hidden">
+				<p className="absolute inset-x-0 top-2 text-center text-sm text-white">
+					Cualquier duda o sugerencia, podés contactarme
+				</p>
+				<div className="absolute inset-x-0 top-8 flex justify-center">
 					<Link
 						href="/message"
-						className="mx-auto flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/35 bg-transparent text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/[0.04] active:bg-white/[0.07]"
+						className="flex h-12 w-[65%] max-w-[320px] items-center justify-center gap-2 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-4 text-lg font-medium tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-white/60 hover:bg-black/40 active:scale-[0.99]"
 					>
 						<Avatar className="h-7 w-7 shrink-0 border border-white/45">
 							<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
 							<AvatarFallback
-								className="text-[10px] font-bold text-white"
+								className="text-[10px]  text-white"
 								style={{ backgroundColor: CST.bordo }}
 							>
 								{authorInitials(heroReferentName || 'MS')}
 							</AvatarFallback>
 						</Avatar>
-						Hablar con {referentFirst}
+						Habla con {referentFirst}!
 					</Link>
 				</div>
 			</div>
