@@ -1,6 +1,8 @@
 # Webhook de push para alertas (`/api/push/webhook`)
 
-Cuando un admin **aprueba** una publicación categoría **alertas**, el trigger de Postgres inserta filas en `notifications` (tipo `community_alert`). Este webhook recibe cada INSERT y envía **Web Push** al dispositivo del usuario destinatario.
+Cuando un admin **aprueba** una publicación categoría **alertas**, el trigger de Postgres inserta filas en `notifications` (tipo `community_alert`). Para **personas extraviadas** (categoría **extravios**) el tipo es `community_alert_critical`; el mismo webhook envía Web Push con marca `critical` para refuerzo (p. ej. punto en el icono de la PWA donde el navegador lo soporte).
+
+Este webhook recibe cada INSERT relevante y envía **Web Push** al dispositivo del usuario destinatario.
 
 ## 1. Requisitos previos
 
@@ -73,7 +75,7 @@ No tenés que armar el JSON a mano: Supabase envía automáticamente el payload 
 }
 ```
 
-La API solo procesa `type === "INSERT"`, tabla `notifications`, y `record.type === "community_alert"`. El resto responde `200` con `skipped: true` (así Supabase no reintenta como error).
+La API procesa `type === "INSERT"`, tabla `notifications`, y `record.type` igual a **`community_alert`** o **`community_alert_critical`**. El resto responde `200` con `skipped: true` (así Supabase no reintenta como error).
 
 ## 5. Probar
 

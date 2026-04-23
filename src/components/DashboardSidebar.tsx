@@ -13,6 +13,7 @@ import {
   Package,
   Newspaper,
   Tag,
+  UserSearch,
   MessageCircle,
   Settings,
   LogOut,
@@ -29,6 +30,7 @@ const ICON_BY_SLUG: Record<string, LucideIcon> = {
   todas: Filter,
   mascotas: Dog,
   alertas: AlertTriangle,
+  extravios: UserSearch,
   avisos: Megaphone,
   objetos: Package,
   noticias: Newspaper,
@@ -235,7 +237,8 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
           const href = `/categoria/${slug}`
           const active = pathname === href
           const count = getCategoryCount(posts, slug)
-          const showDot = (slug === 'mascotas' || slug === 'alertas') && count > 0
+          const showDot =
+            (slug === 'mascotas' || slug === 'alertas' || slug === 'extravios') && count > 0
           return (
             <Link
               key={slug}

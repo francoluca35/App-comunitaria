@@ -10,6 +10,7 @@ export type NotificationType =
   | 'post_pending'
   | 'new_profile'
   | 'community_alert'
+  | 'community_alert_critical'
   | 'publicidad_pending'
   | 'publicidad_payment_link'
   | 'publicidad_rejected'

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Filter } from 'lucide-react'
+import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Filter, UserSearch } from 'lucide-react'
 
 const NEUTRAL_ICON_WRAP =
   'flex items-center justify-center rounded-xl bg-[#EDEAE7] text-[#3D3D3D] dark:bg-[#2a2a2a] dark:text-[#e5e5e5]'
@@ -16,6 +16,10 @@ export function getPostCategoryVisual(slug: string): {
     },
     alertas: {
       icon: <AlertTriangle className="h-6 w-6" />,
+      iconClass: NEUTRAL_ICON_WRAP,
+    },
+    extravios: {
+      icon: <UserSearch className="h-6 w-6" />,
       iconClass: NEUTRAL_ICON_WRAP,
     },
     avisos: {

@@ -15,6 +15,7 @@ import {
   Newspaper,
   Package,
   PenLine,
+  UserSearch,
 } from 'lucide-react'
 import { CST } from '@/lib/cst-theme'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
@@ -63,6 +64,31 @@ export default function CreateHubPage() {
             <p className="text-sm text-[#7A5C52]">Elegí con un toque qué querés avisar</p>
           </div>
         </div>
+
+        {postCategories.some((c) => c.slug === 'extravios') && (
+          <Link href="/create/extravio" className="block mb-4">
+            <Card
+              className="gap-0 overflow-hidden border-2 border-neutral-900/80 p-0 text-white shadow-lg ring-2 ring-black/25 transition-transform hover:scale-[1.01] active:scale-[0.99]"
+              style={{
+                background: 'linear-gradient(115deg, #171717 0%, #7f1d1d 52%, #b91c1c 100%)',
+              }}
+            >
+              <CardContent className="!p-0">
+                <div className="flex items-stretch gap-4 p-5">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm ring-2 ring-white/25">
+                    <UserSearch className="h-9 w-9" strokeWidth={2.25} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-extrabold leading-tight tracking-tight">Persona extraviada</p>
+                    <p className="mt-1 text-sm text-white/92 leading-snug">
+                      Prioridad máxima: alerta masiva, punto en el icono de la app (donde aplique), mensaje privado desde Mario con el enlace — solo emergencias reales.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {postCategories.some((c) => c.slug === 'alertas') && (
           <Link href="/create/alerta" className="block mb-4">

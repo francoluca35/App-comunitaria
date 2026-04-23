@@ -116,7 +116,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: true, reason: 'not_notifications_insert' })
   }
 
-  if (record.type !== 'community_alert') {
+  const isCommunityAlert =
+    record.type === 'community_alert' || record.type === 'community_alert_critical'
+  if (!isCommunityAlert) {
     return NextResponse.json({ ok: true, skipped: true, reason: 'not_community_alert' })
   }
 
@@ -144,13 +146,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, sent: 0, reason: 'no_subscriptions' })
   }
 
-  const tag = `community-alert-${record.related_id ?? 'unknown'}`
+  const isCritical = record.type === 'community_alert_critical'
+  const tag = isCritical
+    ? `extravio-alert-${record.related_id ?? 'unknown'}`
+    : `community-alert-${record.related_id ?? 'unknown'}`
   const payload = JSON.stringify({
     title: record.title ?? 'Alerta',
     body: record.body ?? '',
     tag,
     url: record.link_url ?? '/',
     urgent: true,
+    critical: isCritical,
   })
 
   let sent = 0
@@ -196,6 +202,6 @@ export async function GET() {
   return NextResponse.json({
     service: 'push-webhook',
     ready: Boolean(secret?.trim() && vapid),
-    hint: 'POST con JSON de Supabase Database Webhook + header de secreto (ver PUSH_WEBHOOK_SETUP.md)',
+    hint: 'POST con JSON de Supabase Database Webhook + header de secreto; procesa community_alert y community_alert_critical (ver PUSH_WEBHOOK_SETUP.md)',
   })
 }
