@@ -15,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { showSystemNotification } from '@/lib/notifications'
 import { MARIO_EMAILS } from '@/hooks/useMarioAdmin'
+import { MessageContent } from '@/components/MessageContent'
 
 interface ChatMessage {
   id: string
@@ -252,7 +253,7 @@ export default function MessagePage() {
                           : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600 rounded-bl-md'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <MessageContent content={msg.content} variant={isMine ? 'light' : 'dark'} />
                       <p className={`text-xs mt-1 ${isMine ? 'text-[#F3C9D0]' : 'text-slate-500 dark:text-slate-400'}`}>
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
                       </p>

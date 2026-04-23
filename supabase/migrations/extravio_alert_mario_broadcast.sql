@@ -76,6 +76,9 @@ declare
 	t text;
 	b text;
 	msg text;
+	post_link text;
+	wa_clean text;
+	wa_line text;
 begin
 	select id into mario_id
 	from public.profiles
@@ -89,11 +92,20 @@ begin
 		b := 'Alerta máxima: revisá la publicación en la comunidad.';
 	end if;
 
+	post_link := '/post/' || new.id::text;
+
+	wa_clean := regexp_replace(coalesce(new.whatsapp_number, ''), '\D', '', 'g');
+	if wa_clean <> '' then
+		wa_line := E'\nWhatsApp de contacto: https://wa.me/' || wa_clean;
+	else
+		wa_line := '';
+	end if;
+
 	msg :=
-		'Soy Mario. Hay una alerta MÁXIMA por persona extraviada: «'
-		|| left(trim(new.title), 120)
-		|| '». Abrí la publicación en la app (Inicio o campana). Enlace: /post/'
-		|| new.id::text;
+		E'🚨 PERSONA EXTRAVIADA\n«' || left(trim(new.title), 120) || E'»\n\n'
+		|| 'Soy Mario. Tocá el enlace para abrir la publicación con las fotos y los detalles:' || E'\n'
+		|| post_link
+		|| wa_line;
 
 	for r in
 		select id from public.profiles
@@ -105,7 +117,7 @@ begin
 			'community_alert_critical',
 			t,
 			b,
-			'/post/' || new.id::text,
+			post_link,
 			new.id::text
 		);
 
