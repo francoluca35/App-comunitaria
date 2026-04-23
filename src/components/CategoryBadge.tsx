@@ -1,10 +1,20 @@
-import { Dog, AlertTriangle, Megaphone, Package, Newspaper, Sparkles, Tag } from 'lucide-react'
+import {
+	Dog,
+	AlertTriangle,
+	UserSearch,
+	Megaphone,
+	Package,
+	Newspaper,
+	Sparkles,
+	Tag,
+} from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { Badge } from '@/app/components/ui/badge'
 
 const ICON_BY_SLUG: Record<string, React.ReactNode> = {
   mascotas: <Dog className="h-3 w-3" />,
   alertas: <AlertTriangle className="h-3 w-3" />,
+  extravios: <UserSearch className="h-3 w-3" />,
   avisos: <Megaphone className="h-3 w-3" />,
   objetos: <Package className="h-3 w-3" />,
   noticias: <Newspaper className="h-3 w-3" />,

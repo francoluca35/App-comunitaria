@@ -14,6 +14,7 @@ import {
   UserPlus,
   Send,
   AlertTriangle,
+  BellRing,
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
@@ -56,6 +57,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   publicidad_active: CheckCircle,
   new_profile: UserPlus,
   community_alert: AlertTriangle,
+  community_alert_critical: BellRing,
 }
 
 function formatNotificationTime(dateStr: string): string {
@@ -158,11 +160,14 @@ export function NotificationBell({
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
         (payload) => {
           const row = payload.new as AppNotification
-          if (row.type === 'community_alert') {
+          if (row.type === 'community_alert' || row.type === 'community_alert_critical') {
             void showSystemNotification({
               title: row.title,
               body: row.body ?? undefined,
-              tag: `community-alert-${row.related_id ?? row.id}`,
+              tag:
+                row.type === 'community_alert_critical'
+                  ? `extravio-alert-${row.related_id ?? row.id}`
+                  : `community-alert-${row.related_id ?? row.id}`,
               url: row.link_url ?? '/',
               urgent: true,
             })
@@ -201,7 +206,13 @@ export function NotificationBell({
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${currentUser.id}` },
         (payload) => {
-          const row = payload.new as { id: string; sender_id: string; content: string }
+          const row = payload.new as {
+            id: string
+            sender_id: string
+            content: string
+            system_generated?: boolean | null
+          }
+          if (row.system_generated) return
           const optimistic: AppNotification = {
             id: `opt-${row.id}`,
             type: 'message',
@@ -418,15 +429,20 @@ export function NotificationBell({
                         className={cn(
                           'w-full flex gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors border-b border-slate-100 dark:border-gray-800/50 last:border-0',
                           !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
-                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 pl-3'
+                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 pl-3',
+                          n.type === 'community_alert_critical' &&
+                            !n.read_at &&
+                            'border-l-4 border-l-red-600 pl-3'
                         )}
                       >
                         <span
                           className={cn(
                             'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 dark:text-gray-300',
-                            n.type === 'community_alert'
-                              ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
-                              : 'bg-slate-200 dark:bg-gray-700'
+                            n.type === 'community_alert_critical'
+                              ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
+                              : n.type === 'community_alert'
+                                ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
+                                : 'bg-slate-200 dark:bg-gray-700'
                           )}
                         >
                           <Icon className="w-4 h-4" />

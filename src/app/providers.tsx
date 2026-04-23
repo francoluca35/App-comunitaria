@@ -34,6 +34,25 @@ export { useCommunity } from '@/app/providers/community-context'
 
 function AppChrome() {
   const { authLoading, currentUser } = useAuth()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const clearBadge = () => {
+      if ('clearAppBadge' in navigator && typeof navigator.clearAppBadge === 'function') {
+        void navigator.clearAppBadge()
+      }
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') clearBadge()
+    }
+    window.addEventListener('focus', clearBadge)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', clearBadge)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
   return (
     <>
       <RealtimeNotificationSubscriptions />

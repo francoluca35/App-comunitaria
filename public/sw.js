@@ -28,6 +28,7 @@ self.addEventListener('push', (event) => {
     icon: ICON_PATH,
     url: '/',
     urgent: false,
+    critical: false,
   }
   try {
     const data = event.data.json()
@@ -38,41 +39,56 @@ self.addEventListener('push', (event) => {
       url: data.url ?? '/',
       icon: data.icon ?? ICON_PATH,
       urgent: Boolean(data.urgent),
+      critical: Boolean(data.critical),
     }
   } catch {
     payload.body = event.data.text()
   }
   const iconUrl = getFullIconUrl(payload.icon)
   const urgent = payload.urgent
+  const critical = payload.critical
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      tag: payload.tag,
-      data: { url: payload.url || '/' },
-      icon: iconUrl,
-      badge: iconUrl,
-      vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
-      requireInteraction: urgent,
-      // false = el SO puede sonar según el canal de notificaciones (lo que el usuario configuró en Ajustes)
-      silent: false,
-      // Android: volver a avisar aunque haya otra con el mismo tag reciente
-      renotify: urgent,
-    })
+    (async () => {
+      if (critical && 'setAppBadge' in navigator && typeof navigator.setAppBadge === 'function') {
+        try {
+          await navigator.setAppBadge(1)
+        } catch {
+          /* ignore */
+        }
+      }
+      await self.registration.showNotification(payload.title, {
+        body: payload.body,
+        tag: payload.tag,
+        data: { url: payload.url || '/', critical },
+        icon: iconUrl,
+        badge: iconUrl,
+        vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
+        requireInteraction: urgent,
+        silent: false,
+        renotify: urgent || critical,
+      })
+    })()
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const url = event.notification.data?.url || '/'
+  const clearBadge =
+    'clearAppBadge' in navigator && typeof navigator.clearAppBadge === 'function'
+      ? navigator.clearAppBadge().catch(() => {})
+      : Promise.resolve()
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) {
-        const client = clientList[0]
-        client.navigate(url)
-        client.focus()
-      } else if (self.clients.openWindow) {
-        self.clients.openWindow(url)
-      }
-    })
+    clearBadge.then(() =>
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        if (clientList.length > 0) {
+          const client = clientList[0]
+          client.navigate(url)
+          client.focus()
+        } else if (self.clients.openWindow) {
+          self.clients.openWindow(url)
+        }
+      })
+    )
   )
 })
