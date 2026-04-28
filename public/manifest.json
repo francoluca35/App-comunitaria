@@ -28,9 +28,9 @@
       "purpose": "any"
     },
     {
-      "src": "/Assets/logo-mobil.png",
+      "src": "/Assets/splash-maskable-dark.svg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "maskable"
     }
   ],
