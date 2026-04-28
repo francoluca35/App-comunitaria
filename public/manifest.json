@@ -10,12 +10,6 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/Assets/app-icon-full.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
       "src": "/Assets/logo-mobil-96.png",
       "sizes": "96x96",
       "type": "image/png",

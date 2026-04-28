@@ -17,6 +17,14 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+/**
+ * Requisito de instalación PWA (Chrome / Edge): el SW debe interceptar navegación.
+ * Passthrough a red — sin cache offline extra.
+ */
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request))
+})
+
 const URGENT_VIBRATE = [280, 100, 280, 100, 400]
 
 self.addEventListener('push', (event) => {
