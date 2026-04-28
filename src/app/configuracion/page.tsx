@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Label } from '@/app/components/ui/label'
 import { Switch } from '@/app/components/ui/switch'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { Bell, FileText, Shield } from 'lucide-react'
+import { Bell, FileText, Shield, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
 
@@ -117,6 +117,15 @@ export default function ConfiguracionPage() {
                   <span className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     Términos y condiciones
+                  </span>
+                </Link>
+                <Link
+                  href="/eliminacion-de-datos"
+                  className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800/50"
+                >
+                  <span className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Eliminación de datos
                   </span>
                 </Link>
               </div>
