@@ -296,7 +296,7 @@ function CreateOtroForm() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-md mx-auto">
+      <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={() => router.push('/create')}>
             <ArrowLeft className="w-5 h-5" />
@@ -305,7 +305,7 @@ function CreateOtroForm() {
             {categoryLocked ? categoryLabel : 'Nueva categoría y publicación'}
           </h1>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-7">
           <Card className="bg-[#8B0015]/10 dark:bg-[#8B0015]/20 border-[#8B0015]/25 dark:border-[#8B0015]/50">
             <CardContent className="p-4">
               <div className="flex gap-3">
@@ -356,7 +356,7 @@ function CreateOtroForm() {
                   ¿Qué tipo de publicación es? <span className="text-red-500">*</span>
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Tocá una opción</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {OBJETO_TIPOS.map((t) => {
                     const selected = objetoTipo === t.value
                     return (
@@ -572,7 +572,7 @@ function CreateOtroForm() {
               )}
             </p>
             {attachmentFiles.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5">
                 {attachmentFiles.map((att, index) => (
                   <div
                     key={`${att.file.name}-${index}`}
