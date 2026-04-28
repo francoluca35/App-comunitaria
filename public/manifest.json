@@ -2,9 +2,10 @@
   "name": "CST Comunidad",
   "short_name": "CST",
   "description": "Plataforma de difusión comunitaria — Comunidad de Santo Tomé",
-  "start_url": "/",
+  "start_url": "/pwa-launch",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#F4EFEA",
+  "background_color": "#8B0015",
   "theme_color": "#8B0015",
   "orientation": "portrait-primary",
   "icons": [
