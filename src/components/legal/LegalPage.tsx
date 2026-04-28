@@ -16,7 +16,7 @@ export function LegalPage({ title, lastUpdated, intro, sections }: LegalPageProp
 	return (
 		<main className="min-h-screen bg-[#f4f3f8] px-4 py-10 sm:px-6 lg:px-8">
 			<div className="mx-auto w-full max-w-3xl rounded-2xl border border-[#D8D2CC] bg-white p-6 shadow-sm sm:p-8">
-				<Link href="/login" className="text-sm font-semibold text-[#8B0015] hover:underline">
+				<Link href="/configuracion" className="text-sm font-semibold text-[#8B0015] hover:underline">
 					Volver
 				</Link>
 				<h1 className="mt-3 text-2xl font-bold text-[#2B2B2B] sm:text-3xl">{title}</h1>
