@@ -168,7 +168,7 @@ export default function CreateAlertaPage() {
   if (!hasAlertCategory && postCategories.length > 0) {
     return (
       <DashboardLayout>
-        <div className="max-w-md mx-auto">
+        <div className="mx-auto w-full max-w-3xl">
           <Button variant="ghost" size="icon" onClick={() => router.push('/create')} className="mb-4">
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -185,7 +185,7 @@ export default function CreateAlertaPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-md mx-auto pb-10">
+      <div className="mx-auto w-full max-w-3xl pb-10">
         <div className="flex items-center gap-3 mb-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/create')}>
             <ArrowLeft className="w-5 h-5" />
@@ -201,7 +201,7 @@ export default function CreateAlertaPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 lg:space-y-6">
           <Card
             className="border-2 overflow-hidden"
             style={{ borderColor: `${alertRed}55`, background: 'linear-gradient(180deg, #FEF2F2 0%, #F4EFEA 100%)' }}
@@ -257,7 +257,7 @@ export default function CreateAlertaPage() {
               videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u); las fotos se optimizan al enviar.
             </p>
             {attachments.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5">
                 {attachments.map((att, index) => (
                   <div
                     key={`${att.file.name}-${index}`}

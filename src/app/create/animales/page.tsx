@@ -179,7 +179,7 @@ export default function CreateAnimalesPage() {
   if (!mascotasSlug) {
     return (
       <DashboardLayout>
-        <div className="max-w-md mx-auto p-6">
+        <div className="mx-auto w-full max-w-3xl p-6">
           <Button variant="ghost" size="icon" onClick={() => router.push('/create')} className="mb-4">
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -199,7 +199,7 @@ export default function CreateAnimalesPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-md mx-auto pb-8">
+      <div className="mx-auto w-full max-w-3xl pb-8">
         <div className="flex items-center gap-3 mb-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/create')} className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
@@ -286,46 +286,48 @@ export default function CreateAnimalesPage() {
           </CardContent>
         </Card>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="ubicacion" className="text-[#2C241C]">
-              ¿En qué calle o zona? <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="ubicacion"
-              placeholder="Ej: Balcarce y Mitre"
-              value={ubicacion}
-              onChange={(e) => setUbicacion(e.target.value)}
-              className="rounded-xl border-2 border-[#D8D2CC] h-12"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-5 lg:space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="ubicacion" className="text-[#2C241C]">
+                ¿En qué calle o zona? <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="ubicacion"
+                placeholder="Ej: Balcarce y Mitre"
+                value={ubicacion}
+                onChange={(e) => setUbicacion(e.target.value)}
+                className="rounded-xl border-2 border-[#D8D2CC] h-12"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="fecha" className="text-[#2C241C]">
-              Fecha <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="fecha"
-              type="date"
-              value={fechaIso}
-              onChange={(e) => setFechaIso(e.target.value)}
-              className="rounded-xl border-2 border-[#D8D2CC] h-12"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha" className="text-[#2C241C]">
+                Fecha <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="fecha"
+                type="date"
+                value={fechaIso}
+                onChange={(e) => setFechaIso(e.target.value)}
+                className="rounded-xl border-2 border-[#D8D2CC] h-12"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tel" className="text-[#2C241C]">
-              Teléfono para que te llamen <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="tel"
-              type="tel"
-              inputMode="tel"
-              placeholder="Ej: 11 1234-5678"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="rounded-xl border-2 border-[#D8D2CC] h-12 text-lg"
-            />
+            <div className="space-y-2">
+              <Label htmlFor="tel" className="text-[#2C241C]">
+                Teléfono para que te llamen <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="tel"
+                type="tel"
+                inputMode="tel"
+                placeholder="Ej: 11 1234-5678"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
+                className="rounded-xl border-2 border-[#D8D2CC] h-12 text-lg"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
