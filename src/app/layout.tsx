@@ -29,10 +29,10 @@ export const metadata: Metadata = {
   /** Web / Android: favicon y tamaños estándar PWA. */
   icons: {
     icon: [
-      { url: '/Assets/logo-mobil-96.png', sizes: '96x96', type: 'image/png' },
-      { url: '/Assets/logo-mobil-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/Assets/logo-mobil-launcher-96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/Assets/logo-mobil-launcher-192.png', sizes: '192x192', type: 'image/png' },
     ],
-    shortcut: '/Assets/logo-mobil-96.png',
+    shortcut: '/Assets/logo-mobil-launcher-96.png',
     /** iPhone / iPad: variantes -i (Apple touch icon). */
     apple: [
       { url: '/Assets/logo-mobil-120-i.png', sizes: '120x120', type: 'image/png' },
