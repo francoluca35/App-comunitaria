@@ -9,7 +9,7 @@ export default function PwaLaunchPage() {
 	useEffect(() => {
 		const t = window.setTimeout(() => {
 			router.replace('/')
-		}, 700)
+		}, 450)
 		return () => window.clearTimeout(t)
 	}, [router])
 
