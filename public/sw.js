@@ -1,5 +1,5 @@
 // Service worker para PWA y notificaciones push
-const CACHE_NAME = 'comunidad-v1'
+const CACHE_NAME = 'comunidad-v3'
 /** Icono para notificaciones push (Android / escritorio); mismo estilo que el launcher 192. */
 const ICON_PATH = '/Assets/logo-mobil-192.png'
 
