@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   /** Web / Android: favicon y tamaños estándar PWA. */
   icons: {
     icon: [
+      { url: '/Assets/app-icon-full.svg', type: 'image/svg+xml' },
       { url: '/Assets/logo-mobil-96.png', sizes: '96x96', type: 'image/png' },
       { url: '/Assets/logo-mobil-192.png', sizes: '192x192', type: 'image/png' },
     ],
