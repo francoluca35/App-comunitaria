@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useApp, type NotificationPreference } from '@/app/providers'
@@ -8,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Label } from '@/app/components/ui/label'
 import { Switch } from '@/app/components/ui/switch'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { Bell } from 'lucide-react'
+import { Bell, FileText, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
 
@@ -95,6 +96,29 @@ export default function ConfiguracionPage() {
                     <span className="text-sm font-medium text-slate-900 dark:text-white">{label}</span>
                   </label>
                 ))}
+              </div>
+            </div>
+            <div className="pt-2 border-t border-slate-200 dark:border-gray-700">
+              <Label className="mb-3 block">Legal</Label>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href="/politica-de-privacidad"
+                  className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800/50"
+                >
+                  <span className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Política de privacidad
+                  </span>
+                </Link>
+                <Link
+                  href="/terminos-y-condiciones"
+                  className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800/50"
+                >
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Términos y condiciones
+                  </span>
+                </Link>
               </div>
             </div>
           </CardContent>

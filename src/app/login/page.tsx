@@ -15,7 +15,6 @@ export default function LoginPage() {
 	const [mobileStep, setMobileStep] = useState<'welcome' | 'signin' | 'signup'>('welcome')
 	const [panelAnimation, setPanelAnimation] = useState<'slide-left' | 'slide-right'>('slide-right')
 	const [swapPhase, setSwapPhase] = useState<'idle' | 'out' | 'in'>('idle')
-	const [provider, setProvider] = useState<'google' | 'facebook'>('google')
 	const [loginEmail, setLoginEmail] = useState('')
 	const [loginPassword, setLoginPassword] = useState('')
 	const [registerName, setRegisterName] = useState('')
@@ -27,16 +26,7 @@ export default function LoginPage() {
 	const [registerPassword, setRegisterPassword] = useState('')
 	const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('')
 
-	const buttonLabel =
-		mode === 'signup'
-			? provider === 'google'
-				? 'Sign up with Google'
-				: 'Sign up with Facebook'
-			: provider === 'google'
-				? 'Sign in with Google'
-				: 'Sign in with Facebook'
-
-	const handleAuth = async () => {
+	const handleAuth = async (provider: 'google' | 'facebook') => {
 		setLoading(true)
 		try {
 			const ok = provider === 'google' ? await loginWithGoogle() : await loginWithFacebook()
@@ -229,8 +219,7 @@ export default function LoginPage() {
 									<button
 										type="button"
 										onClick={() => {
-											setProvider('google')
-											void handleAuth()
+											void handleAuth('google')
 										}}
 										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
 										aria-label="Google"
@@ -242,8 +231,7 @@ export default function LoginPage() {
 									<button
 										type="button"
 										onClick={() => {
-											setProvider('facebook')
-											void handleAuth()
+											void handleAuth('facebook')
 										}}
 										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
 										aria-label="Facebook"
@@ -402,8 +390,7 @@ export default function LoginPage() {
 									<button
 										type="button"
 										onClick={() => {
-											setProvider('google')
-											void handleAuth()
+											void handleAuth('google')
 										}}
 										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
 										aria-label="Google"
@@ -415,8 +402,7 @@ export default function LoginPage() {
 									<button
 										type="button"
 										onClick={() => {
-											setProvider('facebook')
-											void handleAuth()
+											void handleAuth('facebook')
 										}}
 										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
 										aria-label="Facebook"
@@ -699,8 +685,7 @@ export default function LoginPage() {
 								<button
 									type="button"
 									onClick={() => {
-										setProvider('google')
-										void handleAuth()
+										void handleAuth('google')
 									}}
 									className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ececef] px-3 text-sm font-semibold text-slate-700 sm:h-11 sm:text-base"
 									aria-label="Google"
@@ -712,8 +697,7 @@ export default function LoginPage() {
 								<button
 									type="button"
 									onClick={() => {
-										setProvider('facebook')
-										void handleAuth()
+										void handleAuth('facebook')
 									}}
 									className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ececef] px-3 text-sm font-semibold text-slate-700 sm:h-11 sm:text-base"
 									aria-label="Facebook"
