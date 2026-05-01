@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Bell,
@@ -28,20 +28,12 @@ import { Button } from '@/app/components/ui/button'
 import { ScrollArea } from '@/app/components/ui/scroll-area'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
+import type { ChatNotificationRow } from '@/lib/chat-notification-ui'
 
 const defaultTriggerClass =
   'relative p-2 rounded-xl text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors'
 
-export interface AppNotification {
-  id: string
-  type: string
-  title: string
-  body: string | null
-  link_url: string | null
-  related_id: string | null
-  read_at: string | null
-  created_at: string
-}
+export type AppNotification = ChatNotificationRow
 
 const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   message: MessageCircle,
@@ -118,7 +110,7 @@ export function NotificationBell({
         toast.error('Notificaciones: respuesta inválida')
         return
       }
-      const rows = data as AppNotification[]
+      const rows = (data as AppNotification[]).filter((r) => r.type !== 'message')
       rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       setNotifications(rows)
     } finally {
@@ -172,16 +164,8 @@ export function NotificationBell({
               urgent: true,
             })
           }
+          if (row.type === 'message') return
           setNotifications((prev) => {
-            // Si ya tenemos una optimista del mismo mensaje, reemplazarla por la real
-            const optIndex = prev.findIndex(
-              (n) => n.id.startsWith('opt-') && n.type === 'message' && n.related_id === row.related_id
-            )
-            if (optIndex >= 0) {
-              const next = [...prev]
-              next.splice(optIndex, 1, row)
-              return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            }
             const next = [row, ...prev.filter((n) => n.id !== row.id)]
             return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           })
@@ -196,47 +180,6 @@ export function NotificationBell({
       supabase.removeChannel(channel)
     }
   }, [currentUser?.id, supabase, fetchNotifications])
-
-  // Realtime instantáneo: mensajes de chat (para que lleguen al instante sin esperar al trigger)
-  useEffect(() => {
-    if (!currentUser?.id) return
-    const channel = supabase
-      .channel(`chat-inbox-${currentUser.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${currentUser.id}` },
-        (payload) => {
-          const row = payload.new as {
-            id: string
-            sender_id: string
-            content: string
-            system_generated?: boolean | null
-          }
-          if (row.system_generated) return
-          const optimistic: AppNotification = {
-            id: `opt-${row.id}`,
-            type: 'message',
-            title: 'Nuevo mensaje',
-            body: (row.content ?? '').slice(0, 80) + (row.content && row.content.length > 80 ? '…' : ''),
-            link_url: '/message',
-            related_id: row.id,
-            read_at: null,
-            created_at: new Date().toISOString(),
-          }
-          setNotifications((prev) => [optimistic, ...prev])
-          showSystemNotification({
-            title: 'Nuevo mensaje',
-            body: optimistic.body ?? 'Te enviaron un mensaje',
-            tag: `chat-msg-${row.id}`,
-            url: '/message',
-          })
-        }
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [currentUser?.id, supabase])
 
   const markAsRead = async (ids: string[]) => {
     const realIds = ids.filter((id) => !id.startsWith('opt-'))
@@ -275,9 +218,9 @@ export function NotificationBell({
 
   const handleNotificationClick = (n: AppNotification) => {
     if (n.type === 'new_profile') return
-    if (!n.read_at) markAsRead([n.id])
+    if (!n.read_at) void markAsRead([n.id])
     setOpen(false)
-    if (n.link_url) router.push(n.link_url)
+    router.push(n.link_url ?? '/')
   }
 
   const sendWelcomeMessage = async (n: AppNotification) => {
@@ -307,7 +250,10 @@ export function NotificationBell({
     }
   }
 
-  const unreadCount = notifications.filter((n) => !n.read_at).length
+  const unreadCount = useMemo(
+    () => notifications.filter((n) => !n.read_at).length,
+    [notifications]
+  )
 
   if (!currentUser) return null
 

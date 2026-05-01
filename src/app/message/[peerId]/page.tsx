@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
-import { useMarioAdmin, MARIO_EMAILS, type SupportProfile } from '@/hooks/useMarioAdmin'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Input } from '@/app/components/ui/input'
@@ -15,6 +14,7 @@ import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { showSystemNotification } from '@/lib/notifications'
+import { MessageContent } from '@/components/MessageContent'
 
 interface ChatMessage {
   id: string
@@ -24,11 +24,23 @@ interface ChatMessage {
   created_at: string
 }
 
-export default function ChatPage() {
+interface PeerProfile {
+  id: string
+  name: string | null
+  avatar_url: string | null
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export default function MessageWithPeerPage() {
   const router = useRouter()
+  const params = useParams()
+  const peerIdParam = params?.peerId
+  const peerId = Array.isArray(peerIdParam) ? peerIdParam[0] : peerIdParam
   const { currentUser } = useApp()
-  const { mario: support, loading: supportLoading, error: supportError } = useMarioAdmin()
-  const isMario = MARIO_EMAILS.includes((currentUser?.email ?? '').trim().toLowerCase())
+  const [peer, setPeer] = useState<PeerProfile | null>(null)
+  const [peerLoading, setPeerLoading] = useState(true)
+  const [peerError, setPeerError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -46,9 +58,58 @@ export default function ChatPage() {
   }
 
   const supabase = useMemo(() => createClient(), [])
-
   const myId = currentUser?.id ?? ''
-  const otherId = support?.id ?? ''
+  const otherId = peer?.id ?? ''
+  const backToTeamList =
+    currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos'
+
+  useEffect(() => {
+    if (!currentUser || !peerId || !UUID_RE.test(peerId)) return
+    let cancelled = false
+    const run = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+        const marioRes = await fetch('/api/message/mario', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (marioRes.ok) {
+          const mario = (await marioRes.json()) as { id: string }
+          if (mario?.id === peerId) {
+            router.replace('/message/mario')
+            return
+          }
+        }
+        const res = await fetch(`/api/message/peer/${peerId}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}))
+          if (!cancelled) {
+            setPeerError((j as { error?: string }).error ?? 'No se pudo abrir el chat')
+            setPeer(null)
+          }
+          return
+        }
+        const data = (await res.json()) as PeerProfile
+        if (!cancelled) {
+          setPeer(data)
+          setPeerError(null)
+        }
+      } catch {
+        if (!cancelled) {
+          setPeerError('Error al cargar el perfil')
+          setPeer(null)
+        }
+      } finally {
+        if (!cancelled) setPeerLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser, peerId, router, supabase.auth])
 
   const loadMessages = async () => {
     if (!myId || !otherId) return
@@ -69,7 +130,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!myId || !otherId) return
     stickToBottomRef.current = true
-    loadMessages()
+    void loadMessages()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myId, otherId])
 
@@ -90,20 +151,19 @@ export default function ChatPage() {
           const isThisConversation =
             (row.sender_id === myId && row.receiver_id === otherId) ||
             (row.sender_id === otherId && row.receiver_id === myId)
-          if (isThisConversation) {
-            setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
-            const isIncoming = row.receiver_id === myId && row.sender_id !== myId
-            const wantMessages =
-              currentUser?.notificationPreference === 'messages_only' || currentUser?.notificationPreference === 'all'
-            if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
-              const adminName = support?.name?.trim() || 'Admin'
-              showSystemNotification({
-                title: 'Nuevo mensaje',
-                body: `Admin (${adminName}) te envió un mensaje`,
-                tag: `chat-${myId}-${otherId}`,
-                url: '/message/mario',
-              })
-            }
+          if (!isThisConversation) return
+          setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+
+          const isIncoming = row.receiver_id === myId && row.sender_id !== myId
+          const wantMessages =
+            currentUser?.notificationPreference === 'messages_only' || currentUser?.notificationPreference === 'all'
+          if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
+            showSystemNotification({
+              title: 'Nuevo mensaje',
+              body: `${peer?.name?.trim() || 'Alguien'} te envió un mensaje`,
+              tag: `chat-${myId}-${otherId}`,
+              url: `/message/${otherId}`,
+            })
           }
         }
       )
@@ -112,7 +172,7 @@ export default function ChatPage() {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myId, otherId, support?.name])
+  }, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference])
 
   const pollInterval = 2000
   useEffect(() => {
@@ -137,7 +197,7 @@ export default function ChatPage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Iniciá sesión para chatear con soporte.</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Iniciá sesión para chatear.</p>
             <Button onClick={() => router.push('/login')}>Ir a iniciar sesión</Button>
           </CardContent>
         </Card>
@@ -145,19 +205,20 @@ export default function ChatPage() {
     )
   }
 
-  // En vez de redirigir por rol/email (que puede fallar por formatos),
-  // dejamos que el backend decida. Si el backend rechaza con "Acceso restringido",
-  // mandamos al panel de admin.
-  useEffect(() => {
-    if (supportLoading) return
-    if (!supportError) return
-    const msg = String(supportError).toLowerCase()
-    if (msg.includes('acceso restringido')) {
-      router.replace('/admin/messages')
-    }
-  }, [supportLoading, supportError, router])
+  if (!peerId || !UUID_RE.test(peerId)) {
+    return (
+      <DashboardLayout fillViewport>
+        <div className="mx-auto w-full max-w-2xl flex-1 p-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push(backToTeamList)}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <p className="text-slate-500 dark:text-slate-400 mt-4">Enlace de chat inválido.</p>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
-  if (supportLoading) {
+  if (peerLoading) {
     return (
       <DashboardLayout fillViewport>
         <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center py-20">
@@ -167,14 +228,14 @@ export default function ChatPage() {
     )
   }
 
-  if (!support) {
+  if (peerError || !peer) {
     return (
       <DashboardLayout fillViewport>
         <div className="mx-auto w-full max-w-2xl flex-1 p-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+          <Button variant="ghost" size="icon" onClick={() => router.push(backToTeamList)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <p className="text-slate-500 dark:text-slate-400 mt-4">No hay soporte disponible en este momento. Volvé más tarde.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-4">{peerError ?? 'No se pudo abrir esta conversación.'}</p>
         </div>
       </DashboardLayout>
     )
@@ -202,22 +263,23 @@ export default function ChatPage() {
     setMessage('')
   }
 
-  const displayName = support.name ?? 'Soporte'
+  const displayName = peer.name ?? 'Equipo'
+  const headerText = `Conversación con ${displayName}`
 
   return (
     <DashboardLayout fillViewport>
       <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
         <div className="flex items-center gap-3 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+          <Button variant="ghost" size="icon" onClick={() => router.push(backToTeamList)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Avatar className="w-10 h-10">
-            <AvatarImage src={support.avatar_url ?? undefined} />
-            <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? 'S'}</AvatarFallback>
+            <AvatarImage src={peer.avatar_url ?? undefined} />
+            <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? '?'}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-slate-900 dark:text-white truncate">{displayName}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Chat con soporte</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{headerText}</p>
           </div>
         </div>
 
@@ -229,16 +291,15 @@ export default function ChatPage() {
           {loading ? (
             <p className="text-center text-slate-500 dark:text-slate-400 py-4">Cargando mensajes...</p>
           ) : messages.length === 0 ? (
-            <p className="text-center text-slate-500 dark:text-slate-400 py-4">No hay mensajes todavía. Escribí algo para iniciar la conversación con soporte.</p>
+            <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+              No hay mensajes todavía. Escribí algo para iniciar la conversación.
+            </p>
           ) : (
             <div className="flex flex-col gap-3">
               {messages.map((msg) => {
                 const isMine = msg.sender_id === myId
                 return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                  >
+                  <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                         isMine
@@ -246,7 +307,7 @@ export default function ChatPage() {
                           : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-600 rounded-bl-md'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                      <MessageContent content={msg.content} variant={isMine ? 'light' : 'dark'} />
                       <p className={`text-xs mt-1 ${isMine ? 'text-[#F3C9D0]' : 'text-slate-500 dark:text-slate-400'}`}>
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
                       </p>

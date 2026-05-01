@@ -12,6 +12,7 @@ import Link from 'next/link'
 import { House, Menu, Megaphone, Search, Type } from 'lucide-react'
 import { DashboardSidebar } from './DashboardSidebar'
 import { NotificationBell } from './NotificationBell'
+import { FloatingChatHub } from './FloatingChatHub'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { PublicidadModal } from '@/components/PublicidadModal'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
@@ -45,10 +46,16 @@ function shortDisplayName(name: string) {
 export function DashboardLayout({
   children,
   contentClassName,
+  fillViewport = false,
 }: {
   children: React.ReactNode
   /** Sustituye o amplía el ancho máximo del área de contenido (p. ej. `max-w-5xl` en perfil). */
   contentClassName?: string
+  /**
+   * Altura fija al viewport: sin scroll en el `main`; el contenido (p. ej. chat) controla el propio overflow.
+   * Usar en pantallas de chat para evitar doble barra de desplazamiento.
+   */
+  fillViewport?: boolean
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [lateralAds, setLateralAds] = useState<PublicidadDisplay[]>([])
@@ -177,7 +184,12 @@ export function DashboardLayout({
 
   return (
     <FeedSearchContext.Provider value={feedSearchValue}>
-      <div className="min-h-screen bg-[#F4EFEA] dark:bg-[#18191a]">
+      <div
+        className={cn(
+          'bg-[#F4EFEA] dark:bg-[#18191a]',
+          fillViewport ? 'flex h-[100dvh] max-h-[100dvh] min-h-0 flex-col' : 'min-h-screen'
+        )}
+      >
         <PublicidadModal
           open={!!lateralDetail}
           onOpenChange={(open) => !open && setLateralDetail(null)}
@@ -290,17 +302,49 @@ export function DashboardLayout({
           />
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col pt-24 md:pt-16 lg:ml-64 xl:mr-[280px]">
-          <main className="flex flex-1 justify-center overflow-auto px-3 py-5 sm:px-4 lg:px-8">
-            <div className={cn('w-full', contentClassName ?? 'max-w-3xl')}>{children}</div>
+        <div
+          className={cn(
+            'flex min-w-0 flex-1 flex-col pt-24 md:pt-16 lg:ml-64',
+            fillViewport ? 'min-h-0 overflow-hidden xl:mr-[292px]' : 'xl:mr-[280px]'
+          )}
+        >
+          <main
+            className={cn(
+              'flex justify-center px-3 sm:px-4 lg:px-8',
+              fillViewport
+                ? 'min-h-0 flex-1 flex flex-col overflow-hidden py-3 sm:py-4'
+                : 'flex flex-1 overflow-auto py-5'
+            )}
+          >
+            <div
+              className={cn(
+                'w-full',
+                contentClassName ?? 'max-w-3xl',
+                fillViewport && 'flex min-h-0 flex-1 flex-col'
+              )}
+            >
+              {children}
+            </div>
           </main>
         </div>
 
+        <FloatingChatHub />
+
         <aside
-          className="fixed bottom-0 right-0 top-16 z-20 hidden w-[280px] flex-col bg-[#F4EFEA] xl:flex dark:bg-[#18191a]"
+          className={cn(
+            'fixed z-20 hidden w-[280px] flex-col bg-[#F4EFEA] xl:flex dark:bg-[#18191a]',
+            fillViewport
+              ? 'bottom-4 right-3 top-[4.75rem] overflow-hidden rounded-xl border border-[#D8D2CC]/80 shadow-sm dark:border-[#3a3b3c]/90'
+              : 'bottom-0 right-0 top-16 border-transparent shadow-none'
+          )}
           aria-label="Publicidad lateral"
         >
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-0 py-0">
+          <div
+            className={cn(
+              'flex min-h-0 flex-1 flex-col overflow-y-auto',
+              fillViewport ? 'px-2.5 pb-2 pt-2' : 'px-0 py-0'
+            )}
+          >
             <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
               <h3 className="font-montserrat-only text-xs font-semibold uppercase tracking-wider text-[#7A5C52] dark:text-[#b0b3b8]">
                 Publicidad
