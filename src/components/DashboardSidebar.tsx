@@ -101,6 +101,11 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
     return pathname.startsWith(path)
   }
 
+  /** Chatear (sidebar): inbox con equipo, no la pantalla exclusiva de Mario (`/message`). */
+  const isInboxTeamChatActive =
+    pathname === '/message/contactos' ||
+    /^\/message\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(pathname)
+
   const subline = currentUser?.locality
     ? `Vecino/a • ${currentUser.locality}`
     : 'Tu espacio en la comunidad'
@@ -293,17 +298,15 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-4 pt-4">
           {currentUser && !currentUser.isAdmin && (
             <Link
-              href="/message"
+              href="/message/contactos"
               onClick={onNavigate}
               className={`mx-0 mb-1 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
-                isActivePath('/message')
-                  ? `${navActive}`
-                  : navInactive
+                isInboxTeamChatActive ? `${navActive}` : navInactive
               }`}
-              style={isActivePath('/message') ? { backgroundColor: CST.bordo } : undefined}
+              style={isInboxTeamChatActive ? { backgroundColor: CST.bordo } : undefined}
             >
               <MessageCircle
-                className={`h-5 w-5 shrink-0 ${isActivePath('/message') ? iconActive : iconMuted}`}
+                className={`h-5 w-5 shrink-0 ${isInboxTeamChatActive ? iconActive : iconMuted}`}
               />
               Chatear
             </Link>

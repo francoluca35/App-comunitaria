@@ -51,10 +51,22 @@ export default function AdminChatPage() {
   const [sending, setSending] = useState(false)
   const [showClearAllDialog, setShowClearAllDialog] = useState(false)
   const [showClearByDateDialog, setShowClearByDateDialog] = useState(false)
+  const [showProfileDialog, setShowProfileDialog] = useState(false)
   const [clearFrom, setClearFrom] = useState('')
   const [clearTo, setClearTo] = useState('')
   const [clearing, setClearing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const stickToBottomRef = useRef(true)
+  const BOTTOM_SCROLL_THRESHOLD_PX = 80
+
+  const updateStickToBottomFromScroll = () => {
+    const el = messagesScrollRef.current
+    if (!el) return
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+    stickToBottomRef.current = distance <= BOTTOM_SCROLL_THRESHOLD_PX
+  }
+
   const supabase = useMemo(() => createClient(), [])
 
   const profile = userId ? adminProfiles.find((p) => p.id === userId) : null
@@ -79,11 +91,13 @@ export default function AdminChatPage() {
 
   useEffect(() => {
     if (!myId || !otherId) return
+    stickToBottomRef.current = true
     loadMessages()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myId, otherId])
 
   useEffect(() => {
+    if (!stickToBottomRef.current) return
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
@@ -153,8 +167,8 @@ export default function AdminChatPage() {
 
   if (!userId || !profile) {
     return (
-      <DashboardLayout>
-        <div className="w-full max-w-2xl mx-auto p-4">
+      <DashboardLayout fillViewport>
+        <div className="mx-auto w-full max-w-2xl flex-1 p-4">
           <Button variant="ghost" size="icon" onClick={() => router.push('/admin/messages')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -179,7 +193,10 @@ export default function AdminChatPage() {
       toast.error(error.message ?? 'Error al enviar')
       return
     }
-    if (newMsg) setMessages((prev) => [...prev, newMsg as ChatMessage])
+    if (newMsg) {
+      stickToBottomRef.current = true
+      setMessages((prev) => [...prev, newMsg as ChatMessage])
+    }
     setMessage('')
   }
 
@@ -241,45 +258,58 @@ export default function AdminChatPage() {
   const displayName = profile.name ?? profile.email
 
   return (
-    <DashboardLayout>
-      <div className="w-full max-w-2xl mx-auto flex flex-col h-[calc(100vh-6rem)]">
-        <div className="flex items-center gap-3 p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/admin/messages')}>
-            <ArrowLeft className="w-5 h-5" />
+    <DashboardLayout fillViewport>
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col">
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-white p-3 sm:gap-3 sm:p-4 dark:border-slate-700 dark:bg-slate-900 shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/admin/messages')} aria-label="Volver a la lista">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={profile.avatar_url ?? undefined} />
-            <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? '?'}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-slate-900 dark:text-white truncate">{displayName}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{profile.email}</p>
+          <button
+            type="button"
+            onClick={() => setShowProfileDialog(true)}
+            className="shrink-0 rounded-full outline-none ring-offset-2 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[#8B0015] dark:ring-offset-slate-900"
+            aria-label="Ver datos y foto del usuario"
+          >
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={profile.avatar_url ?? undefined} alt="" />
+              <AvatarFallback className="text-sm">{displayName[0]?.toUpperCase() ?? '?'}</AvatarFallback>
+            </Avatar>
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium text-slate-900 dark:text-white">{displayName}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">{profile.email}</p>
           </div>
-          <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
             <Button
               variant="outline"
               size="sm"
-              className="text-slate-600 dark:text-slate-400"
+              className="h-9 px-2 text-slate-600 dark:text-slate-400 md:px-3"
               onClick={() => setShowClearByDateDialog(true)}
               disabled={clearing}
+              aria-label="Vaciar mensajes por rango de fechas"
             >
-              <Calendar className="w-4 h-4 mr-1" />
-              Vaciar por fechas
+              <Calendar className="h-4 w-4 md:mr-1.5" />
+              <span className="hidden md:inline">Vaciar por fechas</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="text-red-600 dark:text-red-400"
+              className="h-9 px-2 text-red-600 dark:text-red-400 md:px-3"
               onClick={() => setShowClearAllDialog(true)}
               disabled={clearing}
+              aria-label="Vaciar todo el chat"
             >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Vaciar chat
+              <Trash2 className="h-4 w-4 md:mr-1.5" />
+              <span className="hidden md:inline">Vaciar chat</span>
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-800/30">
+        <div
+          ref={messagesScrollRef}
+          onScroll={updateStickToBottomFromScroll}
+          className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-800/30"
+        >
           {loading ? (
             <p className="text-center text-slate-500 dark:text-slate-400 py-4">Cargando mensajes...</p>
           ) : messages.length === 0 ? (
@@ -352,6 +382,83 @@ export default function AdminChatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Datos del usuario</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <Avatar className="h-28 w-28 border-2 border-slate-200 dark:border-slate-600">
+              <AvatarImage src={profile.avatar_url ?? undefined} className="object-cover" alt={displayName} />
+              <AvatarFallback className="text-3xl">{displayName[0]?.toUpperCase() ?? '?'}</AvatarFallback>
+            </Avatar>
+            <dl className="w-full space-y-2 text-sm">
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Nombre</dt>
+                <dd className="font-medium text-slate-900 dark:text-white">{profile.name?.trim() || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Email</dt>
+                <dd className="break-all text-slate-900 dark:text-white">{profile.email}</dd>
+              </div>
+              {profile.phone ? (
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Teléfono</dt>
+                  <dd className="text-slate-900 dark:text-white">{profile.phone}</dd>
+                </div>
+              ) : null}
+              {(profile.locality || profile.province) ? (
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Ubicación</dt>
+                  <dd className="text-slate-900 dark:text-white">
+                    {[profile.locality, profile.province].filter(Boolean).join(' · ') || '—'}
+                  </dd>
+                </div>
+              ) : null}
+              {profile.birth_date ? (
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Fecha de nacimiento</dt>
+                  <dd className="text-slate-900 dark:text-white">
+                    {new Date(profile.birth_date).toLocaleDateString('es-AR', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Rol</dt>
+                <dd className="text-slate-900 dark:text-white">{profile.role}</dd>
+              </div>
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Estado</dt>
+                <dd className="text-slate-900 dark:text-white">{profile.status}</dd>
+              </div>
+              {profile.suspended_until ? (
+                <div>
+                  <dt className="text-slate-500 dark:text-slate-400">Suspendido hasta</dt>
+                  <dd className="text-slate-900 dark:text-white">
+                    {new Date(profile.suspended_until).toLocaleString('es-AR')}
+                  </dd>
+                </div>
+              ) : null}
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Registro</dt>
+                <dd className="text-slate-900 dark:text-white">
+                  {new Date(profile.created_at).toLocaleString('es-AR')}
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShowProfileDialog(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showClearByDateDialog} onOpenChange={setShowClearByDateDialog}>
         <DialogContent>

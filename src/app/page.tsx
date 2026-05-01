@@ -8,7 +8,6 @@ import {
   LayoutGrid,
   Megaphone,
   MessageCircle,
-  PenLine,
   Sparkles,
   Tag,
   TrendingUp,
@@ -166,7 +165,7 @@ function CommunityHeroBanner({
 				
 				<div className="absolute inset-x-0 mr-2 top-8 flex justify-center">
 					<Link
-						href="/message"
+						href="/message/mario"
 						className="flex h-13 w-[70%] max-w-[330px] items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-4 text-base font-normal tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-white/60 hover:bg-black/40 active:scale-[0.99]"
 					>
 						<Avatar className="h-10 w-10 shrink-0 border border-white/45">
@@ -211,7 +210,7 @@ function CommunityHeroBanner({
             </p>
           </div>
           <Link
-            href="/message"
+            href="/message/mario"
             className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/45 bg-black/20 px-5 py-2.5 text-sm font-semibold text-white shadow-md backdrop-blur-md transition hover:border-white/65 hover:bg-black/35 lg:px-6 lg:text-base"
           >
             <MessageCircle className="h-[1.05rem] w-[1.05rem] opacity-95" strokeWidth={2.25} aria-hidden />
@@ -859,26 +858,6 @@ function HomePageContent() {
           </h2>
           <ZonaPublicitariaCarousel />
         </section>
-
-        {/* FABs */}
-        <div className="pointer-events-none fixed bottom-6 right-4 z-30 flex flex-col items-end gap-3 sm:right-6 lg:right-8">
-          <Link
-            href="/cartelera"
-            className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#634942] active:scale-95"
-            style={{ backgroundColor: CST.acento }}
-            aria-label="Publicidades"
-          >
-            <Megaphone className="h-5 w-5" />
-          </Link>
-          <Link
-            href="/create"
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#5A000E] active:scale-95"
-            style={{ backgroundColor: CST.bordo }}
-            aria-label="Crear publicación"
-          >
-            <PenLine className="h-6 w-6" />
-          </Link>
-        </div>
       </div>
     </>
   )
