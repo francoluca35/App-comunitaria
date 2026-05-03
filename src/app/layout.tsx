@@ -1,6 +1,7 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Providers } from './providers'
+import { getAppPublicOrigin } from '@/lib/app-public-url'
 import { Montserrat, Open_Sans } from 'next/font/google'
 
 const openSans = Open_Sans({
@@ -17,6 +18,7 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getAppPublicOrigin()),
   title: 'CST Comunidad',
   description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
   manifest: '/manifest.json',

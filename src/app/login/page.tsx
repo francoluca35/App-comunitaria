@@ -2,14 +2,25 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt'
 import { Button } from '@/app/components/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/app/components/ui/dialog'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
-import { Chrome, Facebook } from 'lucide-react'
+import { Chrome, Download, Facebook, Share2 } from 'lucide-react'
 
 export default function LoginPage() {
 	const { login, register, loginWithGoogle, loginWithFacebook } = useAuth()
+	const { canOfferInstall, canOfferIosInstallHint, install } = usePwaInstallPrompt()
+	const [iosInstallDialogOpen, setIosInstallDialogOpen] = useState(false)
 	const [loading, setLoading] = useState(false)
 	const [mode, setMode] = useState<'signup' | 'signin'>('signin')
 	const [mobileStep, setMobileStep] = useState<'welcome' | 'signin' | 'signup'>('welcome')
@@ -141,6 +152,36 @@ export default function LoginPage() {
 						<div className="mb-8 flex flex-col items-center text-center">
 							<img src="/Assets/cst.png" alt="Logo CST" className="w-52 max-w-full" />
 							<h1 className="mt-4 text-2xl font-semibold tracking-tight text-white os-light:text-[#2B2B2B]">Bienvenidos</h1>
+							{canOfferInstall || canOfferIosInstallHint ? (
+								<div className="mt-4 w-full max-w-[280px] rounded-xl border border-[#8B0015]/55 bg-black/25 p-3 os-light:border-[#8B0015]/35 os-light:bg-white/80">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => {
+											if (canOfferInstall) void install()
+											else setIosInstallDialogOpen(true)
+										}}
+										className="h-11 w-full gap-2 rounded-lg border-[#8B0015]/60 bg-[#8B0015]/90 text-sm font-semibold text-white hover:bg-[#8B0015] hover:text-white os-light:border-[#8B0015] os-light:bg-[#8B0015] os-light:hover:bg-[#5A000E]"
+									>
+										{canOfferInstall ? (
+											<>
+												<Download className="h-4 w-4 shrink-0" aria-hidden />
+												Instalar app
+											</>
+										) : (
+											<>
+												<Share2 className="h-4 w-4 shrink-0" aria-hidden />
+												Cómo instalar la app
+											</>
+										)}
+									</Button>
+									<p className="mt-2 text-center text-[11px] leading-snug text-white/70 os-light:text-[#5c5652]">
+										{canOfferInstall
+											? 'Instalá CST en tu teléfono para abrirla como aplicación.'
+											: 'En iPhone o iPad: añadí CST a la pantalla de inicio desde Safari.'}
+									</p>
+								</div>
+							) : null}
 						</div>
 
 						{mobileStep === 'welcome' ? (
@@ -496,7 +537,6 @@ export default function LoginPage() {
 					<div className="w-full max-w-[560px] md:mx-auto">
 						<div key={mode} className={panelAnimation}>
 							<div className="mb-5 sm:mb-6">
-				
 								<h1 className="text-[30px] font-bold leading-tight text-slate-900 sm:text-[38px] lg:text-[42px]">
 									{mode === 'signup' ? 'Crea tu cuenta' : 'Bienvenido de vuelta'}
 								</h1>
@@ -505,6 +545,36 @@ export default function LoginPage() {
 										? 'Continuá con Google o Facebook para crear tu cuenta en segundos.'
 										: 'Ingresá con Google o Facebook para continuar en la comunidad.'}
 								</p>
+								{canOfferInstall || canOfferIosInstallHint ? (
+									<div className="mt-4 rounded-xl border border-[#8B0015]/30 bg-[#8B0015]/5 p-3">
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => {
+												if (canOfferInstall) void install()
+												else setIosInstallDialogOpen(true)
+											}}
+											className="h-10 w-full gap-2 rounded-lg border-[#8B0015] bg-[#8B0015] text-sm font-semibold text-white hover:bg-[#5A000E] hover:text-white"
+										>
+											{canOfferInstall ? (
+												<>
+													<Download className="h-4 w-4 shrink-0" aria-hidden />
+													Instalar app
+												</>
+											) : (
+												<>
+													<Share2 className="h-4 w-4 shrink-0" aria-hidden />
+													Cómo instalar la app
+												</>
+											)}
+										</Button>
+										<p className="mt-2 text-center text-[11px] leading-snug text-slate-600">
+											{canOfferInstall
+												? 'Instalá CST como aplicación en este dispositivo.'
+												: 'En iPhone o iPad usá “Añadir a pantalla de inicio” desde Safari.'}
+										</p>
+									</div>
+								) : null}
 							</div>
 
 							{mode === 'signin' ? (
@@ -722,6 +792,45 @@ export default function LoginPage() {
 					</div>
 				</section>
 			</div>
+			<Dialog open={iosInstallDialogOpen} onOpenChange={setIosInstallDialogOpen}>
+				<DialogContent className="max-w-md border-[#D8D2CC] sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle className="text-[#2B2B2B]">Instalar CST en iPhone o iPad</DialogTitle>
+						<DialogDescription className="text-left text-slate-600">
+							Apple no permite el mismo botón de instalación que Android; hay que añadir el sitio a la pantalla de
+							inicio desde Safari.
+						</DialogDescription>
+					</DialogHeader>
+					<ol className="list-decimal space-y-3 pl-4 text-sm leading-relaxed text-slate-800">
+						<li>
+							Abrí esta página en <strong>Safari</strong> (si estás en Chrome u otro navegador, abrí el enlace en
+							Safari).
+						</li>
+						<li>
+							Tocá el botón <strong>Compartir</strong>{' '}
+							<span className="whitespace-nowrap text-slate-600">(cuadrado con flecha hacia arriba)</span> en la
+							barra inferior o junto a la barra de direcciones.
+						</li>
+						<li>
+							En el menú, elegí <strong>«Añadir a pantalla de inicio»</strong> (puede estar más abajo: deslizá la
+							lista).
+						</li>
+						<li>
+							Tocá <strong>«Añadir»</strong>. Vas a ver el ícono de CST en tu inicio como una app más.
+						</li>
+					</ol>
+					<DialogFooter className="sm:justify-end">
+						<Button
+							type="button"
+							className="w-full bg-[#8B0015] text-white hover:bg-[#5A000E] sm:w-auto"
+							onClick={() => setIosInstallDialogOpen(false)}
+						>
+							Entendido
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
 			<style jsx>{`
 				.slide-left {
 					animation: slideLeft 280ms ease;

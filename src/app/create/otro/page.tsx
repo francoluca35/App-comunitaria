@@ -216,10 +216,6 @@ function CreateOtroForm() {
       }
     }
 
-    if (category === 'avisos' && attachmentFiles.length === 0) {
-      toast.error('Agregá al menos una foto o un video')
-      return
-    }
     if (isAvisoONoticia && config.whatsappEnabled && !whatsappNumber.trim()) {
       toast.error('Ingresá un número de WhatsApp')
       return
@@ -536,9 +532,7 @@ function CreateOtroForm() {
           <div className="space-y-2">
             <Label>
               Fotos y/o videos{' '}
-              {category === 'avisos' ? (
-                <span className="text-red-500">*</span>
-              ) : isNoticias ? (
+              {isAvisoONoticia ? (
                 <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
               ) : (
                 '(opcional)'
@@ -557,11 +551,11 @@ function CreateOtroForm() {
               )}
             </Label>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              {isNoticias ? (
+              {isAvisoONoticia ? (
                 <>
                   Podés publicar solo con título y texto. Si sumás archivos: como mucho {maxImagesMedia} fotos y{' '}
-                  {maxVideosMedia} video; alcanza con subir solo fotos, solo un video, o combinar (siempre dentro de esos
-                  límites).
+                  {maxVideosMedia} video{maxVideosMedia === 1 ? '' : 's'}; alcanza con subir solo fotos, solo un video, o
+                  combinar (siempre dentro de esos límites).
                 </>
               ) : (
                 <>

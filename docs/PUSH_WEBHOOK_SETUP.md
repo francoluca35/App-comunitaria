@@ -29,7 +29,7 @@ Este webhook recibe cada INSERT relevante y envía **Web Push** al dispositivo d
    - **Type of webhook:** `HTTP Request`.
    - **Method:** `POST`.
    - **URL:** URL pública de producción, por ejemplo  
-     `https://TU_DOMINIO.vercel.app/api/push/webhook`  
+     `https://www.comunidaddesantotome.com.ar/api/push/webhook`  
      (debe ser **HTTPS** en producción).
 
 ## 3. Secreto (obligatorio)
@@ -79,12 +79,12 @@ La API procesa `type === "INSERT"`, tabla `notifications`, y `record.type` igual
 
 ## 5. Probar
 
-- **GET** `https://TU_DOMINIO/api/push/webhook` → JSON con `ready: true/false` (secreto + VAPID).
+- **GET** `https://www.comunidaddesantotome.com.ar/api/push/webhook` → JSON con `ready: true/false` (secreto + VAPID).
 - Después de aprobar una alerta, revisá logs del hosting y, en Supabase, el historial de webhooks / `net` si hay fallos de red.
 
 ## 6. Desarrollo local
 
-El webhook de Supabase se ejecuta **desde el servidor de Postgres** (Docker). `localhost` apunta al contenedor, no a tu PC. Para probar contra Next en tu máquina usá **ngrok**, **Cloudflare Tunnel**, o la URL de preview de Vercel.
+El webhook de Supabase se ejecuta **desde el servidor de Postgres** (Docker). `localhost` apunta al contenedor, no a tu PC. Para probar contra Next en tu máquina usá **ngrok**, **Cloudflare Tunnel**, o una URL pública de preview. En producción usá el dominio definitivo (`https://www.comunidaddesantotome.com.ar`).
 
 ## 7. Usuarios finales
 

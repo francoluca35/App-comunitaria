@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { ExternalLink, Loader2, Megaphone, MessageCircle, PenLine, Search, Send, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { ExternalLink, Loader2, Megaphone, MessageCircle, PenLine, Plus, Search, Send, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useApp, type AdminProfile } from '@/app/providers'
@@ -59,6 +59,7 @@ interface ChatMsg {
 export function FloatingChatHub() {
 	const { currentUser, adminProfiles, adminProfilesLoading, loadAdminProfiles } = useApp()
 	const router = useRouter()
+	const pathname = usePathname()
 	const supabase = useMemo(() => createClient(), [])
 
 	const [rows, setRows] = useState<ChatNotificationRow[]>([])
@@ -74,6 +75,8 @@ export function FloatingChatHub() {
 	/** Solo admin (desktop): al abrir el dock, primero la lista de todos los contactos. */
 	const [adminShowContactList, setAdminShowContactList] = useState(false)
 	const [adminContactSearch, setAdminContactSearch] = useState('')
+	/** Menú de acciones rápidas: colapsado deja un solo botón al borde para no tapar formularios ni el enviar del chat. */
+	const [quickActionsOpen, setQuickActionsOpen] = useState(false)
 
 	const messagesScrollRef = useRef<HTMLDivElement>(null)
 	const stickToBottomRef = useRef(true)
@@ -242,6 +245,10 @@ export function FloatingChatHub() {
 		() => threads.filter((t) => t.items.some((x) => !x.read_at)).length,
 		[threads]
 	)
+	const unreadMessageCount = useMemo(
+		() => threads.reduce((n, t) => n + t.items.filter((x) => !x.read_at).length, 0),
+		[threads]
+	)
 
 	const peerLabel = useCallback(
 		(pid: string) => {
@@ -336,12 +343,26 @@ export function FloatingChatHub() {
 		setAdminContactSearch('')
 	}
 
+	useEffect(() => {
+		if (!quickActionsOpen) return
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') setQuickActionsOpen(false)
+		}
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [quickActionsOpen])
+
+	useEffect(() => {
+		setQuickActionsOpen(false)
+	}, [pathname])
+
 	const goFullInbox = () => {
 		router.push(currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos')
 		closeDock()
 	}
 
 	const openDock = () => {
+		setQuickActionsOpen(false)
 		if (!isDesktop) {
 			if (threads.length === 0) {
 				goFullInbox()
@@ -422,13 +443,42 @@ export function FloatingChatHub() {
 		setMessages([])
 	}
 
+	/** Móvil/tablet colapsado (<lg): más arriba y pegado al borde para no tapar “Enviar” ni botones inferiores. Abierto o escritorio: FAB clásico (lg: con media query evita parpadeo al hidratar). */
+	const fabPositionClass = cn(
+		'transition-[bottom,right,padding] duration-200 ease-out',
+		quickActionsOpen
+			? 'bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-[max(0.35rem,env(safe-area-inset-right,0px))] sm:right-[max(0.5rem,env(safe-area-inset-right,0px))] lg:right-[max(0.75rem,env(safe-area-inset-right,0px))] pr-0'
+			: 'max-lg:bottom-[max(5.75rem,calc(env(safe-area-inset-bottom,0px)+5rem))] max-lg:right-0 max-lg:pr-0 lg:bottom-[max(1rem,env(safe-area-inset-bottom,0px))] lg:right-[max(0.75rem,env(safe-area-inset-right,0px))] lg:pr-0'
+	)
+
+	const fabToggleClass = cn(
+		'relative pointer-events-auto border-0 text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#5A000E] active:scale-95',
+		quickActionsOpen
+			? 'flex h-14 w-14 items-center justify-center rounded-full'
+			: 'max-lg:flex max-lg:h-12 max-lg:min-w-[3rem] max-lg:items-center max-lg:justify-center max-lg:rounded-l-full max-lg:rounded-r-none max-lg:border-r-0 max-lg:pl-2.5 max-lg:pr-[max(0.35rem,env(safe-area-inset-right,0px))] lg:flex lg:h-14 lg:w-14 lg:items-center lg:justify-center lg:rounded-full'
+	)
+
 	return (
 		<>
-			<div className="pointer-events-none fixed bottom-6 right-4 z-30 flex flex-col items-end gap-3 sm:right-6 lg:right-8">
-				{currentUser && (
+			{quickActionsOpen ? (
+				<button
+					type="button"
+					aria-label="Cerrar acciones rápidas"
+					className="pointer-events-auto fixed inset-0 z-[28] bg-black/20 dark:bg-black/35 lg:bg-black/15"
+					onClick={() => setQuickActionsOpen(false)}
+				/>
+			) : null}
+
+			<div
+				className={cn(
+					'pointer-events-none fixed z-30 flex flex-col items-end gap-3',
+					fabPositionClass
+				)}
+			>
+				{quickActionsOpen && currentUser ? (
 					<button
 						type="button"
-						onClick={openDock}
+						onClick={() => void openDock()}
 						className="pointer-events-auto relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-[#5A6268] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#4a5156] active:scale-95 dark:border-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
 						aria-label={isDesktop ? 'Abrir mensajes' : 'Ir al chat'}
 					>
@@ -439,34 +489,70 @@ export function FloatingChatHub() {
 							</span>
 						)}
 					</button>
-				)}
-				<Link
-					href="/cartelera"
-					className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#634942] active:scale-95"
-					style={{ backgroundColor: CST.acento }}
-					aria-label="Publicidades"
-				>
-					<Megaphone className="h-5 w-5" />
-				</Link>
-				<Link
-					href="/create"
-					className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#5A000E] active:scale-95"
+				) : null}
+				{quickActionsOpen ? (
+					<Link
+						href="/cartelera"
+						onClick={() => setQuickActionsOpen(false)}
+						className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#634942] active:scale-95"
+						style={{ backgroundColor: CST.acento }}
+						aria-label="Publicidades"
+					>
+						<Megaphone className="h-5 w-5" />
+					</Link>
+				) : null}
+				{quickActionsOpen ? (
+					<Link
+						href="/create"
+						onClick={() => setQuickActionsOpen(false)}
+						className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#5A000E] active:scale-95"
+						style={{ backgroundColor: CST.bordo }}
+						aria-label="Crear publicación"
+					>
+						<PenLine className="h-5 w-5" />
+					</Link>
+				) : null}
+				<button
+					type="button"
+					onClick={() => setQuickActionsOpen((o) => !o)}
+					className={fabToggleClass}
 					style={{ backgroundColor: CST.bordo }}
-					aria-label="Crear publicación"
+					aria-expanded={quickActionsOpen}
+					aria-label={
+						quickActionsOpen
+							? 'Cerrar menú de acciones'
+							: unreadMessageCount > 0 && currentUser
+								? `Abrir menú: chat, publicidad y publicar (${unreadMessageCount} mensajes sin leer)`
+								: 'Abrir menú: chat, publicidad y publicar'
+					}
 				>
-					<PenLine className="h-6 w-6" />
-				</Link>
+					{!quickActionsOpen && currentUser && unreadMessageCount > 0 ? (
+						<span
+							className="pointer-events-none absolute left-0 top-0 z-10 flex -translate-x-[10%] -translate-y-[18%] items-center gap-0.5 rounded-full border border-black/15 bg-[#00CFC4] px-1 py-0.5 pl-1 pr-1.5 shadow-md ring-1 ring-[#00FFF0]/90"
+							aria-hidden
+						>
+							<span className="h-2 w-2 shrink-0 rounded-full bg-[#00FFF0] shadow-[0_0_8px_2px_rgba(0,255,240,0.85)]" />
+							<span className="min-w-[0.65rem] text-center text-[10px] font-bold tabular-nums leading-none text-[#042a28]">
+								{unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+							</span>
+						</span>
+					) : null}
+					{quickActionsOpen ? (
+						<X className="h-6 w-6" strokeWidth={2.25} />
+					) : (
+						<Plus className="h-5 w-5 lg:h-6 lg:w-6" strokeWidth={2.25} />
+					)}
+				</button>
 			</div>
 
 			{currentUser && dockOpen && isDesktop && (
 				<div
 					className={cn(
 						'pointer-events-auto fixed z-[55] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-slate-900',
-						/* Misma base vertical que los FAB (bottom-6); a la izquierda de la columna de botones, no encima */
+						/* Alineado con la columna FAB (borde + h-14 + gap) */
 						'left-auto top-auto',
-						'bottom-6',
-						/* right-4/6/8 + ancho máx. FAB (h-14 = 3.5rem) + separación */
-						'right-[calc(1rem+3.5rem+0.75rem)] sm:right-[calc(1.5rem+3.5rem+0.75rem)] lg:right-[calc(2rem+3.5rem+0.75rem)]',
+						'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]',
+						'right-[calc(env(safe-area-inset-right,0px)+0.35rem+3.5rem+0.75rem)] sm:right-[calc(env(safe-area-inset-right,0px)+0.5rem+3.5rem+0.75rem)] lg:right-[calc(env(safe-area-inset-right,0px)+0.75rem+3.5rem+0.75rem)]',
 						'h-[min(560px,calc(100dvh-6rem))] max-h-[min(560px,calc(100dvh-6rem))]',
 						'w-[min(400px,calc(100dvw-6.5rem))]'
 					)}

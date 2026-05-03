@@ -2,6 +2,9 @@
 
 Aplicación mobile-first para difusión de información comunitaria con sistema de moderación.
 
+**URL de producción:** [https://www.comunidaddesantotome.com.ar](https://www.comunidaddesantotome.com.ar)  
+(Configurá `NEXT_PUBLIC_APP_URL` en el hosting con ese mismo origen, sin barra final.)
+
 ## 🚀 Características
 
 ### Para Usuarios Comunitarios
