@@ -33,16 +33,11 @@ import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { type PublicidadDisplay } from '@/lib/publicidad-display'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
-import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
-import { PostPublicationActions } from '@/components/PostPublicationActions'
-import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
-import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
+import { PostCard } from '@/components/PostCard'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { PostCommentsModal } from '@/components/PostCommentsModal'
 import { AvatarImageCropDialog } from '@/components/AvatarImageCropDialog'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { matchesPostSearch, matchesPublicidadSearch, searchTokens } from '@/lib/community-search'
 import {
   Select,
@@ -762,64 +757,13 @@ function HomePageContent() {
               {combinedFeed.map((item, feedIndex) => {
                 if (item.kind === 'post') {
                   const post = item.post
-                  const when = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
-                  const isMine = currentUser?.id === post.authorId
-                  const feedCommentCount =
-                    config.commentsEnabled &&
-                    Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
-                      ? commentCountByPostId[post.id]
-                      : undefined
                   return (
-                    <li key={`post-${post.id}`} className="relative">
-                      {isMine ? (
-                        <div className="absolute right-2 top-3 z-10 sm:right-3">
-                          <DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
-                        </div>
-                      ) : null}
-                      <div className="overflow-hidden bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
-                        <div className={`flex items-start gap-3 p-4 pb-2 ${isMine ? 'pr-14' : ''}`}>
-                          <Avatar className="h-11 w-11 shrink-0 border-2 border-[#D8D2CC]">
-                            <AvatarImage src={post.authorAvatar} alt={post.authorName} />
-                            <AvatarFallback
-                              className="text-xs font-bold text-white"
-                              style={{ backgroundColor: CST.acento }}
-                            >
-                              {authorInitials(post.authorName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <PostAuthorNameCategoryRow
-                              authorName={post.authorName}
-                              category={post.category}
-                              nameClassName="font-semibold"
-                            />
-                            <p className="mt-0.5 text-xs leading-tight text-[#7A5C52]">{when}</p>
-                          </div>
-                        </div>
-                        <div className="px-4 pb-3 pt-0">
-                          <h3 className="font-montserrat-only font-bold leading-snug text-[#2B2B2B]">{post.title}</h3>
-                          {post.description ? (
-                            <p className="mt-0.5 line-clamp-3 text-sm text-[#2B2B2B]">{post.description}</p>
-                          ) : null}
-                        </div>
-                        {post.media.length > 0 ? (
-                          <PostImageWithLightbox
-                            media={post.media}
-                            alt={post.title}
-                            variant="feed"
-                            priority={feedIndex < 2}
-                          />
-                        ) : null}
-                        <div className="bg-white px-0 py-0">
-                          <PostPublicationActions
-                            postId={post.id}
-                            whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
-                            showComments={config.commentsEnabled}
-                            onCommentsClick={() => setSelectedPostModal(post)}
-                            commentCount={feedCommentCount}
-                          />
-                        </div>
-                      </div>
+                    <li key={`post-${post.id}`}>
+                      <PostCard
+                        post={post}
+                        onOpenComments={(p) => setSelectedPostModal(p)}
+                        priority={feedIndex < 2}
+                      />
                     </li>
                   )
                 }

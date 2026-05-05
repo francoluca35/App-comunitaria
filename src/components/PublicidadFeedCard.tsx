@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import InstagramIcon from '@mui/icons-material/Instagram'
 import { Globe, Megaphone, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
@@ -36,35 +36,39 @@ export function PublicidadFeedCard({
   onOpenComments,
   imagePriority = false,
 }: Props) {
-  const [captionExpanded, setCaptionExpanded] = useState(false)
-  const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
-  const mainImage = pubImages[0]
-  const hasWa = Boolean(pub.whatsappUrl)
-  const hasIg = Boolean(pub.instagramUrl)
+	const [captionExpanded, setCaptionExpanded] = useState(false)
+	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
+	const mainImage = pubImages[0]
+	const hasWa = Boolean(pub.whatsappUrl)
+	const hasIg = Boolean(pub.instagramUrl)
+	const captionText = pub.description.trim()
+	const canToggleCaption = captionText.length > 70
 
-  const hasLongCaption = pub.description.trim().length > 140
+	const stop = (e: React.MouseEvent) => e.stopPropagation()
 
-  const stop = (e: React.MouseEvent) => e.stopPropagation()
+	useEffect(() => {
+		setCaptionExpanded(false)
+	}, [pub.id])
 
-  const handleShare = async () => {
-    if (typeof window === 'undefined') return
-    const url = publicidadPermalink(pub.id)
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ url })
-        return
-      } catch (e: unknown) {
-        const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : ''
-        if (name === 'AbortError') return
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Enlace copiado al portapapeles')
-    } catch {
-      toast.error('No se pudo compartir ni copiar el enlace')
-    }
-  }
+	const handleShare = async () => {
+		if (typeof window === 'undefined') return
+		const url = publicidadPermalink(pub.id)
+		if (typeof navigator.share === 'function') {
+			try {
+				await navigator.share({ url })
+				return
+			} catch (e: unknown) {
+				const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : ''
+				if (name === 'AbortError') return
+			}
+		}
+		try {
+			await navigator.clipboard.writeText(url)
+			toast.success('Enlace copiado al portapapeles')
+		} catch {
+			toast.error('No se pudo compartir ni copiar el enlace')
+		}
+	}
 
   return (
     <div
@@ -122,33 +126,30 @@ export function PublicidadFeedCard({
       </div>
 
       {/* Texto del anuncio */}
-      {pub.description.trim() ? (
-        <div className="px-3 pb-2">
-          <p
-            className={cn(
-              'text-[15px] leading-snug text-[#131313]',
-              !captionExpanded && hasLongCaption && 'line-clamp-4',
-            )}
-          >
-            {pub.description.trim()}
-            {hasLongCaption && !captionExpanded ? (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  className="inline font-semibold text-white hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setCaptionExpanded(true)
-                  }}
-                >
-                  Ver más
-                </button>
-              </>
-            ) : null}
-          </p>
-        </div>
-      ) : null}
+			{captionText ? (
+				<div className="px-3 pb-2">
+					<p
+						className={cn(
+							'text-[15px] leading-snug text-[#131313] whitespace-pre-wrap',
+							!captionExpanded && 'line-clamp-2 sm:line-clamp-3',
+						)}
+					>
+						{captionText}
+					</p>
+					{canToggleCaption ? (
+						<button
+							type="button"
+							className="mt-1 text-xs font-semibold text-[#8B0015] hover:underline"
+							onClick={(e) => {
+								e.stopPropagation()
+								setCaptionExpanded((v) => !v)
+							}}
+						>
+							{captionExpanded ? 'Ver menos' : 'Ver más'}
+						</button>
+					) : null}
+				</div>
+			) : null}
 
       {/* Imagen principal 1:1 */}
       <button
