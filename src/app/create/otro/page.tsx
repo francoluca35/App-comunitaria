@@ -13,11 +13,15 @@ import { cn } from '@/app/components/ui/utils'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
-import { Textarea } from '@/app/components/ui/textarea'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { PrefixedDescriptionField } from '@/components/PrefixedDescriptionField'
 import { ArrowLeft, AlertCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+	ensureDefaultDescriptionPrefix,
+	isDescriptionOnlyDefaultPrefix,
+} from '@/lib/default-description-prefix'
 
 const OBJETO_TIPOS = [
   { value: 'perdi', label: 'Perdí' },
@@ -72,7 +76,7 @@ function CreateOtroForm() {
   const categoryLocked = wantsLockedCategory && (postCategories.length === 0 || presetIsValidSlug)
 
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [descriptionRest, setDescriptionRest] = useState('')
   const [proposedCategoryLabel, setProposedCategoryLabel] = useState('')
   const [category, setCategory] = useState<Category>(() =>
     wantsLockedCategory ? (presetFromUrl as Category) : 'propuesta'
@@ -112,6 +116,13 @@ function CreateOtroForm() {
     if (!isObjetos || !objetoTipo) return null
     return buildObjetoTextoPublicacion(objetoTipo, objetoCosa, objetoLugar, objetoDia)
   }, [isObjetos, objetoTipo, objetoCosa, objetoLugar, objetoDia])
+
+  const objetoVistaPreviaMensaje = useMemo(() => {
+    if (!objetoTextoGenerado) return null
+    const extra = descriptionRest.trim()
+    const combined = extra ? `${objetoTextoGenerado}\n\n${extra}` : objetoTextoGenerado
+    return ensureDefaultDescriptionPrefix(combined)
+  }, [objetoTextoGenerado, descriptionRest])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -210,7 +221,7 @@ function CreateOtroForm() {
         return
       }
     } else {
-      if (!title.trim() || !description.trim()) {
+      if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
         toast.error('Completa título y descripción')
         return
       }
@@ -230,14 +241,15 @@ function CreateOtroForm() {
         ? `${tipoLabel} — ${objetoCosa.trim()}`
         : title.trim()
 
-    const descriptionToSend =
+    const descriptionToSend = ensureDefaultDescriptionPrefix(
       category === 'objetos' && objetoTipo
         ? (() => {
             const base = buildObjetoTextoPublicacion(objetoTipo, objetoCosa, objetoLugar, objetoDia) ?? ''
-            const extra = description.trim()
+            const extra = descriptionRest.trim()
             return extra ? `${base}\n\n${extra}` : base
           })()
-        : description.trim()
+        : descriptionRest.trim()
+    )
 
     setSending(true)
     try {
@@ -441,28 +453,29 @@ function CreateOtroForm() {
                 <div className="space-y-2">
                   <Label>Así va a quedar el mensaje</Label>
                   <div className="min-h-[4rem] rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm leading-relaxed text-slate-800 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-200">
-                    {objetoTextoGenerado ?? (
+                    {objetoVistaPreviaMensaje ?? (
                       <span className="text-slate-400 dark:text-slate-500">Completá los datos de arriba para ver el texto.</span>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="description">
-                  Algo más que quieras contar <span className="text-slate-400 font-normal">(opcional)</span>
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder="Si querés agregar un detalle extra, escribilo acá…"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
-                  maxLength={1000}
-                  className="resize-none"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">{description.length}/1000 caracteres</p>
-              </div>
+              <PrefixedDescriptionField
+                id="create-otro-desc-objeto-extra"
+                label={
+                  <>
+                    Algo más que quieras contar{' '}
+                    <span className="text-slate-400 font-normal">(opcional)</span>
+                  </>
+                }
+                value={descriptionRest}
+                onChange={setDescriptionRest}
+                placeholder="Si querés agregar un detalle extra, escribilo acá…"
+                maxTotalLength={1000}
+                rows={4}
+                textareaClassName="min-h-[96px] flex-1 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="space-y-2"
+              />
             </div>
           )}
 
@@ -485,26 +498,25 @@ function CreateOtroForm() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">{title.length}/100 caracteres</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">
-                  Descripción <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder={
-                    isAvisoONoticia
-                      ? 'Contá los detalles que quieras compartir con el barrio…'
-                      : 'Describe tu publicación con el mayor detalle posible…'
-                  }
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                  rows={isAvisoONoticia ? 5 : 6}
-                  maxLength={1000}
-                  className="resize-none"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">{description.length}/1000 caracteres</p>
-              </div>
+              <PrefixedDescriptionField
+                id="create-otro-desc-main"
+                label={
+                  <>
+                    Descripción <span className="text-red-500">*</span>
+                  </>
+                }
+                value={descriptionRest}
+                onChange={setDescriptionRest}
+                placeholder={
+                  isAvisoONoticia
+                    ? 'Contá los detalles que quieras compartir con el barrio…'
+                    : 'Describe tu publicación con el mayor detalle posible…'
+                }
+                maxTotalLength={1000}
+                rows={isAvisoONoticia ? 5 : 6}
+                textareaClassName="min-h-[120px] flex-1 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="space-y-2"
+              />
             </>
           )}
 

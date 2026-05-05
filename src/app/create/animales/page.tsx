@@ -56,13 +56,12 @@ export default function CreateAnimalesPage() {
     if (caso === 'perdido' && !respondeNombre.trim()) return null
     return buildAnimalesDescription({
       caso,
-      referente: nombreReferente,
       ubicacion: ubicacion.trim(),
       fechaIso,
       telefono: telefono.trim(),
       respondeNombre: respondeNombre.trim(),
     })
-  }, [caso, nombreReferente, ubicacion, fechaIso, telefono, respondeNombre])
+  }, [caso, ubicacion, fechaIso, telefono, respondeNombre])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -124,7 +123,6 @@ export default function CreateAnimalesPage() {
     const title = buildAnimalesTitle(caso, ubicacion)
     const description = buildAnimalesDescription({
       caso,
-      referente: nombreReferente,
       ubicacion: ubicacion.trim(),
       fechaIso,
       telefono: telefono.trim(),
