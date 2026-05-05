@@ -12,12 +12,16 @@ import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
-import { Textarea } from '@/app/components/ui/textarea'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { PrefixedDescriptionField } from '@/components/PrefixedDescriptionField'
 import { ArrowLeft, AlertTriangle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CST } from '@/lib/cst-theme'
+import {
+  ensureDefaultDescriptionPrefix,
+  isDescriptionOnlyDefaultPrefix,
+} from '@/lib/default-description-prefix'
 
 const ALERT_CATEGORY_SLUG = 'alertas'
 const alertRed = '#B91C1C'
@@ -26,7 +30,7 @@ export default function CreateAlertaPage() {
   const router = useRouter()
   const { addPost, currentUser, config, postCategories } = useApp()
   const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
+  const [descriptionRest, setDescriptionRest] = useState('')
   const [attachments, setAttachments] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
 
@@ -104,7 +108,7 @@ export default function CreateAlertaPage() {
       toast.error('La categoría de alertas no está disponible. Contactá a un administrador.')
       return
     }
-    if (!title.trim() || !description.trim()) {
+    if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
       toast.error('Completá título y descripción')
       return
     }
@@ -125,7 +129,7 @@ export default function CreateAlertaPage() {
       }
       const result = await addPost({
         title: title.trim(),
-        description: description.trim(),
+        description: ensureDefaultDescriptionPrefix(descriptionRest),
         category: ALERT_CATEGORY_SLUG,
         media,
       })
@@ -231,22 +235,21 @@ export default function CreateAlertaPage() {
             <p className="text-xs text-[#7A5C52]">{title.length}/100</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="alert-desc">
-              Descripción <span className="text-red-600">*</span>
-            </Label>
-            <Textarea
-              id="alert-desc"
-              placeholder="Qué pasó, dónde, cuándo y qué hacer o a quién avisar."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={5}
-              maxLength={2000}
-              className="resize-y min-h-[120px]"
-            />
-            <p className="text-xs text-[#7A5C52]">{description.length}/2000</p>
-          </div>
+          <PrefixedDescriptionField
+            id="alert-desc"
+            label={
+              <>
+                Descripción <span className="text-red-600">*</span>
+              </>
+            }
+            value={descriptionRest}
+            onChange={setDescriptionRest}
+            placeholder="Qué pasó, dónde, cuándo y qué hacer o a quién avisar."
+            maxTotalLength={2000}
+            rows={5}
+            textareaClassName="min-h-[120px] flex-1 resize-y rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="space-y-2 [&_p]:text-[#7A5C52]"
+          />
 
           <div className="space-y-2">
             <Label>

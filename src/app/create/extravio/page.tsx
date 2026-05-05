@@ -12,12 +12,16 @@ import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
-import { Textarea } from '@/app/components/ui/textarea'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { PrefixedDescriptionField } from '@/components/PrefixedDescriptionField'
 import { ArrowLeft, Upload, UserSearch, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CST } from '@/lib/cst-theme'
+import {
+	ensureDefaultDescriptionPrefix,
+	isDescriptionOnlyDefaultPrefix,
+} from '@/lib/default-description-prefix'
 
 const EXTRAVIO_CATEGORY_SLUG = 'extravios'
 const criticalRed = '#991B1B'
@@ -55,7 +59,7 @@ export default function CreateExtravioPage() {
 	const router = useRouter()
 	const { addPost, currentUser, config, postCategories } = useApp()
 	const [title, setTitle] = useState('')
-	const [description, setDescription] = useState('')
+	const [descriptionRest, setDescriptionRest] = useState('')
 	const [whatsappPrefix, setWhatsappPrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
 	const [whatsappNumber, setWhatsappNumber] = useState('')
 	const [attachments, setAttachments] = useState<LocalAttachment[]>([])
@@ -135,7 +139,7 @@ export default function CreateExtravioPage() {
 			toast.error('Esta categoría no está disponible. Contactá a un administrador.')
 			return
 		}
-		if (!title.trim() || !description.trim()) {
+		if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
 			toast.error('Completá título y descripción')
 			return
 		}
@@ -165,7 +169,7 @@ export default function CreateExtravioPage() {
 			}
 			const result = await addPost({
 				title: title.trim(),
-				description: description.trim(),
+				description: ensureDefaultDescriptionPrefix(descriptionRest),
 				category: EXTRAVIO_CATEGORY_SLUG,
 				media,
 				whatsappNumber: config.whatsappEnabled
@@ -279,22 +283,21 @@ export default function CreateExtravioPage() {
 						<p className="text-xs text-[#7A5C52]">{title.length}/100</p>
 					</div>
 
-					<div className="space-y-2">
-						<Label htmlFor="extravio-desc">
-							Descripción <span className="text-red-600">*</span>
-						</Label>
-						<Textarea
-							id="extravio-desc"
-							placeholder="Datos para reconocer a la persona, última vez vista, teléfono de contacto, pedido de difusión."
-							value={description}
-							onChange={(e) => setDescription(e.target.value)}
-							required
-							rows={6}
-							maxLength={2000}
-							className="resize-y min-h-[140px]"
-						/>
-						<p className="text-xs text-[#7A5C52]">{description.length}/2000</p>
-					</div>
+					<PrefixedDescriptionField
+						id="extravio-desc"
+						label={
+							<>
+								Descripción <span className="text-red-600">*</span>
+							</>
+						}
+						value={descriptionRest}
+						onChange={setDescriptionRest}
+						placeholder="Datos para reconocer a la persona, última vez vista, teléfono de contacto, pedido de difusión."
+						maxTotalLength={2000}
+						rows={6}
+						textareaClassName="min-h-[140px] flex-1 resize-y rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+						className="space-y-2 [&_p]:text-[#7A5C52]"
+					/>
 
 					{config.whatsappEnabled && (
 						<div className="space-y-2">
