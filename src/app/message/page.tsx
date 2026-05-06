@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
-import { MARIO_EMAILS } from '@/hooks/useMarioAdmin'
+import { isMarioAccountEmail } from '@/lib/mario-account'
 import { DashboardLayout } from '@/components/DashboardLayout'
 
 /**
@@ -20,8 +20,7 @@ export default function MessageIndexPage() {
 			router.replace('/login?next=/message/contactos')
 			return
 		}
-		const email = (currentUser.email ?? '').trim().toLowerCase()
-		if (MARIO_EMAILS.includes(email)) {
+		if (isMarioAccountEmail(currentUser.email)) {
 			router.replace('/message/mario')
 			return
 		}

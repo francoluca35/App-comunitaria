@@ -11,7 +11,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
-import { MARIO_EMAILS } from '@/hooks/useMarioAdmin'
+import { isMarioAccountEmail } from '@/lib/mario-account'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
@@ -252,7 +252,7 @@ export default function MarioMessagePage() {
 
 	const displayName = mario.name ?? 'Mario'
 
-	const isMarioUser = MARIO_EMAILS.includes((currentUser.email ?? '').trim().toLowerCase())
+	const isMarioUser = isMarioAccountEmail(currentUser.email)
 	const subtitle = isMarioUser ? 'Chat con la comunidad (Mario)' : 'Chat con Mario'
 
 	return (

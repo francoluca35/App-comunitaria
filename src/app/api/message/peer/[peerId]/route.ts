@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAccessToken } from '@/lib/admin-auth'
-
-const MARIO_EMAILS = ['mariostebler@gmail.com', 'steblermario@gmail.com']
+import { isMarioAccountEmail } from '@/lib/mario-account'
 
 /**
  * GET: perfil del interlocutor para /message/[peerId] (vecino ↔ miembro del equipo).
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pee
 	}
 
 	const email = (peer.email ?? '').trim().toLowerCase()
-	const isMarioAccount = MARIO_EMAILS.includes(email)
+	const isMarioAccount = isMarioAccountEmail(email)
 	const isTeam = peer.role === 'admin' || peer.role === 'moderator' || isMarioAccount
 
 	if (!isTeam) {
