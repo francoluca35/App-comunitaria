@@ -19,10 +19,12 @@ import {
   LogOut,
   LayoutDashboard,
   ChevronRight,
+  Camera,
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@/app/providers'
+import { isMarioAccountEmail } from '@/lib/mario-account'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CST } from '@/lib/cst-theme'
 
@@ -326,6 +328,19 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
             />
             Configuración
           </Link>
+          {currentUser && (currentUser.isAdminMaster || isMarioAccountEmail(currentUser.email)) && (
+            <Link
+              href="/referente/foto"
+              onClick={onNavigate}
+              className={`mx-0 mt-1 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
+                isActivePath('/referente/foto') ? `${navActive}` : navInactive
+              }`}
+              style={isActivePath('/referente/foto') ? { backgroundColor: CST.bordo } : undefined}
+            >
+              <Camera className={`h-5 w-5 shrink-0 ${isActivePath('/referente/foto') ? iconActive : iconMuted}`} />
+              Foto del referente
+            </Link>
+          )}
           {currentUser?.isAdmin && (
           <Link
             href="/admin"

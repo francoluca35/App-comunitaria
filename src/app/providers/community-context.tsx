@@ -82,7 +82,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       const [compressed] = await compressImagesForCommunityUpload([file])
       if (!compressed) throw new Error('No se pudo procesar la imagen')
       const ext = storageExtensionFromFile(compressed)
-      const path = `comments/${userId}/${crypto.randomUUID()}.${ext}`
+      const path = `${userId}/comments/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from('publicaciones').upload(path, compressed, {
         upsert: false,
         contentType: compressed.type || 'image/jpeg',
@@ -486,7 +486,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   }, [supabase])
 
   const updateUserRole = useCallback(
-    async (userId: string, role: 'viewer' | 'moderator' | 'admin'): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      userId: string,
+      role: 'viewer' | 'moderator' | 'admin' | 'admin_master'
+    ): Promise<{ ok: boolean; error?: string }> => {
       const headers = await getAuthHeaders()
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
@@ -784,6 +787,47 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     [comments, supabase]
   )
 
+  const deleteComment = useCallback(
+    async (commentId: string): Promise<{ ok: boolean; error?: string }> => {
+      const target = comments.find((c) => c.id === commentId)
+      if (!target) return { ok: false, error: 'Comentario no encontrado' }
+      const { error } = await supabase.from('comments').delete().eq('id', commentId)
+      if (error) return { ok: false, error: error.message ?? 'No se pudo eliminar el comentario' }
+      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      setCommentCountByPostId((prev) => ({
+        ...prev,
+        [target.postId]: Math.max(0, (prev[target.postId] ?? 0) - 1),
+      }))
+      return { ok: true }
+    },
+    [comments, supabase]
+  )
+
+  const reportComment = useCallback(
+    async (commentId: string, reason?: string): Promise<{ ok: boolean; error?: string }> => {
+      const u = currentUserRef.current
+      if (!u) return { ok: false, error: 'Debés iniciar sesión para reportar' }
+      const target = comments.find((c) => c.id === commentId)
+      if (!target) return { ok: false, error: 'Comentario no encontrado' }
+      const cleanedReason = (reason ?? '').trim()
+      const { error } = await supabase.from('comment_reports').insert({
+        comment_id: target.id,
+        post_id: target.postId,
+        reporter_id: u.id,
+        reason: cleanedReason || null,
+      })
+      if (error) {
+        const msg = error.message ?? ''
+        if (msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+          return { ok: false, error: 'Ya reportaste este comentario' }
+        }
+        return { ok: false, error: msg || 'No se pudo reportar el comentario' }
+      }
+      return { ok: true }
+    },
+    [comments, supabase]
+  )
+
   const toggleBlockUser = useCallback((userId: string) => {
     setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, isBlocked: !user.isBlocked } : user)))
   }, [])
@@ -804,6 +848,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       commentCountByPostId,
       loadCommentsForPost,
       addComment,
+      deleteComment,
+      reportComment,
       toggleCommentLike,
       users,
       toggleBlockUser,
@@ -831,6 +877,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       commentCountByPostId,
       loadCommentsForPost,
       addComment,
+      deleteComment,
+      reportComment,
       toggleCommentLike,
       users,
       toggleBlockUser,

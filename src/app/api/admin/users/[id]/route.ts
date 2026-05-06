@@ -19,7 +19,7 @@ export async function PATCH(
   }
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (body.role !== undefined) {
-    if (!['viewer', 'moderator', 'admin'].includes(body.role)) {
+    if (!['viewer', 'moderator', 'admin', 'admin_master'].includes(body.role)) {
       return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
     }
     updates.role = body.role

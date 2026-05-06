@@ -228,7 +228,7 @@ export default function LoginPage() {
 											type="email"
 											value={loginEmail}
 											onChange={(e) => setLoginEmail(e.target.value)}
-											placeholder="tu@email.com"
+											placeholder="ejemplo@ejemplo.com"
 											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
 											required
 										/>
@@ -382,7 +382,7 @@ export default function LoginPage() {
 											type="email"
 											value={registerEmail}
 											onChange={(e) => setRegisterEmail(e.target.value)}
-											placeholder="tu@email.com"
+											placeholder="ejemplo@ejemplo.com"
 											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
 											required
 										/>
@@ -588,7 +588,7 @@ export default function LoginPage() {
 										type="email"
 										value={loginEmail}
 										onChange={(e) => setLoginEmail(e.target.value)}
-										placeholder="francolucap1@gmail.com"
+										placeholder="ejemplo@ejemplo.com"
 										className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-sm shadow-none focus-visible:border-[#7c281d] focus-visible:ring-0 sm:h-11 sm:text-base"
 										required
 									/>
@@ -697,7 +697,7 @@ export default function LoginPage() {
 										type="email"
 										value={registerEmail}
 										onChange={(e) => setRegisterEmail(e.target.value)}
-										placeholder="francolucap1@gmail.com"
+										placeholder="ejemplo@ejemplo.com"
 										className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-sm shadow-none focus-visible:border-[#7c281d] focus-visible:ring-0 sm:text-base"
 										required
 									/>

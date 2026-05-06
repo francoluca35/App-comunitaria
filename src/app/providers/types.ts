@@ -16,6 +16,8 @@ export interface User {
   name: string
   email: string
   isAdmin: boolean
+  /** Puede cambiar la foto del referente en el inicio (asignado por un admin). */
+  isAdminMaster?: boolean
   isBlocked: boolean
   avatar?: string
   isModerator?: boolean
@@ -158,6 +160,8 @@ export interface CommunityContextType {
   commentCountByPostId: Record<string, number>
   loadCommentsForPost: (postId: string) => Promise<void>
   addComment: (postId: string, text: string, imageFile?: File | null) => Promise<{ ok: boolean; error?: string }>
+  deleteComment: (commentId: string) => Promise<{ ok: boolean; error?: string }>
+  reportComment: (commentId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>
   toggleCommentLike: (commentId: string) => Promise<{ ok: boolean; error?: string }>
 
   users: User[]
@@ -166,7 +170,10 @@ export interface CommunityContextType {
   adminProfiles: AdminProfile[]
   adminProfilesLoading: boolean
   loadAdminProfiles: () => Promise<void>
-  updateUserRole: (userId: string, role: 'viewer' | 'moderator' | 'admin') => Promise<{ ok: boolean; error?: string }>
+  updateUserRole: (
+    userId: string,
+    role: 'viewer' | 'moderator' | 'admin' | 'admin_master'
+  ) => Promise<{ ok: boolean; error?: string }>
   setUserSuspended: (userId: string, days: number | null) => Promise<{ ok: boolean; error?: string }>
   blockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
   unblockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>

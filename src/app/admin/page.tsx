@@ -16,6 +16,7 @@ import {
   Tags,
   Layers,
   Banknote,
+  Flag,
 } from 'lucide-react'
 export default function AdminDashboardPage() {
   const router = useRouter()
@@ -144,6 +145,16 @@ export default function AdminDashboardPage() {
               </div>
               <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Registros recientes</span>
               <span className="text-xs text-slate-500 dark:text-slate-400">{recentRegistrations.length} nuevo{recentRegistrations.length !== 1 ? 's' : ''}</span>
+            </Link>
+
+            <Link
+              href="/admin/reportados"
+              className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/80 active:bg-slate-100 dark:active:bg-slate-700"
+            >
+              <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                <Flag className="w-6 h-6 text-red-700 dark:text-red-300" />
+              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Reportados</span>
             </Link>
 
             <Link

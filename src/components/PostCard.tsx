@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { Post, useApp } from '@/app/providers'
@@ -24,6 +24,8 @@ interface PostCardProps {
 export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 	const { config, currentUser, commentCountByPostId } = useApp()
 	const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+	const [descriptionOverflowsCollapsed, setDescriptionOverflowsCollapsed] = useState(false)
+	const descriptionRef = useRef<HTMLParagraphElement | null>(null)
 	const isMine = currentUser?.id === post.authorId
 	const commentCount =
 		config.commentsEnabled && Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
@@ -43,11 +45,34 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 
 	const createdAtLabel = formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })
 	const descriptionText = post.description.trim()
-	const canToggleDescription = descriptionText.length > 70
 
 	useEffect(() => {
 		setDescriptionExpanded(false)
 	}, [post.id])
+
+	useEffect(() => {
+		const el = descriptionRef.current
+		if (!el || !descriptionText) {
+			setDescriptionOverflowsCollapsed(false)
+			return
+		}
+
+		const measure = () => {
+			const n = descriptionRef.current
+			if (!n) return
+			if (descriptionExpanded) return
+			setDescriptionOverflowsCollapsed(n.scrollHeight > n.clientHeight + 1)
+		}
+
+		measure()
+		const ro = new ResizeObserver(() => measure())
+		ro.observe(el)
+		window.addEventListener('resize', measure)
+		return () => {
+			ro.disconnect()
+			window.removeEventListener('resize', measure)
+		}
+	}, [descriptionText, descriptionExpanded, post.id])
 
 	return (
 		<Card className="relative overflow-hidden rounded-none border-x-0 border-b border-[#CED0D4] border-t-0 bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
@@ -82,13 +107,14 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 				{post.description ? (
 					<div className="mt-0.5">
 						<p
+							ref={descriptionRef}
 							className={`text-sm text-[#2B2B2B] whitespace-pre-wrap ${
 								!descriptionExpanded ? 'line-clamp-2 sm:line-clamp-3' : ''
 							}`}
 						>
 							{descriptionText}
 						</p>
-						{canToggleDescription ? (
+						{descriptionExpanded || descriptionOverflowsCollapsed ? (
 							<button
 								type="button"
 								className="mt-1 text-xs font-semibold text-[#8B0015] hover:underline"

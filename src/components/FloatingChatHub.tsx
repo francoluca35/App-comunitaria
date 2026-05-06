@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ExternalLink, Loader2, Megaphone, MessageCircle, PenLine, Plus, Search, Send, X } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
+import { ExternalLink, Loader2, Megaphone, MessageCircle, PenLine, Plus, Search, X } from 'lucide-react'
 import { useApp, type AdminProfile } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { showSystemNotification } from '@/lib/notifications'
@@ -19,7 +17,16 @@ import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
-import { MessageContent } from '@/components/MessageContent'
+import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
+import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
+import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { chatContentPreviewLine } from '@/lib/chat-message-payload'
+import {
+	loadChatInboxPreviews,
+	sortByChatRecency,
+	formatChatListTime,
+	type PeerPreview,
+} from '@/lib/chat-inbox-previews'
 import { CST } from '@/lib/cst-theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 
@@ -75,6 +82,7 @@ export function FloatingChatHub() {
 	/** Solo admin (desktop): al abrir el dock, primero la lista de todos los contactos. */
 	const [adminShowContactList, setAdminShowContactList] = useState(false)
 	const [adminContactSearch, setAdminContactSearch] = useState('')
+	const [adminLastByPeer, setAdminLastByPeer] = useState<Record<string, PeerPreview>>({})
 	/** Menú de acciones rápidas: colapsado deja un solo botón al borde para no tapar formularios ni el enviar del chat. */
 	const [quickActionsOpen, setQuickActionsOpen] = useState(false)
 
@@ -236,11 +244,55 @@ export function FloatingChatHub() {
 
 	const threads = useMemo(() => groupMessageThreads(rows), [rows])
 	const filteredAdminContacts = useMemo(() => {
-		return adminProfiles
+		const base = adminProfiles
 			.filter((p) => p.id !== myId)
 			.filter((p) => matchProfile(p, adminContactSearch))
-			.sort((a, b) => (a.name ?? a.email ?? '').localeCompare(b.name ?? b.email ?? '', 'es'))
-	}, [adminProfiles, myId, adminContactSearch])
+		return sortByChatRecency(base, adminLastByPeer)
+	}, [adminProfiles, myId, adminContactSearch, adminLastByPeer])
+
+	useEffect(() => {
+		if (!dockOpen || !isDesktop || !currentUser?.isAdmin || !adminShowContactList || !myId) return
+		let cancelled = false
+		void (async () => {
+			const map = await loadChatInboxPreviews(supabase, myId)
+			if (!cancelled) setAdminLastByPeer(map)
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [dockOpen, isDesktop, currentUser?.isAdmin, adminShowContactList, myId, supabase])
+
+	useEffect(() => {
+		if (!dockOpen || !isDesktop || !currentUser?.isAdmin || !adminShowContactList || !myId) return
+		const merge = (raw: { sender_id: string; receiver_id: string; content: string; created_at: string }) => {
+			const peer = raw.sender_id === myId ? raw.receiver_id : raw.sender_id
+			setAdminLastByPeer((prev) => {
+				const next: PeerPreview = {
+					preview: chatContentPreviewLine(raw.content),
+					createdAt: raw.created_at,
+				}
+				const cur = prev[peer]
+				if (cur && new Date(cur.createdAt).getTime() > new Date(next.createdAt).getTime()) return prev
+				return { ...prev, [peer]: next }
+			})
+		}
+		const ch = supabase
+			.channel(`floating-admin-inbox-${myId}`)
+			.on(
+				'postgres_changes',
+				{ event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${myId}` },
+				(payload) => merge(payload.new as { sender_id: string; receiver_id: string; content: string; created_at: string })
+			)
+			.on(
+				'postgres_changes',
+				{ event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${myId}` },
+				(payload) => merge(payload.new as { sender_id: string; receiver_id: string; content: string; created_at: string })
+			)
+			.subscribe()
+		return () => {
+			supabase.removeChannel(ch)
+		}
+	}, [dockOpen, isDesktop, currentUser?.isAdmin, adminShowContactList, myId, supabase])
 	const unreadThreadCount = useMemo(
 		() => threads.filter((t) => t.items.some((x) => !x.read_at)).length,
 		[threads]
@@ -341,6 +393,7 @@ export function FloatingChatHub() {
 		setMessages([])
 		setAdminShowContactList(false)
 		setAdminContactSearch('')
+		setAdminLastByPeer({})
 	}
 
 	useEffect(() => {
@@ -407,8 +460,7 @@ export function FloatingChatHub() {
 		closeDock()
 	}
 
-	const handleSend = async (e: React.FormEvent) => {
-		e.preventDefault()
+	const handleSendText = async () => {
 		const t = draft.trim()
 		if (!t || !myId || !peerId) return
 		setSending(true)
@@ -427,6 +479,19 @@ export function FloatingChatHub() {
 			setMessages((prev) => [...prev, newMsg as ChatMsg])
 		}
 		setDraft('')
+	}
+
+	const handleSendVoice = async (blob: Blob, durationSec: number) => {
+		if (!myId || !peerId) return
+		setSending(true)
+		const r = await sendChatVoiceMessage(supabase, myId, peerId, blob, durationSec)
+		setSending(false)
+		if ('error' in r) {
+			toast.error(r.error)
+			return
+		}
+		stickToBottomRef.current = true
+		setMessages((prev) => [...prev, r.message as ChatMsg])
 	}
 
 	const onSelectPeer = (pid: string) => {
@@ -548,7 +613,7 @@ export function FloatingChatHub() {
 			{currentUser && dockOpen && isDesktop && (
 				<div
 					className={cn(
-						'pointer-events-auto fixed z-[55] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-slate-900',
+						'pointer-events-auto fixed z-[55] flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-[#2A3942] dark:bg-[#0B141A]',
 						/* Alineado con la columna FAB (borde + h-14 + gap) */
 						'left-auto top-auto',
 						'bottom-[max(1rem,env(safe-area-inset-bottom,0px))]',
@@ -559,8 +624,8 @@ export function FloatingChatHub() {
 					role="dialog"
 					aria-label={currentUser?.isAdmin && adminShowContactList ? 'Contactos' : 'Mensajes'}
 				>
-					<div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-2 dark:border-gray-700">
-						<h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-white">
+					<div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#f0f2f5] px-3 py-2 dark:border-[#2A3942] dark:bg-[#202C33]">
+						<h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-[#E9EDEF]">
 							{currentUser?.isAdmin && adminShowContactList ? 'Contactos' : 'Mensajes'}
 						</h2>
 						{currentUser?.isAdmin && peerId && !adminShowContactList && (
@@ -568,7 +633,7 @@ export function FloatingChatHub() {
 								type="button"
 								variant="ghost"
 								size="sm"
-								className="h-8 shrink-0 px-2 text-xs"
+								className="h-8 shrink-0 px-2 text-xs text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
 								onClick={backToAdminContactList}
 							>
 								Contactos
@@ -578,7 +643,7 @@ export function FloatingChatHub() {
 							<select
 								value={peerId}
 								onChange={(e) => onSelectPeer(e.target.value)}
-								className="max-w-[10rem] truncate rounded-md border border-slate-200 bg-white px-2 py-1 text-xs dark:border-gray-600 dark:bg-slate-800 dark:text-white"
+								className="max-w-[10rem] truncate rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 dark:border-[#2A3942] dark:bg-[#2A3942] dark:text-[#E9EDEF]"
 							>
 								{threads.map((t) => (
 									<option key={t.peerId} value={t.peerId}>
@@ -587,127 +652,142 @@ export function FloatingChatHub() {
 								))}
 							</select>
 						)}
-						<Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={openFullChat} aria-label="Abrir chat completo">
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+							onClick={openFullChat}
+							aria-label="Abrir chat completo"
+						>
 							<ExternalLink className="h-4 w-4" />
 						</Button>
-						<Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={closeDock} aria-label="Cerrar">
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+							onClick={closeDock}
+							aria-label="Cerrar"
+						>
 							<X className="h-4 w-4" />
 						</Button>
 					</div>
 
 					{currentUser?.isAdmin && adminShowContactList ? (
-						<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden px-3 pb-3 pt-2">
+						<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden bg-slate-50 px-3 pb-3 pt-2 dark:bg-[#111B21]">
 							<div className="relative shrink-0">
-								<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+								<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-[#8696A0]" />
 								<Input
 									value={adminContactSearch}
 									onChange={(e) => setAdminContactSearch(e.target.value)}
 									placeholder="Nombre, email o teléfono…"
-									className="pl-9 text-sm"
+									className="border border-slate-200 bg-white pl-9 text-sm text-slate-900 placeholder:text-slate-500 dark:border-0 dark:bg-[#202C33] dark:text-[#E9EDEF] dark:placeholder:text-[#8696A0]"
 									aria-label="Buscar contacto"
 								/>
 							</div>
 							<div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
 								{adminProfilesLoading ? (
 									<div className="flex justify-center py-8">
-										<Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+										<Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-[#8696A0]" />
 									</div>
 								) : filteredAdminContacts.length === 0 ? (
-									<p className="px-2 py-6 text-center text-xs text-slate-500 dark:text-gray-400">
+									<p className="px-2 py-6 text-center text-xs text-slate-600 dark:text-[#8696A0]">
 										{adminProfiles.filter((p) => p.id !== myId).length === 0
 											? 'No hay otros usuarios.'
 											: 'Ningún usuario coincide con la búsqueda.'}
 									</p>
 								) : (
 									<ul className="flex flex-col gap-0.5">
-										{filteredAdminContacts.map((profile) => (
-											<li key={profile.id}>
-												<button
-													type="button"
-													onClick={() => onSelectPeer(profile.id)}
-													className="flex w-full items-center gap-3 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:bg-slate-100 dark:hover:bg-slate-800"
-												>
-													<Avatar className="h-10 w-10 shrink-0">
-														<AvatarImage src={profile.avatar_url ?? undefined} />
-														<AvatarFallback className="text-xs">
-															{(profile.name ?? profile.email)?.[0]?.toUpperCase() ?? '?'}
-														</AvatarFallback>
-													</Avatar>
-													<div className="min-w-0 flex-1">
-														<p className="truncate font-medium text-slate-900 dark:text-white">
-															{profile.name?.trim() || profile.email}
-														</p>
-														<p className="truncate text-xs text-slate-500 dark:text-slate-400">{profile.email}</p>
-													</div>
-												</button>
-											</li>
-										))}
+										{filteredAdminContacts.map((profile) => {
+											const last = adminLastByPeer[profile.id]
+											const subtitle = last?.preview?.trim() ? last.preview : 'Sin mensajes aún'
+											const timeLabel = last?.createdAt ? formatChatListTime(last.createdAt) : ''
+											const title = profile.name?.trim() || profile.email || 'Usuario'
+											return (
+												<li key={profile.id}>
+													<button
+														type="button"
+														onClick={() => onSelectPeer(profile.id)}
+														className="flex w-full items-center gap-3 rounded-lg border border-transparent px-2 py-2 text-left text-sm transition hover:bg-slate-200/80 dark:hover:bg-[#2A3942]/80"
+													>
+														<Avatar className="h-10 w-10 shrink-0">
+															<AvatarImage src={profile.avatar_url ?? undefined} />
+															<AvatarFallback className="bg-slate-200 text-xs text-slate-700 dark:bg-[#313D43] dark:text-[#E9EDEF]">
+																{title[0]?.toUpperCase() ?? '?'}
+															</AvatarFallback>
+														</Avatar>
+														<div className="min-w-0 flex-1">
+															<div className="flex items-baseline justify-between gap-2">
+																<p className="truncate font-medium text-slate-900 dark:text-[#E9EDEF]">
+																	{title}
+																</p>
+																{timeLabel ? (
+																	<span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-[#8696A0]">
+																		{timeLabel}
+																	</span>
+																) : null}
+															</div>
+															<p className="truncate text-xs text-slate-600 dark:text-[#8696A0]">{subtitle}</p>
+														</div>
+													</button>
+												</li>
+											)
+										})}
 									</ul>
 								)}
 							</div>
 						</div>
 					) : threads.length === 0 && !currentUser?.isAdmin ? (
-						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 py-10 text-center text-sm text-slate-500 dark:text-gray-400">
+						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600 dark:bg-[#111B21] dark:text-[#8696A0]">
 							<p>No tenés mensajes sin leer recientes.</p>
-							<Button type="button" variant="outline" size="sm" onClick={() => goFullInbox()}>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								className="border-slate-200 bg-white text-slate-900 hover:bg-slate-100 dark:border-[#2A3942] dark:bg-[#202C33] dark:text-[#E9EDEF] dark:hover:bg-[#2A3942]"
+								onClick={() => goFullInbox()}
+							>
 								Ir al chat
 							</Button>
 						</div>
 					) : peerId ? (
 						<>
 							{threads.length === 1 && (
-								<div className="shrink-0 truncate border-b border-slate-100 px-3 py-2 text-xs font-medium text-slate-700 dark:border-gray-800 dark:text-gray-200">
+								<div className="shrink-0 truncate border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 dark:border-[#2A3942] dark:bg-[#111B21] dark:text-[#8696A0]">
 									{peerLabel(peerId)}
 								</div>
 							)}
 							<div
 								ref={messagesScrollRef}
 								onScroll={updateStickToBottomFromScroll}
-								className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-3 dark:bg-slate-800/40"
+								className="chat-wa-wallpaper min-h-0 flex-1 overflow-y-auto px-1 py-2"
 							>
 								{threadLoading ? (
 									<div className="flex justify-center py-8">
-										<Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+										<Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-[#8696A0]" />
 									</div>
 								) : messages.length === 0 ? (
-									<p className="py-6 text-center text-xs text-slate-500">Sin mensajes en este hilo.</p>
+									<p className="py-6 text-center text-xs text-slate-600 dark:text-[#8696A0]">Sin mensajes en este hilo.</p>
 								) : (
-									<div className="flex flex-col gap-2">
-										{messages.map((msg) => {
-											const mine = msg.sender_id === myId
-											return (
-												<div key={msg.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
-													<div
-														className={cn(
-															'max-w-[90%] rounded-2xl px-3 py-1.5 text-sm',
-															mine
-																? 'bg-[#8B0015] text-white'
-																: 'border border-slate-200 bg-white text-slate-900 dark:border-gray-600 dark:bg-slate-700 dark:text-white'
-														)}
-													>
-														<MessageContent content={msg.content} variant={mine ? 'light' : 'dark'} />
-														<p className={cn('mt-0.5 text-[10px]', mine ? 'text-[#F3C9D0]' : 'text-slate-500 dark:text-gray-400')}>
-															{formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: es })}
-														</p>
-													</div>
-												</div>
-											)
-										})}
+									<div className="flex flex-col gap-0.5">
+										{messages.map((msg) => (
+											<WhatsAppMessageBubble
+												key={msg.id}
+												message={msg}
+												isMine={msg.sender_id === myId}
+											/>
+										))}
 									</div>
 								)}
 							</div>
-							<form onSubmit={handleSend} className="flex shrink-0 gap-2 border-t border-slate-200 p-2 dark:border-gray-700">
-								<Input
-									value={draft}
-									onChange={(e) => setDraft(e.target.value)}
-									placeholder="Escribí un mensaje…"
-									className="flex-1 text-sm"
-									disabled={sending}
-								/>
-								<Button type="submit" size="icon" disabled={sending || !draft.trim()} aria-label="Enviar">
-									<Send className="h-4 w-4" />
-								</Button>
-							</form>
+							<WhatsAppComposer
+								value={draft}
+								onChange={setDraft}
+								onSubmitText={() => void handleSendText()}
+								sending={sending}
+								onSendVoice={(blob, dur) => handleSendVoice(blob, dur)}
+							/>
 						</>
 					) : (
 						<div className="flex min-h-0 flex-1 items-center justify-center px-4 py-8 text-sm text-slate-500 dark:text-gray-400">

@@ -15,6 +15,7 @@ import {
   Send,
   AlertTriangle,
   BellRing,
+  Flag,
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
@@ -50,6 +51,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   new_profile: UserPlus,
   community_alert: AlertTriangle,
   community_alert_critical: BellRing,
+  comment_report: Flag,
 }
 
 function formatNotificationTime(dateStr: string): string {
@@ -278,7 +280,11 @@ export function NotificationBell({
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[360px] p-0" align="end" sideOffset={8}>
+      <PopoverContent
+        className="z-[120] w-[360px] ml-2 p-0 max-sm:w-[calc(100vw-1rem)] max-sm:max-w-none max-sm:rounded-2xl"
+        align="end"
+        sideOffset={8}
+      >
         <div className="border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
           <h3 className="font-semibold text-slate-900 dark:text-white">Notificaciones</h3>
           {unreadCount > 0 && (
@@ -292,7 +298,7 @@ export function NotificationBell({
             </Button>
           )}
         </div>
-        <ScrollArea className="h-[320px]">
+        <ScrollArea className="h-[320px] max-sm:h-[min(70dvh,34rem)]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-slate-400" />

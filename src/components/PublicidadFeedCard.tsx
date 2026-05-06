@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import WhatsAppIcon from '@mui/icons-material/WhatsApp'
 import InstagramIcon from '@mui/icons-material/Instagram'
 import { Globe, Megaphone, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
@@ -37,18 +37,43 @@ export function PublicidadFeedCard({
   imagePriority = false,
 }: Props) {
 	const [captionExpanded, setCaptionExpanded] = useState(false)
+	const [captionOverflowsCollapsed, setCaptionOverflowsCollapsed] = useState(false)
+	const captionRef = useRef<HTMLParagraphElement | null>(null)
 	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
 	const mainImage = pubImages[0]
 	const hasWa = Boolean(pub.whatsappUrl)
 	const hasIg = Boolean(pub.instagramUrl)
 	const captionText = pub.description.trim()
-	const canToggleCaption = captionText.length > 70
 
 	const stop = (e: React.MouseEvent) => e.stopPropagation()
 
 	useEffect(() => {
 		setCaptionExpanded(false)
 	}, [pub.id])
+
+	useEffect(() => {
+		const el = captionRef.current
+		if (!el || !captionText) {
+			setCaptionOverflowsCollapsed(false)
+			return
+		}
+
+		const measure = () => {
+			const n = captionRef.current
+			if (!n) return
+			if (captionExpanded) return
+			setCaptionOverflowsCollapsed(n.scrollHeight > n.clientHeight + 1)
+		}
+
+		measure()
+		const ro = new ResizeObserver(() => measure())
+		ro.observe(el)
+		window.addEventListener('resize', measure)
+		return () => {
+			ro.disconnect()
+			window.removeEventListener('resize', measure)
+		}
+	}, [captionText, captionExpanded, pub.id])
 
 	const handleShare = async () => {
 		if (typeof window === 'undefined') return
@@ -129,6 +154,7 @@ export function PublicidadFeedCard({
 			{captionText ? (
 				<div className="px-3 pb-2">
 					<p
+						ref={captionRef}
 						className={cn(
 							'text-[15px] leading-snug text-[#131313] whitespace-pre-wrap',
 							!captionExpanded && 'line-clamp-2 sm:line-clamp-3',
@@ -136,7 +162,7 @@ export function PublicidadFeedCard({
 					>
 						{captionText}
 					</p>
-					{canToggleCaption ? (
+					{captionExpanded || captionOverflowsCollapsed ? (
 						<button
 							type="button"
 							className="mt-1 text-xs font-semibold text-[#8B0015] hover:underline"

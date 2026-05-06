@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, Shield, ShieldCheck, UserX, Ban, Trash2, Clock, Search } from 'lucide-react'
+import { ArrowLeft, Crown, Shield, ShieldCheck, UserX, Ban, Trash2, Clock, Search } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -70,7 +70,18 @@ export default function AdminUsersPage() {
     )
   }
 
-  const handleRole = async (userId: string, role: 'viewer' | 'moderator' | 'admin') => {
+  const handleRole = async (userId: string, role: 'viewer' | 'moderator' | 'admin' | 'admin_master') => {
+    if (role === 'admin_master') {
+      const p = adminProfiles.find((x) => x.id === userId)
+      if (
+        p?.role === 'admin' &&
+        !confirm(
+          'Este usuario dejará de ser administrador completo y solo podrá cambiar la foto del referente en el inicio. ¿Continuar?'
+        )
+      ) {
+        return
+      }
+    }
     setActing(true)
     const { ok, error } = await updateUserRole(userId, role)
     setActing(false)
@@ -186,6 +197,12 @@ export default function AdminUsersPage() {
                             Moderador
                           </Badge>
                         )}
+                        {profile.role === 'admin_master' && (
+                          <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200">
+                            <Crown className="w-3 h-3 mr-1" />
+                            Admin master
+                          </Badge>
+                        )}
                         {profile.status === 'blocked' && <Badge variant="destructive">Bloqueado</Badge>}
                         {isSuspended(profile) && (
                           <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
@@ -213,6 +230,9 @@ export default function AdminUsersPage() {
                     <span>{selected.name ?? selected.email}</span>
                     {selected.role === 'admin' && <Badge className="bg-[#8B0015]/10 text-[#8B0015] dark:bg-[#8B0015]/25 dark:text-[#F3C9D0]">Admin</Badge>}
                     {selected.role === 'moderator' && <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">Moderador</Badge>}
+                    {selected.role === 'admin_master' && (
+                      <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">Admin master</Badge>
+                    )}
                     {selected.status === 'blocked' && <Badge variant="destructive">Bloqueado</Badge>}
                     {isSuspended(selected) && <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30">Suspendido</Badge>}
                   </DialogTitle>
@@ -253,6 +273,17 @@ export default function AdminUsersPage() {
                       >
                         <ShieldCheck className="w-4 h-4 mr-1" />
                         Hacer moderador
+                      </Button>
+                    )}
+                    {selected.role !== 'admin_master' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={acting}
+                        onClick={() => handleRole(selected.id, 'admin_master')}
+                      >
+                        <Crown className="w-4 h-4 mr-1" />
+                        Hacer admin master
                       </Button>
                     )}
                     {selected.role !== 'viewer' && (

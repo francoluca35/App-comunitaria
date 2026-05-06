@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { useApp } from '@/app/providers'
+import { MARIO_EMAILS } from '@/lib/mario-account'
 
 export interface SupportProfile {
   id: string
@@ -11,7 +12,7 @@ export interface SupportProfile {
   avatar_url: string | null
 }
 
-export const MARIO_EMAILS = ['mariostebler@gmail.com', 'steblermario@gmail.com']
+export { MARIO_EMAILS }
 
 /**
  * Hook para traer el perfil de "Mario" que atiende el chat público.

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getAccessToken } from '@/lib/admin-auth'
-
-const MARIO_EMAILS = ['mariostebler@gmail.com', 'steblermario@gmail.com']
+import { fetchCanonicalMarioProfile } from '@/lib/mario-account'
 
 /**
  * GET: Devuelve el perfil de Mario para el chat público (ruta `message`).
@@ -16,28 +15,12 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createClient(token)
+  const mario = await fetchCanonicalMarioProfile(supabase)
 
-  // Priorizamos role=admin y si no, role=moderator (RLS: solo admin/moderator son leíbles).
-  const { data: marioAdmin } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url')
-    .in('email', MARIO_EMAILS)
-    .eq('role', 'admin')
-    .maybeSingle()
-
-  if (marioAdmin) return NextResponse.json(marioAdmin)
-
-  const { data: marioModerator } = await supabase
-    .from('profiles')
-    .select('id, name, avatar_url')
-    .in('email', MARIO_EMAILS)
-    .eq('role', 'moderator')
-    .maybeSingle()
-
-  if (!marioModerator) {
+  if (!mario) {
     return NextResponse.json({ error: 'No hay soporte (Mario) disponible' }, { status: 404 })
   }
 
-  return NextResponse.json(marioModerator)
+  return NextResponse.json(mario)
 }
 

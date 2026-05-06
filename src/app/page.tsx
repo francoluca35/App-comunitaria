@@ -4,6 +4,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useApp, type Category, type Post } from './providers'
 import {
+  Camera,
   Filter,
   LayoutGrid,
   Megaphone,
@@ -50,6 +51,8 @@ import {
   SelectValue,
 } from '@/app/components/ui/select'
 import { CST } from '@/lib/cst-theme'
+import { useReferentPublicProfile } from '@/hooks/useReferentPublicProfile'
+import { isMarioAccountEmail } from '@/lib/mario-account'
 
 const FEED_FILTER_ALL = 'all'
 const FEED_FILTER_SOLO_PUBLICIDADES = 'publicidades_only'
@@ -122,6 +125,8 @@ type CommunityHeroBannerProps = {
   heroReferentName: string
   heroReferentPhotoUrl: string
   currentUserFirstName: string | null
+  /** Mario o administrador master: atajo para cambiar la foto del banner. */
+  canEditReferentPhoto?: boolean
 }
 
 function CommunityHeroBanner({
@@ -130,9 +135,8 @@ function CommunityHeroBanner({
   heroReferentName,
   heroReferentPhotoUrl,
   currentUserFirstName: _currentUserFirstName,
+  canEditReferentPhoto = false,
 }: CommunityHeroBannerProps) {
-  const referentFirst = 'Mario Stebler'
-
   return (
     <div className="relative mt-6 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-4 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
 			{/* Móvil: usar fondo-banner completo (sin recorte agresivo) */}
@@ -159,21 +163,34 @@ function CommunityHeroBanner({
 			<div className="relative z-[1] top-5 min-h-[175px] px-4 sm:hidden">
 				
 				<div className="absolute inset-x-0 mr-2 top-8 flex justify-center">
-					<Link
-						href="/message/mario"
-						className="flex h-13 w-[70%] max-w-[330px] items-center justify-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-4 text-base font-normal tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md transition hover:border-white/60 hover:bg-black/40 active:scale-[0.99]"
-					>
-						<Avatar className="h-10 w-10 shrink-0 border border-white/45">
-							<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
-							<AvatarFallback
-								className="text-[10px]  text-white"
-								style={{ backgroundColor: CST.bordo }}
-							>
-								{authorInitials(heroReferentName || 'MS')}
-							</AvatarFallback>
-						</Avatar>
-						Habla con Mario Stebler
-					</Link>
+					<div className="flex h-13 w-[70%] max-w-[330px] items-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-3 py-2 text-base font-normal tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md">
+						<div className="relative shrink-0">
+							<Avatar className="h-10 w-10 border border-white/45">
+								<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+								<AvatarFallback
+									className="text-[10px] text-white"
+									style={{ backgroundColor: CST.bordo }}
+								>
+									{authorInitials(heroReferentName || 'MS')}
+								</AvatarFallback>
+							</Avatar>
+							{canEditReferentPhoto ? (
+								<Link
+									href="/referente/foto"
+									className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white ring-1 ring-white/45 backdrop-blur-sm transition hover:bg-black/90"
+									aria-label="Cambiar foto del referente"
+								>
+									<Camera className="h-3.5 w-3.5" strokeWidth={2.25} />
+								</Link>
+							) : null}
+						</div>
+						<Link
+							href="/message/mario"
+							className="flex min-w-0 flex-1 items-center justify-center transition hover:opacity-95 active:scale-[0.99]"
+						>
+							Habla con Mario Stebler
+						</Link>
+					</div>
 				</div>
 			</div>
 
@@ -181,15 +198,26 @@ function CommunityHeroBanner({
       <div className="relative z-[1] hidden min-h-[260px] w-full items-center px-6 py-8 sm:flex lg:min-h-[280px] lg:px-10">
         <div className="flex w-full min-w-0 items-center gap-5 lg:gap-8">
           <div className="h-[5.5rem] w-1 shrink-0 rounded-full bg-[#A51414] shadow-[0_0_12px_rgba(165,20,20,0.45)]" aria-hidden />
-          <Avatar className="h-[5.5rem] w-[5.5rem] shrink-0 border-[3px] border-[#8B0015] shadow-lg ring-2 ring-black/10 lg:h-24 lg:w-24">
-            <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
-            <AvatarFallback
-              className="text-3xl font-bold text-white lg:text-4xl"
-              style={{ backgroundColor: CST.bordo }}
-            >
-              {authorInitials(heroReferentName || 'MS')}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative shrink-0">
+            <Avatar className="h-[5.5rem] w-[5.5rem] shrink-0 border-[3px] border-[#8B0015] shadow-lg ring-2 ring-black/10 lg:h-24 lg:w-24">
+              <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+              <AvatarFallback
+                className="text-3xl font-bold text-white lg:text-4xl"
+                style={{ backgroundColor: CST.bordo }}
+              >
+                {authorInitials(heroReferentName || 'MS')}
+              </AvatarFallback>
+            </Avatar>
+            {canEditReferentPhoto ? (
+              <Link
+                href="/referente/foto"
+                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-md ring-2 ring-white/35 backdrop-blur-sm transition hover:bg-black/85 lg:bottom-2 lg:right-2 lg:h-10 lg:w-10"
+                aria-label="Cambiar foto del referente"
+              >
+                <Camera className="h-[1.05rem] w-[1.05rem] lg:h-5 lg:w-5" strokeWidth={2.25} />
+              </Link>
+            ) : null}
+          </div>
           <div className="min-w-0 flex-1">
             <span className="inline-flex max-w-full rounded-md border border-[#8B0015]/60 bg-[#8B0015]/35 px-2.5 py-1 text-[0.65rem] font-bold uppercase leading-none tracking-[0.14em] text-[#F5D0D6] shadow-sm backdrop-blur-[2px]">
               Referente oficial
@@ -383,8 +411,16 @@ function HomePageContent() {
     loadMorePosts,
     commentCountByPostId,
   } = useApp()
+  const { referent: referentPublic } = useReferentPublicProfile()
   const { query: searchQuery } = useFeedSearch()
   const approvedPosts = posts.filter((p) => p.status === 'approved')
+
+  const heroReferentPhotoEffective =
+    referentPublic?.avatar_url?.trim() || config.heroReferentPhotoUrl.trim() || HERO_REFERENT_IMAGE
+  const canEditReferentPhoto = !!(
+    currentUser &&
+    (currentUser.isAdminMaster || isMarioAccountEmail(currentUser.email))
+  )
 
   const [feedPublicidades, setFeedPublicidades] = useState<PublicidadDisplay[]>([])
   const [feedPubLoading, setFeedPubLoading] = useState(true)
@@ -622,8 +658,9 @@ function HomePageContent() {
           heroTitle={config.heroTitle}
           heroSubtitle={config.heroSubtitle}
           heroReferentName={config.heroReferentName}
-          heroReferentPhotoUrl={config.heroReferentPhotoUrl.trim() || HERO_REFERENT_IMAGE}
+          heroReferentPhotoUrl={heroReferentPhotoEffective}
           currentUserFirstName={currentUser ? firstName(currentUser.name) : null}
+          canEditReferentPhoto={canEditReferentPhoto}
         />
 
         {/* Tarjetas de acción */}

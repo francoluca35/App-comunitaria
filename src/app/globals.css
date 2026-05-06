@@ -264,3 +264,14 @@
 .publicidad-cta-pulse-ig {
   animation: publicidad-cta-pulse-ig 2s ease-out infinite;
 }
+
+/* Fondo tipo WhatsApp: claro por defecto, oscuro con .dark */
+.chat-wa-wallpaper {
+  background-color: #e8e4e0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%23c9c4bd' stroke-width='0.35' opacity='0.55'%3E%3Cpath d='M0 56h280M0 112h280M0 168h280M0 224h280M56 0v280M112 0v280M168 0v280M224 0v280'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.dark .chat-wa-wallpaper {
+  background-color: #0b141a;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E%3Cg fill='none' stroke='%231a2429' stroke-width='0.4' opacity='0.4'%3E%3Cpath d='M0 56h280M0 112h280M0 168h280M0 224h280M56 0v280M112 0v280M168 0v280M224 0v280'/%3E%3C/g%3E%3C/svg%3E");
+}

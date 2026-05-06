@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Camera, MessageCircle, Send, Share2, Smile } from 'lucide-react'
+import { Camera, Flag, MessageCircle, Send, Share2, Smile, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp, type Post } from '@/app/providers'
 import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog'
@@ -33,7 +33,17 @@ export type PostCommentsModalProps = {
 }
 
 export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
-	const { currentUser, config, comments, addComment, loadCommentsForPost, commentCountByPostId, toggleCommentLike } = useApp()
+	const {
+		currentUser,
+		config,
+		comments,
+		addComment,
+		deleteComment,
+		reportComment,
+		loadCommentsForPost,
+		commentCountByPostId,
+		toggleCommentLike,
+	} = useApp()
 	const [commentText, setCommentText] = useState('')
 	const [commentsLoading, setCommentsLoading] = useState(false)
 	const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null)
@@ -46,6 +56,7 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 		if (!post) return []
 		return comments.filter((c) => c.postId === post.id)
 	}, [comments, post])
+	const canSubmitComment = Boolean(commentText.trim() || commentImageFile)
 
 	useEffect(() => {
 		if (!post) return
@@ -105,6 +116,31 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 			toast.error(result.error ?? 'No se pudo actualizar el me gusta')
 		}
 	}, [toggleCommentLike])
+
+	const canDeleteComment = useCallback((commentAuthorId: string) => {
+		if (!currentUser || !post) return false
+		return currentUser.isAdmin || commentAuthorId === currentUser.id || post.authorId === currentUser.id
+	}, [currentUser, post])
+
+	const handleDeleteComment = useCallback(async (commentId: string) => {
+		if (!window.confirm('¿Eliminar este comentario?')) return
+		const result = await deleteComment(commentId)
+		if (!result.ok) {
+			toast.error(result.error ?? 'No se pudo eliminar el comentario')
+			return
+		}
+		toast.success('Comentario eliminado')
+	}, [deleteComment])
+
+	const handleReportComment = useCallback(async (commentId: string) => {
+		const reason = window.prompt('Motivo del reporte (opcional):') ?? ''
+		const result = await reportComment(commentId, reason)
+		if (!result.ok) {
+			toast.error(result.error ?? 'No se pudo reportar el comentario')
+			return
+		}
+		toast.success('Reporte enviado al administrador')
+	}, [reportComment])
 
 	const handleSubmit = useCallback(
 		async (e: React.FormEvent<HTMLFormElement>) => {
@@ -306,6 +342,32 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 																>
 																	Responder
 																</button>
+															{currentUser ? (
+																<>
+																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																	<button
+																		type="button"
+																		onClick={() => void handleReportComment(comment.id)}
+																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
+																	>
+																		<Flag className="h-3 w-3" />
+																		Reportar
+																	</button>
+																</>
+															) : null}
+															{canDeleteComment(comment.authorId) ? (
+																<>
+																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																	<button
+																		type="button"
+																		onClick={() => void handleDeleteComment(comment.id)}
+																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
+																	>
+																		<Trash2 className="h-3 w-3" />
+																		Eliminar
+																	</button>
+																</>
+															) : null}
 																<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
 																	{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
 																</span>
@@ -377,11 +439,17 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 																type="submit"
 																variant="ghost"
 																size="icon"
+																disabled={!canSubmitComment}
 																className="ml-auto h-7 w-7 rounded-full text-[#1b74e4] hover:bg-[#DCEBFF] hover:text-[#1b74e4] dark:text-[#2D88FF] dark:hover:bg-white/10"
 															>
 																<Send className="h-3.5 w-3.5" />
 															</Button>
 														</div>
+														{commentImagePreviewUrl && !commentText.trim() ? (
+															<p className="mt-1 text-[11px] text-[#65676B] dark:text-[#B0B3B8]">
+																Se publicara solo la imagen.
+															</p>
+														) : null}
 													</div>
 												</div>
 											</form>
@@ -446,6 +514,32 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 															>
 																Responder
 															</button>
+															{currentUser ? (
+																<>
+																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																	<button
+																		type="button"
+																		onClick={() => void handleReportComment(comment.id)}
+																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
+																	>
+																		<Flag className="h-3 w-3" />
+																		Reportar
+																	</button>
+																</>
+															) : null}
+															{canDeleteComment(comment.authorId) ? (
+																<>
+																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																	<button
+																		type="button"
+																		onClick={() => void handleDeleteComment(comment.id)}
+																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
+																	>
+																		<Trash2 className="h-3 w-3" />
+																		Eliminar
+																	</button>
+																</>
+															) : null}
 															<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
 																{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
 															</span>
@@ -518,12 +612,18 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 													type="submit"
 													variant="ghost"
 													size="icon"
+													disabled={!canSubmitComment}
 													className="absolute right-1 top-1 h-8 w-8 rounded-full text-[#1b74e4] hover:bg-[#DCEBFF] hover:text-[#1b74e4] dark:text-[#2D88FF] dark:hover:bg-white/10 dark:hover:text-[#2D88FF]"
 												>
 													<Send className="h-4 w-4" />
 												</Button>
 											</div>
 										</div>
+										{commentImagePreviewUrl && !commentText.trim() ? (
+											<p className="mt-1 text-[11px] text-[#65676B] dark:text-[#B0B3B8]">
+												Se publicara solo la imagen.
+											</p>
+										) : null}
 									</form>
 								) : (
 									<div className="fixed inset-x-0 bottom-0 z-10 border-t border-[#CED0D4] bg-[#F0F2F5] px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 dark:border-white/10 dark:bg-[#18191A] sm:hidden">

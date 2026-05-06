@@ -133,7 +133,7 @@ function tokenize(content: string): Token[] {
 interface MessageContentProps {
 	content: string
 	/** Color del enlace: cambia según el color del globo (propio = texto claro, ajeno = bordó). */
-	variant?: 'light' | 'dark'
+	variant?: 'light' | 'dark' | 'wa-in' | 'wa-out' | 'wa-in-light' | 'wa-out-light'
 	onNavigate?: () => void
 }
 
@@ -142,7 +142,15 @@ export function MessageContent({ content, variant = 'dark', onNavigate }: Messag
 	const linkClass =
 		variant === 'light'
 			? 'underline underline-offset-2 font-semibold text-white hover:text-white/90 break-words'
-			: 'underline underline-offset-2 font-semibold text-[#8B0015] hover:text-[#5A000E] break-words'
+			: variant === 'wa-in'
+				? 'underline underline-offset-2 font-semibold text-[#53BDEB] hover:text-[#7DD8FF] break-words'
+				: variant === 'wa-out'
+					? 'underline underline-offset-2 font-semibold text-[#A6F5D6] hover:text-white break-words'
+					: variant === 'wa-in-light'
+						? 'underline underline-offset-2 font-semibold text-sky-700 hover:text-sky-900 break-words'
+						: variant === 'wa-out-light'
+							? 'underline underline-offset-2 font-semibold text-emerald-900 hover:text-emerald-950 break-words'
+							: 'underline underline-offset-2 font-semibold text-[#8B0015] hover:text-[#5A000E] break-words'
 
 	const postPath = React.useMemo(() => extractInternalPostPath(content), [content])
 	const waUrl = React.useMemo(() => extractWaMeUrl(content), [content])
@@ -155,12 +163,25 @@ export function MessageContent({ content, variant = 'dark', onNavigate }: Messag
 	const postBtnClass =
 		variant === 'light'
 			? 'w-full bg-white text-[#8B0015] hover:bg-white/90 border-0'
-			: 'w-full bg-[#8B0015] text-white hover:bg-[#5A000E] border-0'
+			: variant === 'wa-in' || variant === 'wa-in-light'
+				? 'w-full bg-[#00A884] text-white hover:bg-[#008f72] border-0'
+				: variant === 'wa-out'
+					? 'w-full bg-[#054D3D] text-[#E9EDEF] hover:bg-[#043d30] border-0'
+					: variant === 'wa-out-light'
+						? 'w-full bg-emerald-800 text-white hover:bg-emerald-900 border-0'
+						: 'w-full bg-[#8B0015] text-white hover:bg-[#5A000E] border-0'
+
+	const bodyTextClass =
+		variant === 'wa-in' || variant === 'wa-out'
+			? 'text-[15px] text-[#E9EDEF] whitespace-pre-wrap break-words'
+			: variant === 'wa-in-light' || variant === 'wa-out-light'
+				? 'text-[15px] text-slate-900 whitespace-pre-wrap break-words'
+				: 'text-sm whitespace-pre-wrap break-words'
 
 	return (
 		<div className="space-y-2">
 			{displayBody ? (
-				<p className="text-sm whitespace-pre-wrap break-words">
+				<p className={bodyTextClass}>
 					{tokens.map((t, i) => {
 						if (t.type === 'text') return <React.Fragment key={i}>{t.value}</React.Fragment>
 						if (t.type === 'post') {

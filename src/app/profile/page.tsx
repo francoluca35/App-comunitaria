@@ -540,6 +540,11 @@ export default function ProfilePage() {
                 Administrador
               </div>
             )}
+            {currentUser.isAdminMaster && !currentUser.isAdmin && (
+              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                Admin master · foto del referente
+              </div>
+            )}
             <p className="mt-0.5 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">{subline}</p>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">
               <span>

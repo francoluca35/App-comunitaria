@@ -16,6 +16,7 @@ export type NotificationType =
   | 'publicidad_rejected'
   | 'publicidad_active'
   | 'publicidad_comment'
+  | 'comment_report'
 
 export interface NotificationRow {
   id: string
