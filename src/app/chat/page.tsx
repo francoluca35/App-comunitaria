@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
-import { useMarioAdmin, MARIO_EMAILS } from '@/hooks/useMarioAdmin'
+import { useMarioAdmin } from '@/hooks/useMarioAdmin'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
@@ -15,6 +15,7 @@ import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { isMarioAccountEmail } from '@/lib/mario-account'
 import { cn } from '@/app/components/ui/utils'
 
 interface ChatMessage {
@@ -29,7 +30,7 @@ export default function ChatPage() {
 	const router = useRouter()
 	const { currentUser } = useApp()
 	const { mario: support, loading: supportLoading, error: supportError } = useMarioAdmin()
-	const isMario = MARIO_EMAILS.includes((currentUser?.email ?? '').trim().toLowerCase())
+	const isMario = isMarioAccountEmail(currentUser?.email)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [loading, setLoading] = useState(true)
 	const [message, setMessage] = useState('')
