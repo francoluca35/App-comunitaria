@@ -75,7 +75,7 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 	}, [descriptionText, descriptionExpanded, post.id])
 
 	return (
-		<Card className="relative overflow-hidden rounded-none border-x-0 border-b border-[#CED0D4] border-t-0 bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
+		<Card className="relative gap-0 overflow-hidden rounded-none border-x-0 border-b border-[#CED0D4] border-t-0 bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
 			{isMine ? (
 				<div className="absolute right-2 top-3 z-10 sm:right-3">
 					<DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />

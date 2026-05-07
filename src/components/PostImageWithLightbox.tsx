@@ -413,9 +413,8 @@ function SingleMediaPreview({
       type="button"
       onClick={onOpen}
       className={cn(
-        'group relative grid w-full cursor-zoom-in place-items-center px-0 py-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]'
+        'group relative block w-full cursor-zoom-in px-0 py-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#E8E4E0]'
       )}
-      style={{ minHeight: maxH }}
       aria-label={previewIsVideo ? `Ver video: ${alt}` : `Ver imagen: ${alt}`}
     >
       {!previewLoaded ? (
@@ -445,7 +444,7 @@ function SingleMediaPreview({
           controls
           preload="metadata"
           className={cn(
-            'relative z-[1] block h-auto w-full max-w-full object-contain object-center select-none transition-opacity duration-300',
+            'relative z-[1] block h-auto w-full max-w-full select-none transition-opacity duration-300',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
@@ -466,7 +465,7 @@ function SingleMediaPreview({
           onLoad={() => setPreviewLoaded(true)}
           onError={onFail}
           className={cn(
-            'relative z-[1] block h-auto w-full max-w-full object-contain object-center select-none transition-opacity duration-300',
+            'relative z-[1] block h-auto w-full max-w-full select-none transition-opacity duration-300',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
