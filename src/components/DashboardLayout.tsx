@@ -349,7 +349,7 @@ export function DashboardLayout({
               'flex justify-center px-3 sm:px-4 lg:px-8',
               fillViewport
                 ? 'min-h-0 flex-1 flex flex-col overflow-hidden py-3 sm:py-4'
-                : 'flex flex-1 overflow-auto py-5'
+                : 'flex flex-1 overflow-auto pt-5 sm:pt-6 pb-5'
             )}
           >
             <div

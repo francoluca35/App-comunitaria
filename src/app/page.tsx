@@ -8,7 +8,6 @@ import {
   Filter,
   LayoutGrid,
   Megaphone,
-  MessageCircle,
   Sparkles,
   Tag,
   TrendingUp,
@@ -130,119 +129,65 @@ type CommunityHeroBannerProps = {
 }
 
 function CommunityHeroBanner({
-  heroTitle,
+  heroTitle: _heroTitle,
   heroSubtitle: _heroSubtitle,
   heroReferentName,
   heroReferentPhotoUrl,
   currentUserFirstName: _currentUserFirstName,
   canEditReferentPhoto = false,
 }: CommunityHeroBannerProps) {
-  return (
-    <div className="relative mt-6 mb-3.5 overflow-hidden rounded-2xl bg-transparent shadow-none ring-0 sm:mt-4 sm:mb-6 sm:bg-[#1c2130] sm:shadow-sm sm:ring-1 sm:ring-black/[0.07] sm:min-h-[280px]">
-			{/* Móvil: usar fondo-banner completo (sin recorte agresivo) */}
-			<div
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center bg-no-repeat sm:hidden"
-				style={{ backgroundImage: "url('/Assets/fondo-banner.jpeg')" }}
-				aria-hidden
-			/>
-			<div className="pointer-events-none absolute inset-0 z-0 bg-black/40 sm:hidden" aria-hidden />
-			{/* Escritorio: imagen a pantalla completa en el banner (cover = sin franjas; recorte suave vertical si hace falta) */}
-			{/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-  src="/Assets/fondo-inicio1.png"
-  alt=""
-  className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full select-none object-cover object-center sm:block"
-/>
-
-<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent sm:block" />
-	{/* <div
-  className="absolute inset-0 hidden sm:block bg-no-repeat bg-center bg-contain"
-  style={{ backgroundImage: "url('/Assets/fondo-inicio1.png')" }}
-/> */}
-			{/* Mobile: texto + CTA fijados en zona superior para que no se desplacen */}
-			<div className="relative z-[1] top-5 min-h-[175px] px-4 sm:hidden">
-				
-				<div className="absolute inset-x-0 mr-2 top-8 flex justify-center">
-					<div className="flex h-13 w-[70%] max-w-[330px] items-center gap-2.5 whitespace-nowrap rounded-2xl border border-white/40 bg-black/30 px-3 py-2 text-base font-normal tracking-normal text-white shadow-[0_8px_20px_rgba(0,0,0,0.4)] backdrop-blur-md">
-						<div className="relative shrink-0">
-							<Avatar className="h-10 w-10 border border-white/45">
-								<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
-								<AvatarFallback
-									className="text-[10px] text-white"
-									style={{ backgroundColor: CST.bordo }}
-								>
-									{authorInitials(heroReferentName || 'MS')}
-								</AvatarFallback>
-							</Avatar>
-							{canEditReferentPhoto ? (
-								<Link
-									href="/referente/foto"
-									className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/75 text-white ring-1 ring-white/45 backdrop-blur-sm transition hover:bg-black/90"
-									aria-label="Cambiar foto del referente"
-								>
-									<Camera className="h-3.5 w-3.5" strokeWidth={2.25} />
-								</Link>
-							) : null}
+	return (
+		<div className="relative mb-0 w-full overflow-hidden rounded-[1.25rem]">
+			{/*
+				Mismo ancho que las tarjetas y el feed (columna max-w-3xl con px del main). Imagen: w-full h-auto.
+			*/}
+			<div className="relative w-full overflow-hidden">
+				<picture className="relative z-[1] block w-full leading-none">
+					<source media="(min-width: 1024px)" srcSet="/Assets/fondo-inicio1.png" />
+					{/* eslint-disable-next-line @next/next/no-img-element */}
+					<img
+						src="/Assets/fondo-banner.jpeg"
+						alt=""
+						className="block h-auto w-full max-w-full select-none align-bottom"
+					/>
+				</picture>
+				<div
+					className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-b from-black/35 via-black/15 to-black/45 lg:from-black/40 lg:via-black/20 lg:to-black/50"
+					aria-hidden
+				/>
+				<div className="absolute inset-0 z-[3] flex flex-col items-center justify-center px-4 py-6 max-[360px]:px-3 max-[360px]:py-5 sm:px-6 sm:py-8 md:px-8 lg:py-10">
+						<div className="flex w-full max-w-[min(100%,19rem)] items-center gap-2 rounded-xl border border-white/45 bg-black/35 px-2.5 py-2 text-white shadow-[0_6px_18px_rgba(0,0,0,0.4)] backdrop-blur-md supports-[backdrop-filter]:bg-black/25 max-[360px]:gap-1.5 max-[360px]:px-2 max-[360px]:py-1.5 sm:max-w-sm sm:gap-2 sm:px-3 sm:py-2 md:max-w-md lg:max-w-lg lg:gap-2.5 lg:px-4 lg:py-2.5">
+							<div className="relative shrink-0">
+								<Avatar className="h-8 w-8 border border-white/45 sm:h-9 sm:w-9 md:h-10 md:w-10 lg:h-11 lg:w-11">
+									<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
+									<AvatarFallback
+										className="text-[9px] text-white sm:text-[10px] lg:text-xs"
+										style={{ backgroundColor: CST.bordo }}
+									>
+										{authorInitials(heroReferentName || 'MS')}
+									</AvatarFallback>
+								</Avatar>
+								{canEditReferentPhoto ? (
+									<Link
+										href="/referente/foto"
+										className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/80 text-white ring-1 ring-white/45 backdrop-blur-sm transition hover:bg-black/90 sm:h-6 sm:w-6 lg:h-7 lg:w-7"
+										aria-label="Cambiar foto del referente"
+									>
+										<Camera className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5" strokeWidth={2.25} />
+									</Link>
+								) : null}
+							</div>
+							<Link
+								href="/message/mario"
+								className="min-w-0 flex-1 text-center text-[clamp(0.72rem,3.1vw,0.98rem)] font-medium leading-snug transition hover:opacity-95 active:scale-[0.99] md:text-[0.98rem] lg:text-[1.035rem]"
+							>
+								Habla con Mario Stebler
+							</Link>
 						</div>
-						<Link
-							href="/message/mario"
-							className="flex min-w-0 flex-1 items-center justify-center transition hover:opacity-95 active:scale-[0.99]"
-						>
-							Habla con Mario Stebler
-						</Link>
 					</div>
 				</div>
 			</div>
-
-      {/* Desktop: barra tipo cabecera de chat — contenido sobre fondo-inicio (sin panel sólido) */}
-      <div className="relative z-[1] hidden min-h-[260px] w-full items-center px-6 py-8 sm:flex lg:min-h-[280px] lg:px-10">
-        <div className="flex w-full min-w-0 items-center gap-5 lg:gap-8">
-          <div className="h-[5.5rem] w-1 shrink-0 rounded-full bg-[#A51414] shadow-[0_0_12px_rgba(165,20,20,0.45)]" aria-hidden />
-          <div className="relative shrink-0">
-            <Avatar className="h-[5.5rem] w-[5.5rem] shrink-0 border-[3px] border-[#8B0015] shadow-lg ring-2 ring-black/10 lg:h-24 lg:w-24">
-              <AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
-              <AvatarFallback
-                className="text-3xl font-bold text-white lg:text-4xl"
-                style={{ backgroundColor: CST.bordo }}
-              >
-                {authorInitials(heroReferentName || 'MS')}
-              </AvatarFallback>
-            </Avatar>
-            {canEditReferentPhoto ? (
-              <Link
-                href="/referente/foto"
-                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-md ring-2 ring-white/35 backdrop-blur-sm transition hover:bg-black/85 lg:bottom-2 lg:right-2 lg:h-10 lg:w-10"
-                aria-label="Cambiar foto del referente"
-              >
-                <Camera className="h-[1.05rem] w-[1.05rem] lg:h-5 lg:w-5" strokeWidth={2.25} />
-              </Link>
-            ) : null}
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="inline-flex max-w-full rounded-md border border-[#8B0015]/60 bg-[#8B0015]/35 px-2.5 py-1 text-[0.65rem] font-bold uppercase leading-none tracking-[0.14em] text-[#F5D0D6] shadow-sm backdrop-blur-[2px]">
-              Referente oficial
-            </span>
-            <p className="font-montserrat-only mt-2 truncate text-2xl font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)] lg:text-3xl">
-              {heroReferentName}
-            </p>
-            <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm font-medium text-white/80 drop-shadow-[0_1px_6px_rgba(0,0,0,0.45)]">
-              <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-2 ring-emerald-300/60" aria-hidden />
-              <span className="min-w-0">
-                En línea · <span className="text-white/90">{heroTitle}</span>
-              </span>
-            </p>
-          </div>
-          <Link
-            href="/message/mario"
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/45 bg-black/20 px-5 py-2.5 text-sm font-semibold text-white shadow-md backdrop-blur-md transition hover:border-white/65 hover:bg-black/35 lg:px-6 lg:text-base"
-          >
-            <MessageCircle className="h-[1.05rem] w-[1.05rem] opacity-95" strokeWidth={2.25} aria-hidden />
-            Habla con Mario!
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
+	)
 }
 
 /** Placeholder del feed mientras llegan publicaciones / publicidades (servidor lento o red). */
@@ -653,7 +598,7 @@ function HomePageContent() {
       </Dialog>
 
       <div className="relative w-full pb-28">
-        {/* Banner: layout distinto en mobile (centrado) vs desktop (dos columnas), según diseño */}
+        {/* Banner: mismo ancho que tarjetas/feed + pastilla centrada */}
         <CommunityHeroBanner
           heroTitle={config.heroTitle}
           heroSubtitle={config.heroSubtitle}
@@ -663,11 +608,11 @@ function HomePageContent() {
           canEditReferentPhoto={canEditReferentPhoto}
         />
 
-        {/* Tarjetas de acción */}
-        <div className="mb-5 grid grid-cols-1 gap-3.5 sm:mb-6 sm:gap-4 sm:grid-cols-2">
+        {/* Tarjetas de acción (separación solo respecto al banner, que va pegado al bloque superior) */}
+        <div className="mt-5 mb-6 grid grid-cols-1 gap-5 max-sm:gap-5 sm:mt-6 sm:mb-7 sm:grid-cols-2 sm:gap-5 md:gap-6">
           <Link
             href="/create"
-            className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
+            className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 max-sm:p-[1.35rem] text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105 sm:p-6"
             style={{ backgroundColor: CST.bordo }}
           >
             <div>
@@ -682,7 +627,7 @@ function HomePageContent() {
           {currentUser ? (
             <Link
               href="/cartelera/crear"
-              className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105"
+              className="group flex items-center justify-between gap-4 rounded-[1.25rem] p-5 max-sm:p-[1.35rem] text-white shadow-md transition-transform hover:scale-[1.01] active:scale-[0.99] hover:brightness-105 sm:p-6"
               style={{ backgroundColor: CST.acento }}
             >
               <div>
@@ -696,7 +641,7 @@ function HomePageContent() {
           ) : (
             <Link
               href="/login"
-              className="flex items-center justify-between gap-4 rounded-[1.25rem] border-2 border-dashed border-[#8B0015]/20 bg-white p-5 text-[#2B2B2B] shadow-sm"
+              className="flex items-center justify-between gap-4 rounded-[1.25rem] border-2 border-dashed border-[#8B0015]/20 bg-white p-5 max-sm:p-[1.35rem] text-[#2B2B2B] shadow-sm sm:p-6"
             >
               <div>
                 <h3 className="text-lg font-bold text-[#8B0015]">Crear publicidad</h3>
@@ -709,7 +654,7 @@ function HomePageContent() {
 
         {/* Feed: solo publicaciones; el buscador no filtra la barra de publicidad */}
         <section>
-          <div className="mb-3 flex items-center justify-between sm:mb-4">
+          <div className="mb-4 flex items-center justify-between max-sm:mb-5 sm:mb-5">
             <h2 className="font-montserrat-only text-base font-bold text-[#8B0015]">
               {feedFilter === FEED_FILTER_SOLO_PUBLICIDADES ? 'Publicidades' : 'Últimas publicaciones'}
             </h2>
