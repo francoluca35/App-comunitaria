@@ -9,7 +9,8 @@ import {
   useState,
 } from 'react'
 import Link from 'next/link'
-import { House, Menu, Megaphone, Search, Type } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { House, Menu, Megaphone, MessageCircle, Search, Type } from 'lucide-react'
 import { DashboardSidebar } from './DashboardSidebar'
 import { NotificationBell } from './NotificationBell'
 import { FloatingChatHub } from './FloatingChatHub'
@@ -20,6 +21,8 @@ import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CST } from '@/lib/cst-theme'
 import { cn } from '@/app/components/ui/utils'
+import { ChatNotificationsProvider, useChatNotifications } from '@/contexts/ChatNotificationsContext'
+import { isFullscreenMobileChatPath } from '@/lib/chat-route-utils'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -41,6 +44,36 @@ function shortDisplayName(name: string) {
   const parts = name.trim().split(/\s+/)
   if (parts.length <= 1) return parts[0]?.slice(0, 14) ?? 'Usuario'
   return `${parts[0]} ${parts[1]?.[0]?.toUpperCase() ?? ''}.`
+}
+
+function MobileChatInboxShortcut({ headerIconBtn }: { headerIconBtn: string }) {
+  const pathname = usePathname()
+  const { currentUser } = useApp()
+  const { unreadMessageCount } = useChatNotifications()
+  if (!currentUser || !isFullscreenMobileChatPath(pathname)) return null
+  const inboxHref =
+    currentUser.isAdmin || currentUser.isModerator ? '/admin/messages' : '/message/contactos'
+  const label =
+    unreadMessageCount > 0
+      ? `Bandeja de mensajes (${unreadMessageCount} sin leer)`
+      : 'Bandeja de mensajes'
+  return (
+    <Link
+      href={inboxHref}
+      className={cn(headerIconBtn, 'relative lg:hidden')}
+      aria-label={label}
+    >
+      <MessageCircle className="h-5 w-5" strokeWidth={2} aria-hidden />
+      {unreadMessageCount > 0 ? (
+        <span
+          className="pointer-events-none absolute -right-0.5 -top-0.5 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border border-black/15 bg-[#00CFC4] px-1 text-[10px] font-bold tabular-nums leading-none text-[#042a28] shadow-sm ring-1 ring-[#00FFF0]/90"
+          aria-hidden
+        >
+          {unreadMessageCount > 99 ? '99+' : unreadMessageCount}
+        </span>
+      ) : null}
+    </Link>
+  )
 }
 
 export function DashboardLayout({
@@ -184,6 +217,7 @@ export function DashboardLayout({
 
   return (
     <FeedSearchContext.Provider value={feedSearchValue}>
+      <ChatNotificationsProvider>
       <div
         className={cn(
           'bg-[#F4EFEA] dark:bg-[#18191a]',
@@ -207,6 +241,8 @@ export function DashboardLayout({
               >
                 <Menu className="h-6 w-6" />
               </button>
+
+              <MobileChatInboxShortcut headerIconBtn={headerIconBtn} />
 
               <Link
                 href="/"
@@ -410,6 +446,7 @@ export function DashboardLayout({
           </div>
         </aside>
       </div>
+      </ChatNotificationsProvider>
     </FeedSearchContext.Provider>
   )
 }

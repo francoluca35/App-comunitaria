@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUp, Mic, X } from 'lucide-react'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
+import { useVisualViewportKeyboardOverlap } from '@/hooks/useVisualViewportKeyboardOverlap'
 
 function pickRecorderMime(): string {
 	if (typeof MediaRecorder === 'undefined') return ''
@@ -144,9 +145,15 @@ export function WhatsAppComposer({
 	useEffect(() => () => cancelRecording(), [cancelRecording])
 
 	const canSendText = value.trim().length > 0 && !sending && !disabled
+	const keyboardOverlapPx = useVisualViewportKeyboardOverlap()
 
 	return (
-		<div className="shrink-0 bg-[#f0f2f5] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:bg-[#202C33]">
+		<div
+			className="shrink-0 bg-[#f0f2f5] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:bg-[#202C33]"
+			style={
+				keyboardOverlapPx > 0 ? { transform: `translateY(-${keyboardOverlapPx}px)` } : undefined
+			}
+		>
 			{isRecording ? (
 				<div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 dark:border-transparent dark:bg-[#2A3942]">
 					<button
