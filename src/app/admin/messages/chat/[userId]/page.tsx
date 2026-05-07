@@ -31,6 +31,7 @@ import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { cn } from '@/app/components/ui/utils'
 
 export interface ChatMessage {
@@ -221,6 +222,19 @@ export default function AdminChatPage() {
 		setMessages((prev) => [...prev, r.message])
 	}
 
+	const handleSendImage = async (file: File) => {
+		if (!myId || !otherId) return
+		setSending(true)
+		const r = await sendChatImageMessage(supabase, myId, otherId, file)
+		setSending(false)
+		if ('error' in r) {
+			toast.error(r.error)
+			return
+		}
+		stickToBottomRef.current = true
+		setMessages((prev) => [...prev, r.message])
+	}
+
 	const clearAllChat = async () => {
 		const {
 			data: { session },
@@ -371,6 +385,7 @@ export default function AdminChatPage() {
 					onSubmitText={() => void handleSendText()}
 					sending={sending}
 					onSendVoice={(blob, dur) => handleSendVoice(blob, dur)}
+					onSendImage={(file) => handleSendImage(file)}
 				/>
 			</div>
 

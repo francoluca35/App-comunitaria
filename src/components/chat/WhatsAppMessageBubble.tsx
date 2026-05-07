@@ -7,6 +7,7 @@ import { cn } from '@/app/components/ui/utils'
 import { MessageContent } from '@/components/MessageContent'
 import { parseChatMessagePayload } from '@/lib/chat-message-payload'
 import { VoiceMessageRow } from '@/components/chat/VoiceMessageRow'
+import { ChatImageBubble } from '@/components/chat/ChatImageBubble'
 
 export type BubbleMessage = {
 	id: string
@@ -49,6 +50,8 @@ export function WhatsAppMessageBubble({ message, isMine }: { message: BubbleMess
 								isMine={isMine}
 								initialDurationSec={payload.durationSec}
 							/>
+						) : payload.kind === 'image' ? (
+							<ChatImageBubble src={payload.url} isMine={isMine} />
 						) : (
 							<MessageContent content={message.content} variant={textVariant} />
 						)}

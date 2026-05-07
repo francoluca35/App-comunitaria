@@ -1,10 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, Mic, X } from 'lucide-react'
+import { ArrowUp, Camera, Mic, Paperclip, Smile, X } from 'lucide-react'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import { useVisualViewportKeyboardOverlap } from '@/hooks/useVisualViewportKeyboardOverlap'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
+
+const QUICK_EMOJIS = ['😀', '😂', '❤️', '👍', '🔥', '😊', '🙏', '👏', '😮', '😢', '🎉', '✨', '👋', '💬', '📷']
 
 function pickRecorderMime(): string {
 	if (typeof MediaRecorder === 'undefined') return ''
@@ -20,6 +23,7 @@ export function WhatsAppComposer({
 	sending,
 	disabled,
 	onSendVoice,
+	onSendImage,
 }: {
 	value: string
 	onChange: (v: string) => void
@@ -27,9 +31,12 @@ export function WhatsAppComposer({
 	sending: boolean
 	disabled?: boolean
 	onSendVoice: (blob: Blob, durationSec: number) => Promise<void>
+	/** Galería / cámara: sube la imagen al chat */
+	onSendImage?: (file: File) => Promise<void>
 }) {
 	const [isRecording, setIsRecording] = useState(false)
 	const [recordSeconds, setRecordSeconds] = useState(0)
+	const [emojiOpen, setEmojiOpen] = useState(false)
 	const recorderRef = useRef<MediaRecorder | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
 	const chunksRef = useRef<BlobPart[]>([])
@@ -37,6 +44,8 @@ export function WhatsAppComposer({
 	const startedAtRef = useRef(0)
 	const isRecordingRef = useRef(false)
 	const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+	const galleryInputRef = useRef<HTMLInputElement | null>(null)
+	const cameraInputRef = useRef<HTMLInputElement | null>(null)
 
 	const stopStreams = useCallback(() => {
 		streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -144,8 +153,29 @@ export function WhatsAppComposer({
 
 	useEffect(() => () => cancelRecording(), [cancelRecording])
 
+	const handleImageFile = useCallback(
+		async (file: File | undefined) => {
+			if (!file || !onSendImage) return
+			if (!file.type.startsWith('image/')) {
+				toast.error('Elegí un archivo de imagen')
+				return
+			}
+			try {
+				await onSendImage(file)
+			} catch {
+				toast.error('No se pudo enviar la foto')
+			}
+		},
+		[onSendImage]
+	)
+
+	const iconBtnClass =
+		'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-40 dark:text-[#8696A0] dark:hover:bg-white/10'
+
 	const canSendText = value.trim().length > 0 && !sending && !disabled
 	const keyboardOverlapPx = useVisualViewportKeyboardOverlap()
+	const busy = !!disabled || sending
+	const showAttachments = Boolean(onSendImage)
 
 	return (
 		<div
@@ -154,6 +184,30 @@ export function WhatsAppComposer({
 				keyboardOverlapPx > 0 ? { transform: `translateY(-${keyboardOverlapPx}px)` } : undefined
 			}
 		>
+			<input
+				ref={galleryInputRef}
+				type="file"
+				accept="image/jpeg,image/png,image/webp,image/gif"
+				className="hidden"
+				onChange={(e) => {
+					const f = e.target.files?.[0]
+					void handleImageFile(f)
+					e.target.value = ''
+				}}
+			/>
+			<input
+				ref={cameraInputRef}
+				type="file"
+				accept="image/*"
+				capture="environment"
+				className="hidden"
+				onChange={(e) => {
+					const f = e.target.files?.[0]
+					void handleImageFile(f)
+					e.target.value = ''
+				}}
+			/>
+
 			{isRecording ? (
 				<div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 dark:border-transparent dark:bg-[#2A3942]">
 					<button
@@ -181,7 +235,46 @@ export function WhatsAppComposer({
 						if (canSendText) onSubmitText()
 					}}
 				>
-					<div className="min-h-[44px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 dark:border-transparent dark:bg-[#2A3942]">
+					<div
+						className={cn(
+							'flex min-h-[48px] min-w-0 flex-1 items-center gap-1 rounded-full border px-1.5 py-1',
+							'border-slate-200/95 bg-white shadow-sm dark:border-transparent dark:bg-[#2A3942]'
+						)}
+					>
+						<Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+							<PopoverTrigger asChild>
+								<button
+									type="button"
+									disabled={busy}
+									className={iconBtnClass}
+									aria-label="Emojis"
+								>
+									<Smile className="h-[22px] w-[22px]" strokeWidth={1.75} />
+								</button>
+							</PopoverTrigger>
+							<PopoverContent
+								side="top"
+								align="start"
+								className="w-auto border border-slate-200 bg-white p-2 shadow-lg dark:border-[#2A3942] dark:bg-[#2A3942]"
+							>
+								<div className="grid max-w-[220px] grid-cols-5 gap-1">
+									{QUICK_EMOJIS.map((emoji) => (
+										<button
+											key={emoji}
+											type="button"
+											className="flex h-9 w-9 items-center justify-center rounded-md text-lg hover:bg-slate-100 dark:hover:bg-white/10"
+											onClick={() => {
+												onChange(value + emoji)
+												setEmojiOpen(false)
+											}}
+										>
+											{emoji}
+										</button>
+									))}
+								</div>
+							</PopoverContent>
+						</Popover>
+
 						<label htmlFor="wa-chat-input" className="sr-only">
 							Mensaje
 						</label>
@@ -189,17 +282,41 @@ export function WhatsAppComposer({
 							id="wa-chat-input"
 							rows={1}
 							value={value}
-							disabled={!!disabled || sending}
+							disabled={busy}
 							onChange={(e) => onChange(e.target.value)}
 							placeholder="Mensaje"
-							className="max-h-32 min-h-[28px] w-full resize-none bg-transparent text-[15px] text-slate-900 placeholder:text-slate-500 outline-none dark:text-[#E9EDEF] dark:placeholder:text-[#8696A0]"
+							className="max-h-32 min-h-[30px] min-w-0 flex-1 resize-none bg-transparent py-2 text-[15px] text-slate-900 outline-none placeholder:text-slate-500 dark:text-[#E9EDEF] dark:placeholder:text-[#8696A0]"
 						/>
+
+						{showAttachments ? (
+							<div className="flex shrink-0 items-center gap-0">
+								<button
+									type="button"
+									disabled={busy}
+									className={iconBtnClass}
+									aria-label="Galería"
+									onClick={() => galleryInputRef.current?.click()}
+								>
+									<Paperclip className="h-[22px] w-[22px]" strokeWidth={1.75} />
+								</button>
+								<button
+									type="button"
+									disabled={busy}
+									className={iconBtnClass}
+									aria-label="Cámara"
+									onClick={() => cameraInputRef.current?.click()}
+								>
+									<Camera className="h-[22px] w-[22px]" strokeWidth={1.75} />
+								</button>
+							</div>
+						) : null}
 					</div>
+
 					{canSendText ? (
 						<button
 							type="submit"
 							disabled={!canSendText}
-							className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#00A884] text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+							className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#00A884] text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 sm:h-[52px] sm:w-[52px]"
 							aria-label="Enviar mensaje"
 						>
 							<ArrowUp className="h-6 w-6 stroke-[2.5]" />
@@ -207,12 +324,15 @@ export function WhatsAppComposer({
 					) : (
 						<button
 							type="button"
-							disabled={!!disabled || sending}
+							disabled={busy}
 							onPointerDown={(e) => {
 								e.preventDefault()
 								void startRecording()
 							}}
-							className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#00A884] text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+							className={cn(
+								'flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 sm:h-[52px] sm:w-[52px]',
+								'bg-[#00A884] text-white dark:bg-white dark:text-[#111827] dark:shadow-lg dark:ring-1 dark:ring-white/20'
+							)}
 							aria-label="Mantener pulsado para grabar voz"
 						>
 							<Mic className="h-6 w-6" />

@@ -1,6 +1,7 @@
 /** Formato embebido en `chat_messages.content` para mensajes no texto (p. ej. audio). */
 
 export const CHAT_AUDIO_PREFIX = '__CHAT_AUDIO__' as const
+export const CHAT_IMAGE_PREFIX = '__CHAT_IMAGE__' as const
 
 export type ChatAudioPayload = {
 	u: string
@@ -12,9 +13,33 @@ export function encodeChatAudioMessage(payload: ChatAudioPayload): string {
 	return `${CHAT_AUDIO_PREFIX}${JSON.stringify(payload)}`
 }
 
+export type ChatImagePayload = {
+	u: string
+}
+
+export function encodeChatImageMessage(payload: ChatImagePayload): string {
+	return `${CHAT_IMAGE_PREFIX}${JSON.stringify(payload)}`
+}
+
 export function parseChatMessagePayload(content: string):
 	| { kind: 'text'; raw: string }
-	| { kind: 'audio'; url: string; durationSec?: number; raw: string } {
+	| { kind: 'audio'; url: string; durationSec?: number; raw: string }
+	| { kind: 'image'; url: string; raw: string } {
+	if (content.startsWith(CHAT_IMAGE_PREFIX)) {
+		try {
+			const json = content.slice(CHAT_IMAGE_PREFIX.length)
+			const p = JSON.parse(json) as ChatImagePayload
+			if (p && typeof p.u === 'string' && p.u.length > 0) {
+				return {
+					kind: 'image',
+					url: p.u,
+					raw: content,
+				}
+			}
+		} catch {
+			/* seguir */
+		}
+	}
 	if (content.startsWith(CHAT_AUDIO_PREFIX)) {
 		try {
 			const json = content.slice(CHAT_AUDIO_PREFIX.length)
@@ -38,5 +63,6 @@ export function parseChatMessagePayload(content: string):
 export function chatContentPreviewLine(content: string): string {
 	const p = parseChatMessagePayload(content)
 	if (p.kind === 'audio') return 'Mensaje de voz'
+	if (p.kind === 'image') return 'Foto'
 	return content.trim().replace(/\s+/g, ' ').slice(0, 80)
 }

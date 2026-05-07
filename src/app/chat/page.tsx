@@ -15,6 +15,7 @@ import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { isMarioAccountEmail } from '@/lib/mario-account'
 import { cn } from '@/app/components/ui/utils'
 
@@ -221,6 +222,19 @@ export default function ChatPage() {
 		setMessages((prev) => [...prev, r.message])
 	}
 
+	const handleSendImage = async (file: File) => {
+		if (!myId || !otherId) return
+		setSending(true)
+		const r = await sendChatImageMessage(supabase, myId, otherId, file)
+		setSending(false)
+		if ('error' in r) {
+			toast.error(r.error)
+			return
+		}
+		stickToBottomRef.current = true
+		setMessages((prev) => [...prev, r.message])
+	}
+
 	const displayName = support.name ?? 'Soporte'
 	const subtitle = isMario ? 'Atención a la comunidad' : 'Chat con soporte'
 
@@ -284,6 +298,7 @@ export default function ChatPage() {
 					onSubmitText={() => void handleSendText()}
 					sending={sending}
 					onSendVoice={(blob, dur) => handleSendVoice(blob, dur)}
+					onSendImage={(file) => handleSendImage(file)}
 				/>
 			</div>
 		</DashboardLayout>

@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { chatContentPreviewLine } from '@/lib/chat-message-payload'
 import {
 	loadChatInboxPreviews,
@@ -342,6 +343,19 @@ export function FloatingChatHub() {
 		setMessages((prev) => [...prev, r.message as ChatMsg])
 	}
 
+	const handleSendImage = async (file: File) => {
+		if (!myId || !peerId) return
+		setSending(true)
+		const r = await sendChatImageMessage(supabase, myId, peerId, file)
+		setSending(false)
+		if ('error' in r) {
+			toast.error(r.error)
+			return
+		}
+		stickToBottomRef.current = true
+		setMessages((prev) => [...prev, r.message as ChatMsg])
+	}
+
 	const onSelectPeer = (pid: string) => {
 		setPeerId(pid)
 		setAdminShowContactList(false)
@@ -639,6 +653,7 @@ export function FloatingChatHub() {
 								onSubmitText={() => void handleSendText()}
 								sending={sending}
 								onSendVoice={(blob, dur) => handleSendVoice(blob, dur)}
+								onSendImage={(file) => handleSendImage(file)}
 							/>
 						</>
 					) : (

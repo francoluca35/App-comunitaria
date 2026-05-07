@@ -14,6 +14,7 @@ import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
+import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { cn } from '@/app/components/ui/utils'
 
 interface ChatMessage {
@@ -294,6 +295,19 @@ export default function MessageWithPeerPage() {
 		setMessages((prev) => [...prev, r.message])
 	}
 
+	const handleSendImage = async (file: File) => {
+		if (!myId || !otherId) return
+		setSending(true)
+		const r = await sendChatImageMessage(supabase, myId, otherId, file)
+		setSending(false)
+		if ('error' in r) {
+			toast.error(r.error)
+			return
+		}
+		stickToBottomRef.current = true
+		setMessages((prev) => [...prev, r.message])
+	}
+
 	return (
 		<DashboardLayout fillViewport contentClassName="max-w-[720px] flex min-h-0 flex-1 flex-col">
 			<div
@@ -354,6 +368,7 @@ export default function MessageWithPeerPage() {
 					onSubmitText={() => void handleSendText()}
 					sending={sending}
 					onSendVoice={(blob, dur) => handleSendVoice(blob, dur)}
+					onSendImage={(file) => handleSendImage(file)}
 				/>
 			</div>
 		</DashboardLayout>
