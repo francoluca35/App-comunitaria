@@ -54,16 +54,20 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 		}
 		let cancelled = false
 		;(async () => {
-			const {
-				data: { session },
-			} = await supabase.auth.getSession()
-			if (!session?.access_token) return
-			const res = await fetch('/api/message/mario', {
-				headers: { Authorization: `Bearer ${session.access_token}` },
-			})
-			if (!res.ok || cancelled) return
-			const j = (await res.json()) as { id?: string }
-			if (j?.id && !cancelled) setMarioProfileId(j.id)
+			try {
+				const {
+					data: { session },
+				} = await supabase.auth.getSession()
+				if (!session?.access_token) return
+				const res = await fetch('/api/message/mario', {
+					headers: { Authorization: `Bearer ${session.access_token}` },
+				})
+				if (!res.ok || cancelled) return
+				const j = (await res.json()) as { id?: string }
+				if (j?.id && !cancelled) setMarioProfileId(j.id)
+			} catch {
+				/* fetch puede fallar si no hay red o el servidor no responde */
+			}
 		})()
 		return () => {
 			cancelled = true
@@ -85,8 +89,10 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 			const only = (data as ChatNotificationRow[]).filter((r) => r.type === 'message')
 			only.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 			setRows(only)
-		} finally {
-			/* noop */
+		} catch (e) {
+			if (process.env.NODE_ENV === 'development') {
+				console.warn('[ChatNotifications] fetchMessageRows:', e)
+			}
 		}
 	}, [currentUser?.id, supabase.auth])
 
@@ -200,11 +206,15 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 			data: { session },
 		} = await supabase.auth.getSession()
 		if (!session?.access_token) return
-		await fetch('/api/notifications', {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-			body: JSON.stringify({ ids: realIds }),
-		})
+		try {
+			await fetch('/api/notifications', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+				body: JSON.stringify({ ids: realIds }),
+			})
+		} catch {
+			/* igual que GET: fallos de red no deben romper la UI */
+		}
 	}, [supabase.auth])
 
 	const value = useMemo(

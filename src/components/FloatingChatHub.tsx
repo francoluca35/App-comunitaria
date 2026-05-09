@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { ExternalLink, Loader2, Megaphone, MessageCircle, PenLine, Plus, Search, X } from 'lucide-react'
+import {
+	ArrowLeft,
+	ExternalLink,
+	Loader2,
+	Megaphone,
+	MessageCircle,
+	PenLine,
+	Plus,
+	Search,
+	X,
+} from 'lucide-react'
 import { useApp, type AdminProfile } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -370,6 +380,14 @@ export function FloatingChatHub() {
 		setMessages([])
 	}
 
+	const backToContactsFromChat = () => {
+		if (currentUser?.isAdmin) {
+			backToAdminContactList()
+			return
+		}
+		goFullInbox()
+	}
+
 	/** Móvil/tablet colapsado (<lg): más arriba y pegado al borde para no tapar “Enviar” ni botones inferiores. Abierto o escritorio: FAB clásico (lg: con media query evita parpadeo al hidratar). */
 	const fabPositionClass = cn(
 		'transition-[bottom,right,padding] duration-200 ease-out',
@@ -488,23 +506,32 @@ export function FloatingChatHub() {
 						'w-[min(400px,calc(100dvw-6.5rem))]'
 					)}
 					role="dialog"
-					aria-label={currentUser?.isAdmin && adminShowContactList ? 'Contactos' : 'Mensajes'}
+					aria-label={
+						adminShowContactList
+							? 'Contactos'
+							: peerId
+								? `Chat con ${peerLabel(peerId)}`
+								: 'Mensajes'
+					}
 				>
-					<div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#f0f2f5] px-3 py-2 dark:border-[#2A3942] dark:bg-[#202C33]">
-						<h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-[#E9EDEF]">
-							{currentUser?.isAdmin && adminShowContactList ? 'Contactos' : 'Mensajes'}
-						</h2>
-						{currentUser?.isAdmin && peerId && !adminShowContactList && (
+					<div className="flex shrink-0 items-center gap-1 border-b border-slate-200 bg-[#f0f2f5] px-2 py-2 pr-1 dark:border-[#2A3942] dark:bg-[#202C33] sm:gap-2 sm:px-3">
+						{peerId && !adminShowContactList ? (
 							<Button
 								type="button"
 								variant="ghost"
-								size="sm"
-								className="h-8 shrink-0 px-2 text-xs text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
-								onClick={backToAdminContactList}
+								size="icon"
+								className="h-8 w-8 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+								onClick={backToContactsFromChat}
+								aria-label={
+									currentUser?.isAdmin ? 'Volver a la lista de contactos' : 'Ir a todos los contactos'
+								}
 							>
-								Contactos
+								<ArrowLeft className="h-4 w-4" />
 							</Button>
-						)}
+						) : null}
+						<h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-[#E9EDEF]">
+							{adminShowContactList ? 'Contactos' : peerId ? peerLabel(peerId) : 'Mensajes'}
+						</h2>
 						{threads.length > 1 && peerId && !adminShowContactList && (
 							<select
 								value={peerId}
@@ -619,11 +646,6 @@ export function FloatingChatHub() {
 						</div>
 					) : peerId ? (
 						<>
-							{threads.length === 1 && (
-								<div className="shrink-0 truncate border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 dark:border-[#2A3942] dark:bg-[#111B21] dark:text-[#8696A0]">
-									{peerLabel(peerId)}
-								</div>
-							)}
 							<div
 								ref={messagesScrollRef}
 								onScroll={updateStickToBottomFromScroll}
