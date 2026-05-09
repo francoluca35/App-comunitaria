@@ -156,12 +156,12 @@ function CommunityHeroBanner({
 					aria-hidden
 				/>
 				<div className="absolute inset-0 z-[3] flex flex-col items-center justify-center px-4 py-6 max-[360px]:px-3 max-[360px]:py-5 sm:px-6 sm:py-8 md:px-8 lg:py-10">
-						<div className="flex w-full max-w-[min(100%,19rem)] items-center gap-2 rounded-xl border border-white/45 bg-black/35 px-2.5 py-2 text-white shadow-[0_6px_18px_rgba(0,0,0,0.4)] backdrop-blur-md supports-[backdrop-filter]:bg-black/25 max-[360px]:gap-1.5 max-[360px]:px-2 max-[360px]:py-1.5 sm:max-w-sm sm:gap-2 sm:px-3 sm:py-2 md:max-w-md lg:max-w-lg lg:gap-2.5 lg:px-4 lg:py-2.5">
+						<div className="mx-auto flex w-full max-w-[min(100%,16.25rem)] items-center gap-1.5 rounded-lg border border-white/45 bg-black/35 px-2 py-1.5 text-white shadow-[0_5px_14px_rgba(0,0,0,0.38)] backdrop-blur-md supports-[backdrop-filter]:bg-black/25 max-[360px]:gap-1 max-[360px]:px-1.5 max-[360px]:py-1 sm:max-w-[17rem] sm:gap-1.5 sm:px-2.5 sm:py-1.5 md:max-w-[17.5rem] lg:max-w-[18.25rem] lg:gap-2 lg:px-3 lg:py-2">
 							<div className="relative shrink-0">
-								<Avatar className="h-8 w-8 border border-white/45 sm:h-9 sm:w-9 md:h-10 md:w-10 lg:h-11 lg:w-11">
+								<Avatar className="h-7 w-7 border border-white/45 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10">
 									<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />
 									<AvatarFallback
-										className="text-[9px] text-white sm:text-[10px] lg:text-xs"
+										className="text-[8px] text-white sm:text-[9px] lg:text-[10px]"
 										style={{ backgroundColor: CST.bordo }}
 									>
 										{authorInitials(heroReferentName || 'MS')}
@@ -170,16 +170,16 @@ function CommunityHeroBanner({
 								{canEditReferentPhoto ? (
 									<Link
 										href="/referente/foto"
-										className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/80 text-white ring-1 ring-white/45 backdrop-blur-sm transition hover:bg-black/90 sm:h-6 sm:w-6 lg:h-7 lg:w-7"
+										className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/80 text-white ring-1 ring-white/45 backdrop-blur-sm transition hover:bg-black/90 sm:h-5 sm:w-5 lg:h-6 lg:w-6"
 										aria-label="Cambiar foto del referente"
 									>
-										<Camera className="h-2.5 w-2.5 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5" strokeWidth={2.25} />
+										<Camera className="h-2 w-2 sm:h-2.5 sm:w-2.5 lg:h-3 lg:w-3" strokeWidth={2.25} />
 									</Link>
 								) : null}
 							</div>
 							<Link
 								href="/message/mario"
-								className="min-w-0 flex-1 text-center text-[clamp(0.72rem,3.1vw,0.98rem)] font-medium leading-snug transition hover:opacity-95 active:scale-[0.99] md:text-[0.98rem] lg:text-[1.035rem]"
+								className="min-w-0 flex-1 text-center text-[clamp(0.68rem,2.9vw,0.9rem)] font-medium leading-tight transition hover:opacity-95 active:scale-[0.99] md:text-[0.9rem] lg:text-[0.95rem]"
 							>
 								Habla con Mario Stebler
 							</Link>
