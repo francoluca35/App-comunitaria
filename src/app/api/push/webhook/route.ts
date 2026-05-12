@@ -4,12 +4,15 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { ensureWebPushConfigured, webpush } from '@/lib/web-push-config'
 
 /**
- * Database Webhook de Supabase → push en segundo plano para alertas.
+ * Database Webhook de Supabase → Web Push en segundo plano.
+ *
+ * Tipos soportados: `community_alert`, `community_alert_critical`, `message` (chat).
+ * El mismo webhook de INSERT en `notifications` debe recibir todas las filas (sin filtrar por tipo en Supabase).
  *
  * Payload oficial (INSERT):
  * https://supabase.com/docs/guides/database/webhooks
  *
- * Configuración resumida: ver docs/PUSH_WEBHOOK_SETUP.md
+ * Configuración: ver docs/PUSH_WEBHOOK_SETUP.md
  */
 
 type NotificationRecord = {
@@ -90,6 +93,123 @@ function isUuid(s: string): boolean {
   return UUID_RE.test(s)
 }
 
+type WebPushPayload = {
+  title: string
+  body: string
+  tag: string
+  url: string
+  urgent: boolean
+  critical: boolean
+  kind: 'message' | 'community_alert'
+}
+
+/** Arma el JSON del push según el tipo de notificación (alertas comunitarias o chat). */
+function buildWebPushPayload(record: NotificationRecord): WebPushPayload | null {
+  if (record.type === 'community_alert_critical') {
+    const tag = `extravio-alert-${record.related_id ?? 'unknown'}`
+    return {
+      title: record.title ?? 'Alerta',
+      body: record.body ?? '',
+      tag,
+      url: record.link_url ?? '/',
+      urgent: true,
+      critical: true,
+      kind: 'community_alert',
+    }
+  }
+  if (record.type === 'community_alert') {
+    const tag = `community-alert-${record.related_id ?? 'unknown'}`
+    return {
+      title: record.title ?? 'Alerta',
+      body: record.body ?? '',
+      tag,
+      url: record.link_url ?? '/',
+      urgent: true,
+      critical: false,
+      kind: 'community_alert',
+    }
+  }
+  if (record.type === 'message') {
+    const peer =
+      record.related_id && isUuid(record.related_id) ? record.related_id : 'unknown'
+    const title = (record.title ?? '').trim() || 'Nuevo mensaje'
+    const bodyRaw = (record.body ?? 'Te escribieron').trim() || 'Te enviaron un mensaje'
+    const body = bodyRaw.length > 220 ? `${bodyRaw.slice(0, 217)}…` : bodyRaw
+    const url =
+      typeof record.link_url === 'string' && record.link_url.startsWith('/')
+        ? record.link_url
+        : '/message/contactos'
+    return {
+      title,
+      body,
+      tag: `chat-peer-${peer}`,
+      url,
+      urgent: true,
+      critical: false,
+      kind: 'message',
+    }
+  }
+  return null
+}
+
+async function sendWebPushToUserDevices(
+  supabase: NonNullable<ReturnType<typeof createServiceRoleClient>>,
+  userId: string,
+  payload: WebPushPayload
+): Promise<{ sent: number; errors: string[]; fatal?: boolean }> {
+  const { data: rows, error } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .eq('user_id', userId)
+
+  if (error) {
+    console.error('[push/webhook] select push_subscriptions:', error)
+    return { sent: 0, errors: [error.message], fatal: true }
+  }
+  if (!rows?.length) {
+    return { sent: 0, errors: [] }
+  }
+
+  const json = JSON.stringify({
+    title: payload.title,
+    body: payload.body,
+    tag: payload.tag,
+    url: payload.url,
+    urgent: payload.urgent,
+    critical: payload.critical,
+    kind: payload.kind,
+  })
+
+  let sent = 0
+  const errors: string[] = []
+
+  for (const row of rows) {
+    const sub = {
+      endpoint: row.endpoint as string,
+      keys: { p256dh: row.p256dh as string, auth: row.auth as string },
+    }
+    try {
+      await webpush.sendNotification(sub, json, {
+        TTL: 86400,
+        urgency: 'high',
+      })
+      sent += 1
+    } catch (err: unknown) {
+      const status = (err as { statusCode?: number })?.statusCode
+      const body = (err as { body?: string })?.body
+      if (status === 410 || status === 404) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+      } else {
+        const msg = typeof body === 'string' ? body.slice(0, 120) : String(status ?? err)
+        errors.push(msg)
+        console.warn('[push/webhook] webpush send:', status, body)
+      }
+    }
+  }
+
+  return { sent, errors }
+}
+
 export async function POST(request: NextRequest) {
   const secret = process.env.PUSH_WEBHOOK_SECRET
   if (!secret?.trim()) {
@@ -116,10 +236,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: true, reason: 'not_notifications_insert' })
   }
 
-  const isCommunityAlert =
-    record.type === 'community_alert' || record.type === 'community_alert_critical'
-  if (!isCommunityAlert) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'not_community_alert' })
+  const pushPayload = buildWebPushPayload(record)
+  if (!pushPayload) {
+    return NextResponse.json({ ok: true, skipped: true, reason: 'unsupported_notification_type' })
   }
 
   const userId = record.user_id
@@ -132,64 +251,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Service role no disponible' }, { status: 503 })
   }
 
-  const { data: rows, error } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', userId)
+  const { sent, errors, fatal } = await sendWebPushToUserDevices(supabase, userId, pushPayload)
 
-  if (error) {
-    console.error('[push/webhook] select push_subscriptions:', error)
-    return NextResponse.json({ error: 'DB error' }, { status: 500 })
-  }
-
-  if (!rows?.length) {
-    return NextResponse.json({ ok: true, sent: 0, reason: 'no_subscriptions' })
-  }
-
-  const isCritical = record.type === 'community_alert_critical'
-  const tag = isCritical
-    ? `extravio-alert-${record.related_id ?? 'unknown'}`
-    : `community-alert-${record.related_id ?? 'unknown'}`
-  const payload = JSON.stringify({
-    title: record.title ?? 'Alerta',
-    body: record.body ?? '',
-    tag,
-    url: record.link_url ?? '/',
-    urgent: true,
-    critical: isCritical,
-  })
-
-  let sent = 0
-  const errors: string[] = []
-
-  for (const row of rows) {
-    const sub = {
-      endpoint: row.endpoint as string,
-      keys: { p256dh: row.p256dh as string, auth: row.auth as string },
-    }
-    try {
-      await webpush.sendNotification(sub, payload, {
-        TTL: 86400,
-        urgency: 'high',
-      })
-      sent += 1
-    } catch (err: unknown) {
-      const status = (err as { statusCode?: number })?.statusCode
-      const body = (err as { body?: string })?.body
-      if (status === 410 || status === 404) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-      } else {
-        const msg = typeof body === 'string' ? body.slice(0, 120) : String(status ?? err)
-        errors.push(msg)
-        console.warn('[push/webhook] webpush send:', status, body)
-      }
-    }
+  if (fatal) {
+    return NextResponse.json(
+      { error: errors[0] ?? 'DB error' },
+      { status: 500 }
+    )
   }
 
   return NextResponse.json({
     ok: true,
     sent,
+    kind: record.type === 'message' ? 'message' : 'community_alert',
     ...(errors.length ? { partial_errors: errors.slice(0, 3) } : {}),
+    ...(sent === 0 && !errors.length ? { reason: 'no_subscriptions' } : {}),
   })
 }
 
@@ -202,6 +278,6 @@ export async function GET() {
   return NextResponse.json({
     service: 'push-webhook',
     ready: Boolean(secret?.trim() && vapid),
-    hint: 'POST con JSON de Supabase Database Webhook + header de secreto; procesa community_alert y community_alert_critical (ver PUSH_WEBHOOK_SETUP.md)',
+    hint: 'POST: INSERT en notifications → community_alert, community_alert_critical o message (chat). Ver docs/PUSH_WEBHOOK_SETUP.md',
   })
 }

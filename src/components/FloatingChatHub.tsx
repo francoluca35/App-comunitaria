@@ -103,10 +103,29 @@ export function FloatingChatHub() {
 	const {
 		threads,
 		unreadMessageCount,
-		unreadThreadCount,
 		marioProfileId,
 		markNotificationIdsRead: markIdsRead,
 	} = useChatNotifications()
+
+	const unreadMessageSendersLine = useMemo(() => {
+		const list = threads.filter((t) => t.items.some((x) => !x.read_at))
+		if (list.length === 0) return ''
+		return list
+			.map((t) => {
+				const name = (t.items[0]?.title ?? 'Chat').trim() || 'Chat'
+				const n = t.items.filter((x) => !x.read_at).length
+				return n > 1 ? `${name} (${n})` : name
+			})
+			.join(' · ')
+	}, [threads])
+
+	const peerIdsWithUnread = useMemo(() => {
+		const set = new Set<string>()
+		for (const t of threads) {
+			if (t.items.some((x) => !x.read_at)) set.add(t.peerId)
+		}
+		return set
+	}, [threads])
 
 	const updateStickToBottomFromScroll = () => {
 		const el = messagesScrollRef.current
@@ -424,16 +443,40 @@ export function FloatingChatHub() {
 				)}
 			>
 				{quickActionsOpen && currentUser ? (
+					<div className="pointer-events-auto max-w-[11.5rem] rounded-xl border border-white/30 bg-black/55 px-2.5 py-1.5 text-left shadow-lg backdrop-blur-sm sm:max-w-[14rem]">
+						{unreadMessageCount > 0 ? (
+							<>
+								<p className="text-[10px] font-semibold uppercase tracking-wide text-white/85">
+									{unreadMessageCount} mensaje{unreadMessageCount === 1 ? '' : 's'} sin leer
+								</p>
+								{unreadMessageSendersLine ? (
+									<p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/95" title={unreadMessageSendersLine}>
+										{unreadMessageSendersLine}
+									</p>
+								) : null}
+							</>
+						) : (
+							<p className="text-[11px] text-white/80">Sin mensajes nuevos</p>
+						)}
+					</div>
+				) : null}
+				{quickActionsOpen && currentUser ? (
 					<button
 						type="button"
 						onClick={() => void openDock()}
 						className="pointer-events-auto relative flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-[#5A6268] text-white shadow-lg transition-transform hover:scale-105 hover:bg-[#4a5156] active:scale-95 dark:border-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500"
-						aria-label={isDesktop ? 'Abrir mensajes' : 'Ir al chat'}
+						aria-label={
+							unreadMessageSendersLine
+								? `Abrir mensajes: ${unreadMessageSendersLine}`
+								: isDesktop
+									? 'Abrir mensajes'
+									: 'Ir al chat'
+						}
 					>
 						<MessageCircle className="h-5 w-5" strokeWidth={2} />
-						{unreadThreadCount > 0 && (
+						{unreadMessageCount > 0 && (
 							<span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8B0015] px-1 text-[10px] font-bold text-white">
-								{unreadThreadCount > 9 ? '9+' : unreadThreadCount}
+								{unreadMessageCount > 99 ? '99+' : unreadMessageCount}
 							</span>
 						)}
 					</button>
@@ -470,8 +513,13 @@ export function FloatingChatHub() {
 						quickActionsOpen
 							? 'Cerrar menú de acciones'
 							: unreadMessageCount > 0 && currentUser
-								? `Abrir menú: chat, publicidad y publicar (${unreadMessageCount} mensajes sin leer)`
+								? `Abrir menú (${unreadMessageCount} mensajes sin leer${unreadMessageSendersLine ? `: ${unreadMessageSendersLine}` : ''})`
 								: 'Abrir menú: chat, publicidad y publicar'
+					}
+					title={
+						!quickActionsOpen && unreadMessageCount > 0 && unreadMessageSendersLine
+							? `${unreadMessageCount} sin leer — ${unreadMessageSendersLine}`
+							: undefined
 					}
 				>
 					{!quickActionsOpen && currentUser && unreadMessageCount > 0 ? (
@@ -597,6 +645,7 @@ export function FloatingChatHub() {
 											const subtitle = last?.preview?.trim() ? last.preview : 'Sin mensajes aún'
 											const timeLabel = last?.createdAt ? formatChatListTime(last.createdAt) : ''
 											const title = profile.name?.trim() || profile.email || 'Usuario'
+											const hasUnread = peerIdsWithUnread.has(profile.id)
 											return (
 												<li key={profile.id}>
 													<button
@@ -612,7 +661,12 @@ export function FloatingChatHub() {
 														</Avatar>
 														<div className="min-w-0 flex-1">
 															<div className="flex items-baseline justify-between gap-2">
-																<p className="truncate font-medium text-slate-900 dark:text-[#E9EDEF]">
+																<p
+																	className={cn(
+																		'truncate text-slate-900 dark:text-[#E9EDEF]',
+																		hasUnread ? 'font-semibold' : 'font-medium'
+																	)}
+																>
 																	{title}
 																</p>
 																{timeLabel ? (
@@ -621,7 +675,16 @@ export function FloatingChatHub() {
 																	</span>
 																) : null}
 															</div>
-															<p className="truncate text-xs text-slate-600 dark:text-[#8696A0]">{subtitle}</p>
+															<p className="min-w-0 truncate text-xs text-slate-600 dark:text-[#8696A0]">
+																<span
+																	className={cn(
+																		hasUnread &&
+																			'rounded-sm bg-[#70FF8B] px-1.5 py-0.5 font-medium text-slate-900 dark:bg-emerald-600/40 dark:text-emerald-50'
+																	)}
+																>
+																	{subtitle}
+																</span>
+															</p>
 														</div>
 													</button>
 												</li>

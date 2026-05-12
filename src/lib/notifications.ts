@@ -78,6 +78,8 @@ export function playUrgentAlertFeedback(): void {
  * **Sonido del celular:** el tono no se elige desde código. Con `silent: false` el sistema usa el
  * sonido del **canal de notificaciones** del navegador o de la PWA (Android: Ajustes → Apps → Chrome
  * u otro navegador → Notificaciones; iOS: Ajustes → Notificaciones → la app en cuestión).
+ * Con la app **cerrada**, el aviso lo entrega el **Web Push** (`/api/push/webhook` + `public/sw.js`);
+ * el pitido sintético `playUrgentAlertFeedback` solo corre en foreground cuando `urgent: true`.
  */
 export async function showSystemNotification(options: {
   title: string

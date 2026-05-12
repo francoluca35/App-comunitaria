@@ -177,6 +177,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 						body: optimistic.body ?? 'Te enviaron un mensaje',
 						tag: `chat-msg-${row.sender_id}`,
 						url: messageChatInboxUrl(row.sender_id, currentUser, marioProfileId),
+						urgent: true,
 					})
 				}
 			)

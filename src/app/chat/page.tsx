@@ -106,6 +106,7 @@ export default function ChatPage() {
 								body: `Admin (${adminName}) te envió un mensaje`,
 								tag: `chat-${myId}-${otherId}`,
 								url: '/message/mario',
+								urgent: true,
 							})
 						}
 					}

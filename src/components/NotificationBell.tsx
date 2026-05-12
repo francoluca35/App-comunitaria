@@ -30,6 +30,8 @@ import { ScrollArea } from '@/app/components/ui/scroll-area'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import type { ChatNotificationRow } from '@/lib/chat-notification-ui'
+import { resolveMessageLink } from '@/lib/chat-notification-ui'
+import { useChatNotifications } from '@/contexts/ChatNotificationsContext'
 
 const defaultTriggerClass =
   'relative p-2 rounded-xl text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors'
@@ -83,6 +85,30 @@ export function NotificationBell({
   const [sendingWelcomeId, setSendingWelcomeId] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const supabase = createClient()
+  const { threads, unreadMessageCount, markNotificationIdsRead, fetchMessageRows } = useChatNotifications()
+
+  const messageThreadsUnread = useMemo(
+    () => threads.filter((t) => t.items.some((x) => !x.read_at)),
+    [threads]
+  )
+
+  const messageSendersSummary = useMemo(() => {
+    if (messageThreadsUnread.length === 0) return ''
+    return messageThreadsUnread
+      .map((t) => {
+        const name = (t.items[0]?.title ?? 'Chat').trim() || 'Chat'
+        const n = t.items.filter((x) => !x.read_at).length
+        return n > 1 ? `${name} (${n})` : name
+      })
+      .join(', ')
+  }, [messageThreadsUnread])
+
+  const unreadNonMessageCount = useMemo(
+    () => notifications.filter((n) => !n.read_at).length,
+    [notifications]
+  )
+
+  const totalUnreadBadge = unreadNonMessageCount + unreadMessageCount
 
   const fetchNotifications = useCallback(async () => {
     if (!currentUser?.id) return
@@ -120,6 +146,23 @@ export function NotificationBell({
     }
   }, [currentUser?.id, supabase.auth])
 
+  const openPopover = (o: boolean) => {
+    setOpen(o)
+    if (o) {
+      void fetchNotifications()
+      void fetchMessageRows()
+    }
+  }
+
+  const onOpenMessageThread = (t: (typeof threads)[0]) => {
+    const unreadIds = t.items.filter((x) => !x.read_at).map((x) => x.id)
+    const latest = t.items[0]
+    if (!latest) return
+    if (unreadIds.length) void markNotificationIdsRead(unreadIds)
+    setOpen(false)
+    router.push(resolveMessageLink(latest, currentUser))
+  }
+
   useEffect(() => {
     if (!currentUser?.id) return
     fetchNotifications()
@@ -132,7 +175,10 @@ export function NotificationBell({
     const schedule = () => {
       if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
       clearTimeout(t)
-      t = setTimeout(() => void fetchNotifications(), 400)
+      t = setTimeout(() => {
+        void fetchNotifications()
+        void fetchMessageRows()
+      }, 400)
     }
     schedule()
     document.addEventListener('visibilitychange', schedule)
@@ -142,7 +188,7 @@ export function NotificationBell({
       document.removeEventListener('visibilitychange', schedule)
       window.removeEventListener('focus', schedule)
     }
-  }, [currentUser?.id, fetchNotifications])
+  }, [currentUser?.id, fetchNotifications, fetchMessageRows])
 
   // Realtime: nueva notificación desde la tabla (persistida por triggers)
   useEffect(() => {
@@ -203,8 +249,7 @@ export function NotificationBell({
   }
 
   const markAllAsRead = async () => {
-    const unread = notifications.filter((n) => !n.read_at)
-    if (!unread.length) return
+    if (totalUnreadBadge === 0) return
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
     )
@@ -215,6 +260,7 @@ export function NotificationBell({
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({}),
       })
+      void fetchMessageRows()
     }
   }
 
@@ -252,30 +298,36 @@ export function NotificationBell({
     }
   }
 
-  const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read_at).length,
-    [notifications]
-  )
-
   if (!currentUser) return null
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) fetchNotifications(); }}>
+    <Popover open={open} onOpenChange={openPopover}>
       <PopoverTrigger asChild>
         <button
           type="button"
           className={cn(defaultTriggerClass, triggerClassName)}
-          aria-label="Notificaciones"
+          aria-label={
+            totalUnreadBadge > 0
+              ? `Notificaciones (${totalUnreadBadge} sin leer${messageSendersSummary ? `: ${messageSendersSummary}` : ''})`
+              : 'Notificaciones'
+          }
+          title={
+            unreadMessageCount > 0 && messageSendersSummary
+              ? `Mensajes sin leer (${unreadMessageCount}): ${messageSendersSummary}`
+              : unreadMessageCount > 0
+                ? `${unreadMessageCount} mensaje${unreadMessageCount === 1 ? '' : 's'} sin leer`
+                : undefined
+          }
         >
           <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
+          {totalUnreadBadge > 0 && (
             <span
               className={cn(
                 'absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#8B0015] text-[10px] font-bold text-white',
                 badgeClassName
               )}
             >
-              {unreadCount > 99 ? '99+' : unreadCount}
+              {totalUnreadBadge > 99 ? '99+' : totalUnreadBadge}
             </span>
           )}
         </button>
@@ -287,7 +339,7 @@ export function NotificationBell({
       >
         <div className="border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
           <h3 className="font-semibold text-slate-900 dark:text-white">Notificaciones</h3>
-          {unreadCount > 0 && (
+          {totalUnreadBadge > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -311,12 +363,49 @@ export function NotificationBell({
                 Reintentar
               </Button>
             </div>
-          ) : notifications.length === 0 ? (
+          ) : messageThreadsUnread.length === 0 && notifications.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-500 dark:text-gray-400">
               No tenés notificaciones
             </div>
           ) : (
             <ul className="py-1">
+              {messageThreadsUnread.length > 0 ? (
+                <li className="border-b border-slate-200 bg-[#8B0015]/[0.06] dark:border-gray-800 dark:bg-[#8B0015]/15">
+                  <p className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8B0015] dark:text-[#F5D0D6]">
+                    Mensajes
+                  </p>
+                  <ul className="pb-2">
+                    {messageThreadsUnread.map((t) => {
+                      const latest = t.items[0]!
+                      const unreadN = t.items.filter((x) => !x.read_at).length
+                      const sender = (latest.title ?? 'Chat').trim() || 'Chat'
+                      return (
+                        <li key={t.peerId}>
+                          <button
+                            type="button"
+                            onClick={() => onOpenMessageThread(t)}
+                            className="flex w-full gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-gray-800/80"
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-gray-700 dark:text-gray-300">
+                              <MessageCircle className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{sender}</p>
+                              {latest.body ? (
+                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-600 dark:text-gray-400">{latest.body}</p>
+                              ) : null}
+                              <p className="mt-1 text-[10px] text-slate-400 dark:text-gray-500">
+                                {unreadN > 1 ? `${unreadN} sin leer · ` : ''}
+                                {formatNotificationTime(latest.created_at)}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </li>
+              ) : null}
               {notifications.map((n) => {
                 const Icon = TYPE_ICONS[n.type] ?? Bell
                 const isNewProfile = n.type === 'new_profile'

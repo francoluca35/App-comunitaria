@@ -2,7 +2,9 @@
 
 Cuando un admin **aprueba** una publicación categoría **alertas**, el trigger de Postgres inserta filas en `notifications` (tipo `community_alert`). Para **personas extraviadas** (categoría **extravios**) el tipo es `community_alert_critical`; el mismo webhook envía Web Push con marca `critical` para refuerzo (p. ej. punto en el icono de la PWA donde el navegador lo soporte).
 
-Este webhook recibe cada INSERT relevante y envía **Web Push** al dispositivo del usuario destinatario.
+Además, cada **mensaje de chat** inserta una fila en `notifications` con `type = message` (título = nombre del remitente, cuerpo = vista previa, `link_url` al hilo). El **mismo** webhook envía Web Push al destinatario para que suene / vibre **aunque la app esté cerrada** (misma suscripción `push_subscriptions` que para alertas).
+
+Este webhook debe recibir **todos** los INSERT en `notifications` (no filtrar solo alertas en el panel de Supabase). Los tipos que no son alerta ni mensaje responden `skipped` sin error.
 
 ## 1. Requisitos previos
 
@@ -75,7 +77,13 @@ No tenés que armar el JSON a mano: Supabase envía automáticamente el payload 
 }
 ```
 
-La API procesa `type === "INSERT"`, tabla `notifications`, y `record.type` igual a **`community_alert`** o **`community_alert_critical`**. El resto responde `200` con `skipped: true` (así Supabase no reintenta como error).
+La API procesa `type === "INSERT"`, tabla `notifications`, y `record.type` igual a **`community_alert`**, **`community_alert_critical`** o **`message`** (chat). El resto responde `200` con `skipped: true` (así Supabase no reintenta como error).
+
+### Mensajes de chat (`message`)
+
+- El payload del push usa el **nombre del remitente** como título y la **vista previa** como cuerpo (lo que ya guarda el trigger `notify_on_chat_message`).
+- `tag: chat-peer-{sender_id}` agrupa por conversación en Android (se actualiza la misma notificación; `renotify` ayuda a que vuelva a alertar según el dispositivo).
+- El **sonido** lo define el sistema / canal de notificaciones del navegador o de la PWA (`silent: false` en el service worker), igual que con las alertas.
 
 ## 5. Probar
 

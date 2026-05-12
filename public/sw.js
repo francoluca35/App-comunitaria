@@ -37,6 +37,7 @@ self.addEventListener('push', (event) => {
     url: '/',
     urgent: false,
     critical: false,
+    kind: 'community_alert',
   }
   try {
     const data = event.data.json()
@@ -48,6 +49,7 @@ self.addEventListener('push', (event) => {
       icon: data.icon ?? ICON_PATH,
       urgent: Boolean(data.urgent),
       critical: Boolean(data.critical),
+      kind: data.kind === 'message' ? 'message' : 'community_alert',
     }
   } catch {
     payload.body = event.data.text()
@@ -55,6 +57,7 @@ self.addEventListener('push', (event) => {
   const iconUrl = getFullIconUrl(payload.icon)
   const urgent = payload.urgent
   const critical = payload.critical
+  const isChat = payload.kind === 'message'
   event.waitUntil(
     (async () => {
       if (critical && 'setAppBadge' in navigator && typeof navigator.setAppBadge === 'function') {
@@ -67,11 +70,11 @@ self.addEventListener('push', (event) => {
       await self.registration.showNotification(payload.title, {
         body: payload.body,
         tag: payload.tag,
-        data: { url: payload.url || '/', critical },
+        data: { url: payload.url || '/', critical, kind: payload.kind },
         icon: iconUrl,
         badge: iconUrl,
         vibrate: urgent ? [...URGENT_VIBRATE] : [200, 100, 200],
-        requireInteraction: urgent,
+        requireInteraction: urgent && !isChat,
         silent: false,
         renotify: urgent || critical,
       })
