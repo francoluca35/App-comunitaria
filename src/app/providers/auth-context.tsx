@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentUser?.id) return
     let cancelled = false
-    const run = async () => {
+    const syncPush = async () => {
       try {
         const {
           data: { session },
@@ -55,9 +55,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // ignore
       }
     }
-    void run()
+    void syncPush()
+    const onForeground = () => {
+      if (document.visibilityState === 'visible') void syncPush()
+    }
+    document.addEventListener('visibilitychange', onForeground)
+    window.addEventListener('focus', onForeground)
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onForeground)
+      window.removeEventListener('focus', onForeground)
     }
   }, [currentUser?.id, supabase])
 
