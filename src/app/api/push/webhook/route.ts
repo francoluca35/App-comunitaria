@@ -271,13 +271,24 @@ export async function POST(request: NextRequest) {
 
 /** Algunos monitores / configuraciones hacen GET para probar la URL. */
 export async function GET() {
-  const secret = process.env.PUSH_WEBHOOK_SECRET
-  const vapid = Boolean(
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
-  )
+  const hasSecret = Boolean(process.env.PUSH_WEBHOOK_SECRET?.trim())
+  const hasVapidPublic = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim())
+  const hasVapidPrivate = Boolean(process.env.VAPID_PRIVATE_KEY?.trim())
+  const vapid = hasVapidPublic && hasVapidPrivate
+  const ready = hasSecret && vapid
+  const missing: string[] = []
+  if (!hasSecret) missing.push('PUSH_WEBHOOK_SECRET')
+  if (!hasVapidPublic) missing.push('NEXT_PUBLIC_VAPID_PUBLIC_KEY')
+  if (!hasVapidPrivate) missing.push('VAPID_PRIVATE_KEY')
   return NextResponse.json({
     service: 'push-webhook',
-    ready: Boolean(secret?.trim() && vapid),
+    ready,
+    checks: {
+      PUSH_WEBHOOK_SECRET: hasSecret,
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: hasVapidPublic,
+      VAPID_PRIVATE_KEY: hasVapidPrivate,
+    },
+    ...(missing.length ? { missing } : {}),
     hint: 'POST: INSERT en notifications → community_alert, community_alert_critical o message (chat). Ver docs/PUSH_WEBHOOK_SETUP.md',
   })
 }
