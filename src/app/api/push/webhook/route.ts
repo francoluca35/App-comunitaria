@@ -1,294 +1,157 @@
 import { timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { ensureWebPushConfigured, webpush } from '@/lib/web-push-config'
+import { ensureWebPushConfigured } from '@/lib/web-push-config'
+import {
+	buildWebPushPayload,
+	isUuid,
+	sendWebPushToUserDevices,
+	type NotificationPushRecord,
+} from '@/lib/web-push-dispatch'
 
 /**
  * Database Webhook de Supabase → Web Push en segundo plano.
  *
  * Tipos soportados: `community_alert`, `community_alert_critical`, `message` (chat).
- * El mismo webhook de INSERT en `notifications` debe recibir todas las filas (sin filtrar por tipo en Supabase).
- *
- * Payload oficial (INSERT):
- * https://supabase.com/docs/guides/database/webhooks
+ * Los mensajes también se envían vía POST /api/push/dispatch-message (más rápido); este webhook actúa de respaldo.
  *
  * Configuración: ver docs/PUSH_WEBHOOK_SETUP.md
  */
 
-type NotificationRecord = {
-  user_id?: string
-  type?: string
-  title?: string
-  body?: string | null
-  link_url?: string | null
-  related_id?: string | null
-}
-
-/** Comparación en tiempo constante para el secreto del webhook. */
 function webhookSecretValid(request: NextRequest, expected: string): boolean {
-  if (!expected) return false
+	if (!expected) return false
 
-  const fromHeader =
-    request.headers.get('x-webhook-secret') ??
-    request.headers.get('X-Webhook-Secret') ??
-    request.headers.get('x-supabase-webhook-secret')
+	const fromHeader =
+		request.headers.get('x-webhook-secret') ??
+		request.headers.get('X-Webhook-Secret') ??
+		request.headers.get('x-supabase-webhook-secret')
 
-  const auth = request.headers.get('authorization')
-  let fromBearer: string | null = null
-  if (auth?.startsWith('Bearer ')) {
-    fromBearer = auth.slice(7).trim()
-  } else if (auth && !auth.includes(' ')) {
-    fromBearer = auth.trim()
-  }
+	const auth = request.headers.get('authorization')
+	let fromBearer: string | null = null
+	if (auth?.startsWith('Bearer ')) {
+		fromBearer = auth.slice(7).trim()
+	} else if (auth && !auth.includes(' ')) {
+		fromBearer = auth.trim()
+	}
 
-  const received = fromHeader ?? fromBearer
-  if (received == null || received.length === 0) return false
+	const received = fromHeader ?? fromBearer
+	if (received == null || received.length === 0) return false
 
-  try {
-    const a = Buffer.from(received, 'utf8')
-    const b = Buffer.from(expected, 'utf8')
-    if (a.length !== b.length) return false
-    return timingSafeEqual(a, b)
-  } catch {
-    return false
-  }
+	try {
+		const a = Buffer.from(received, 'utf8')
+		const b = Buffer.from(expected, 'utf8')
+		if (a.length !== b.length) return false
+		return timingSafeEqual(a, b)
+	} catch {
+		return false
+	}
 }
 
-function parseSupabaseInsertPayload(raw: unknown): NotificationRecord | null {
-  if (!raw || typeof raw !== 'object') return null
-  const o = raw as Record<string, unknown>
+function parseSupabaseInsertPayload(raw: unknown): NotificationPushRecord | null {
+	if (!raw || typeof raw !== 'object') return null
+	const o = raw as Record<string, unknown>
 
-  // Formato estándar Supabase Database Webhook
-  if (o.type === 'INSERT' && typeof o.table === 'string' && typeof o.record === 'object' && o.record !== null) {
-    const table = o.table.toLowerCase()
-    const schema = typeof o.schema === 'string' ? o.schema.toLowerCase() : 'public'
-    if (schema !== 'public' || table !== 'notifications') return null
-    return o.record as NotificationRecord
-  }
+	if (o.type === 'INSERT' && typeof o.table === 'string' && typeof o.record === 'object' && o.record !== null) {
+		const table = o.table.toLowerCase()
+		const schema = typeof o.schema === 'string' ? o.schema.toLowerCase() : 'public'
+		if (schema !== 'public' || table !== 'notifications') return null
+		return o.record as NotificationPushRecord
+	}
 
-  // Variantes / proxies
-  if (typeof o.record === 'object' && o.record !== null) {
-    const r = o.record as NotificationRecord
-    if (typeof r.user_id === 'string' && typeof r.type === 'string') return r
-  }
-  if (o.payload && typeof o.payload === 'object') {
-    const p = o.payload as Record<string, unknown>
-    if (p.record && typeof p.record === 'object') {
-      return parseSupabaseInsertPayload({
-        type: (p.type as string) ?? 'INSERT',
-        table: (p.table as string) ?? 'notifications',
-        schema: (p.schema as string) ?? 'public',
-        record: p.record,
-      })
-    }
-  }
+	if (typeof o.record === 'object' && o.record !== null) {
+		const r = o.record as NotificationPushRecord
+		if (typeof r.user_id === 'string' && typeof r.type === 'string') return r
+	}
+	if (o.payload && typeof o.payload === 'object') {
+		const p = o.payload as Record<string, unknown>
+		if (p.record && typeof p.record === 'object') {
+			return parseSupabaseInsertPayload({
+				type: (p.type as string) ?? 'INSERT',
+				table: (p.table as string) ?? 'notifications',
+				schema: (p.schema as string) ?? 'public',
+				record: p.record,
+			})
+		}
+	}
 
-  return null
-}
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function isUuid(s: string): boolean {
-  return UUID_RE.test(s)
-}
-
-type WebPushPayload = {
-  title: string
-  body: string
-  tag: string
-  url: string
-  urgent: boolean
-  critical: boolean
-  kind: 'message' | 'community_alert'
-}
-
-/** Arma el JSON del push según el tipo de notificación (alertas comunitarias o chat). */
-function buildWebPushPayload(record: NotificationRecord): WebPushPayload | null {
-  if (record.type === 'community_alert_critical') {
-    const tag = `extravio-alert-${record.related_id ?? 'unknown'}`
-    return {
-      title: record.title ?? 'Alerta',
-      body: record.body ?? '',
-      tag,
-      url: record.link_url ?? '/',
-      urgent: true,
-      critical: true,
-      kind: 'community_alert',
-    }
-  }
-  if (record.type === 'community_alert') {
-    const tag = `community-alert-${record.related_id ?? 'unknown'}`
-    return {
-      title: record.title ?? 'Alerta',
-      body: record.body ?? '',
-      tag,
-      url: record.link_url ?? '/',
-      urgent: true,
-      critical: false,
-      kind: 'community_alert',
-    }
-  }
-  if (record.type === 'message') {
-    const peer =
-      record.related_id && isUuid(record.related_id) ? record.related_id : 'unknown'
-    const title = (record.title ?? '').trim() || 'Nuevo mensaje'
-    const bodyRaw = (record.body ?? 'Te escribieron').trim() || 'Te enviaron un mensaje'
-    const body = bodyRaw.length > 220 ? `${bodyRaw.slice(0, 217)}…` : bodyRaw
-    const url =
-      typeof record.link_url === 'string' && record.link_url.startsWith('/')
-        ? record.link_url
-        : '/message/contactos'
-    return {
-      title,
-      body,
-      tag: `chat-peer-${peer}`,
-      url,
-      urgent: true,
-      critical: false,
-      kind: 'message',
-    }
-  }
-  return null
-}
-
-async function sendWebPushToUserDevices(
-  supabase: NonNullable<ReturnType<typeof createServiceRoleClient>>,
-  userId: string,
-  payload: WebPushPayload
-): Promise<{ sent: number; errors: string[]; fatal?: boolean }> {
-  const { data: rows, error } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth')
-    .eq('user_id', userId)
-
-  if (error) {
-    console.error('[push/webhook] select push_subscriptions:', error)
-    return { sent: 0, errors: [error.message], fatal: true }
-  }
-  if (!rows?.length) {
-    return { sent: 0, errors: [] }
-  }
-
-  const json = JSON.stringify({
-    title: payload.title,
-    body: payload.body,
-    tag: payload.tag,
-    url: payload.url,
-    urgent: payload.urgent,
-    critical: payload.critical,
-    kind: payload.kind,
-  })
-
-  let sent = 0
-  const errors: string[] = []
-
-  for (const row of rows) {
-    const sub = {
-      endpoint: row.endpoint as string,
-      keys: { p256dh: row.p256dh as string, auth: row.auth as string },
-    }
-    try {
-      await webpush.sendNotification(sub, json, {
-        TTL: 86400,
-        urgency: 'high',
-      })
-      sent += 1
-    } catch (err: unknown) {
-      const status = (err as { statusCode?: number })?.statusCode
-      const body = (err as { body?: string })?.body
-      if (status === 410 || status === 404) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-      } else {
-        const msg = typeof body === 'string' ? body.slice(0, 120) : String(status ?? err)
-        errors.push(msg)
-        console.warn('[push/webhook] webpush send:', status, body)
-      }
-    }
-  }
-
-  return { sent, errors }
+	return null
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.PUSH_WEBHOOK_SECRET
-  if (!secret?.trim()) {
-    return NextResponse.json({ error: 'PUSH_WEBHOOK_SECRET no configurado' }, { status: 503 })
-  }
+	const secret = process.env.PUSH_WEBHOOK_SECRET
+	if (!secret?.trim()) {
+		return NextResponse.json({ error: 'PUSH_WEBHOOK_SECRET no configurado' }, { status: 503 })
+	}
 
-  if (!webhookSecretValid(request, secret)) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+	if (!webhookSecretValid(request, secret)) {
+		return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+	}
 
-  if (!ensureWebPushConfigured()) {
-    return NextResponse.json({ error: 'VAPID no configurado' }, { status: 503 })
-  }
+	if (!ensureWebPushConfigured()) {
+		return NextResponse.json({ error: 'VAPID no configurado' }, { status: 503 })
+	}
 
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
-  }
+	let raw: unknown
+	try {
+		raw = await request.json()
+	} catch {
+		return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+	}
 
-  const record = parseSupabaseInsertPayload(raw)
-  if (!record) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'not_notifications_insert' })
-  }
+	const record = parseSupabaseInsertPayload(raw)
+	if (!record) {
+		return NextResponse.json({ ok: true, skipped: true, reason: 'not_notifications_insert' })
+	}
 
-  const pushPayload = buildWebPushPayload(record)
-  if (!pushPayload) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'unsupported_notification_type' })
-  }
+	const pushPayload = buildWebPushPayload(record)
+	if (!pushPayload) {
+		return NextResponse.json({ ok: true, skipped: true, reason: 'unsupported_notification_type' })
+	}
 
-  const userId = record.user_id
-  if (!userId || !isUuid(userId)) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'invalid_user_id' })
-  }
+	const userId = record.user_id
+	if (!userId || !isUuid(userId)) {
+		return NextResponse.json({ ok: true, skipped: true, reason: 'invalid_user_id' })
+	}
 
-  const supabase = createServiceRoleClient()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Service role no disponible' }, { status: 503 })
-  }
+	const supabase = createServiceRoleClient()
+	if (!supabase) {
+		return NextResponse.json({ error: 'Service role no disponible' }, { status: 503 })
+	}
 
-  const { sent, errors, fatal } = await sendWebPushToUserDevices(supabase, userId, pushPayload)
+	const { sent, errors, fatal } = await sendWebPushToUserDevices(supabase, userId, pushPayload)
 
-  if (fatal) {
-    return NextResponse.json(
-      { error: errors[0] ?? 'DB error' },
-      { status: 500 }
-    )
-  }
+	if (fatal) {
+		return NextResponse.json({ error: errors[0] ?? 'DB error' }, { status: 500 })
+	}
 
-  return NextResponse.json({
-    ok: true,
-    sent,
-    kind: record.type === 'message' ? 'message' : 'community_alert',
-    ...(errors.length ? { partial_errors: errors.slice(0, 3) } : {}),
-    ...(sent === 0 && !errors.length ? { reason: 'no_subscriptions' } : {}),
-  })
+	return NextResponse.json({
+		ok: true,
+		sent,
+		kind: record.type === 'message' ? 'message' : 'community_alert',
+		...(errors.length ? { partial_errors: errors.slice(0, 3) } : {}),
+		...(sent === 0 && !errors.length ? { reason: 'no_subscriptions' } : {}),
+	})
 }
 
-/** Algunos monitores / configuraciones hacen GET para probar la URL. */
 export async function GET() {
-  const hasSecret = Boolean(process.env.PUSH_WEBHOOK_SECRET?.trim())
-  const hasVapidPublic = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim())
-  const hasVapidPrivate = Boolean(process.env.VAPID_PRIVATE_KEY?.trim())
-  const vapid = hasVapidPublic && hasVapidPrivate
-  const ready = hasSecret && vapid
-  const missing: string[] = []
-  if (!hasSecret) missing.push('PUSH_WEBHOOK_SECRET')
-  if (!hasVapidPublic) missing.push('NEXT_PUBLIC_VAPID_PUBLIC_KEY')
-  if (!hasVapidPrivate) missing.push('VAPID_PRIVATE_KEY')
-  return NextResponse.json({
-    service: 'push-webhook',
-    ready,
-    checks: {
-      PUSH_WEBHOOK_SECRET: hasSecret,
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: hasVapidPublic,
-      VAPID_PRIVATE_KEY: hasVapidPrivate,
-    },
-    ...(missing.length ? { missing } : {}),
-    hint: 'POST: INSERT en notifications → community_alert, community_alert_critical o message (chat). Ver docs/PUSH_WEBHOOK_SETUP.md',
-  })
+	const hasSecret = Boolean(process.env.PUSH_WEBHOOK_SECRET?.trim())
+	const hasVapidPublic = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim())
+	const hasVapidPrivate = Boolean(process.env.VAPID_PRIVATE_KEY?.trim())
+	const vapid = hasVapidPublic && hasVapidPrivate
+	const ready = hasSecret && vapid
+	const missing: string[] = []
+	if (!hasSecret) missing.push('PUSH_WEBHOOK_SECRET')
+	if (!hasVapidPublic) missing.push('NEXT_PUBLIC_VAPID_PUBLIC_KEY')
+	if (!hasVapidPrivate) missing.push('VAPID_PRIVATE_KEY')
+	return NextResponse.json({
+		service: 'push-webhook',
+		ready,
+		checks: {
+			PUSH_WEBHOOK_SECRET: hasSecret,
+			NEXT_PUBLIC_VAPID_PUBLIC_KEY: hasVapidPublic,
+			VAPID_PRIVATE_KEY: hasVapidPrivate,
+		},
+		...(missing.length ? { missing } : {}),
+		hint: 'POST: INSERT en notifications → community_alert, community_alert_critical o message (chat). Ver docs/PUSH_WEBHOOK_SETUP.md',
+	})
 }

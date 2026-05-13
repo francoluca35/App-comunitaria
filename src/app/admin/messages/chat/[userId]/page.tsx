@@ -32,6 +32,7 @@ import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
 
 export interface ChatMessage {
@@ -118,7 +119,7 @@ export default function AdminChatPage() {
 					if (isThisConversation) {
 						setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
 						const isIncoming = row.receiver_id === myId && row.sender_id === otherId
-						if (isIncoming && document.visibilityState !== 'visible' && profile?.name) {
+						if (isIncoming && profile?.name) {
 							showSystemNotification({
 								title: 'Nuevo mensaje',
 								body: `${profile.name} te respondió el mensaje`,
@@ -205,6 +206,7 @@ export default function AdminChatPage() {
 		if (newMsg) {
 			stickToBottomRef.current = true
 			setMessages((prev) => [...prev, newMsg as ChatMessage])
+			void notifyReceiverPushAfterSend(supabase, otherId, newMsg.id)
 		}
 		setMessage('')
 	}

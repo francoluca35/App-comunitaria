@@ -16,6 +16,7 @@ import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
 
 interface ChatMessage {
@@ -138,7 +139,7 @@ export default function MarioMessagePage() {
 					const wantMessages =
 						currentUser?.notificationPreference === 'messages_only' ||
 						currentUser?.notificationPreference === 'all'
-					if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
+					if (isIncoming && wantMessages) {
 						showSystemNotification({
 							title: 'Nuevo mensaje',
 							body: `Mario te envió un mensaje`,
@@ -234,6 +235,7 @@ export default function MarioMessagePage() {
 		if (newMsg) {
 			stickToBottomRef.current = true
 			setMessages((prev) => [...prev, newMsg as ChatMessage])
+			void notifyReceiverPushAfterSend(supabase, otherId, newMsg.id)
 		}
 		setMessage('')
 	}

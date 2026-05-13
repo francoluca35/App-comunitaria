@@ -16,6 +16,7 @@ import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { isMarioAccountEmail } from '@/lib/mario-account'
 import { cn } from '@/app/components/ui/utils'
 
@@ -99,7 +100,7 @@ export default function ChatPage() {
 						const wantMessages =
 							currentUser?.notificationPreference === 'messages_only' ||
 							currentUser?.notificationPreference === 'all'
-						if (isIncoming && wantMessages && document.visibilityState !== 'visible') {
+						if (isIncoming && wantMessages) {
 							const adminName = support?.name?.trim() || 'Admin'
 							showSystemNotification({
 								title: 'Nuevo mensaje',
@@ -206,6 +207,7 @@ export default function ChatPage() {
 		if (newMsg) {
 			stickToBottomRef.current = true
 			setMessages((prev) => [...prev, newMsg as ChatMessage])
+			void notifyReceiverPushAfterSend(supabase, otherId, newMsg.id)
 		}
 		setMessage('')
 	}

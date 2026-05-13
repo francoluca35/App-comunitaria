@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import imageCompression from 'browser-image-compression'
 import { encodeChatImageMessage } from '@/lib/chat-message-payload'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatImage } from '@/lib/upload-chat-image'
 import type { ChatMessageRow } from '@/lib/send-chat-voice-message'
 
@@ -41,6 +42,8 @@ export async function sendChatImageMessage(
 	if (error) {
 		return { error: error.message ?? 'Error al enviar la foto' }
 	}
+
+	void notifyReceiverPushAfterSend(supabase, otherId, (newMsg as ChatMessageRow).id)
 
 	return { message: newMsg as ChatMessageRow }
 }

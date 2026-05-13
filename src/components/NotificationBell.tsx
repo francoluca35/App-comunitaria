@@ -212,7 +212,17 @@ export function NotificationBell({
               urgent: true,
             })
           }
-          if (row.type === 'message') return
+          if (row.type === 'message') {
+            void showSystemNotification({
+              title: row.title,
+              body: row.body ?? 'Te enviaron un mensaje',
+              tag: `chat-peer-${row.related_id ?? row.id}`,
+              url: row.link_url ?? '/message/contactos',
+              urgent: true,
+            })
+            void fetchMessageRows()
+            return
+          }
           setNotifications((prev) => {
             const next = [row, ...prev.filter((n) => n.id !== row.id)]
             return next.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())

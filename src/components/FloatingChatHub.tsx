@@ -31,6 +31,7 @@ import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { chatContentPreviewLine } from '@/lib/chat-message-payload'
 import {
 	loadChatInboxPreviews,
@@ -355,6 +356,7 @@ export function FloatingChatHub() {
 		if (newMsg) {
 			stickToBottomRef.current = true
 			setMessages((prev) => [...prev, newMsg as ChatMsg])
+			void notifyReceiverPushAfterSend(supabase, peerId, newMsg.id)
 		}
 		setDraft('')
 	}

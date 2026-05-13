@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { encodeChatAudioMessage } from '@/lib/chat-message-payload'
+import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatAudio } from '@/lib/upload-chat-audio'
-
 export type ChatMessageRow = {
 	id: string
 	sender_id: string
@@ -34,6 +34,8 @@ export async function sendChatVoiceMessage(
 	if (error) {
 		return { error: error.message ?? 'Error al enviar el audio' }
 	}
+
+	void notifyReceiverPushAfterSend(supabase, otherId, (newMsg as ChatMessageRow).id)
 
 	return { message: newMsg as ChatMessageRow }
 }
