@@ -12,16 +12,13 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { Bell, FileText, Shield, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
-import { createClient } from '@/lib/supabase/client'
-import { registerWebPushIfPossible } from '@/lib/push-client'
-import { Button } from '@/app/components/ui/button'
+import { PushBackgroundSetupSection } from '@/components/PushBackgroundSetupSection'
 
 export default function ConfiguracionPage() {
   const router = useRouter()
   const { currentUser, authLoading, setNotificationPreference } = useApp()
   const { theme, setTheme } = useTheme()
   const [notificationSaving, setNotificationSaving] = useState(false)
-  const [pushDeviceBusy, setPushDeviceBusy] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -101,62 +98,7 @@ export default function ConfiguracionPage() {
                   </label>
                 ))}
               </div>
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-3 dark:border-gray-700 dark:bg-gray-900/40">
-                <p className="text-sm font-medium text-slate-800 dark:text-gray-100">
-                  Avisos con la app cerrada (este dispositivo)
-                </p>
-                <p className="mt-1 text-xs text-slate-500 dark:text-gray-400">
-                  Necesitamos permiso del navegador y guardar el dispositivo en el servidor. Si ya lo activaste antes, podés
-                  pulsar de nuevo para sincronizar.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 w-full border-[#8B0015]/40 text-[#8B0015] hover:bg-[#8B0015]/10 sm:w-auto"
-                  disabled={pushDeviceBusy}
-                  onClick={() => {
-                    void (async () => {
-                      if (typeof window === 'undefined') return
-                      if (!('Notification' in window)) {
-                        toast.error('Este navegador no soporta notificaciones.')
-                        return
-                      }
-                      setPushDeviceBusy(true)
-                      try {
-                        let perm = Notification.permission
-                        if (perm === 'default') {
-                          perm = await Notification.requestPermission()
-                        }
-                        if (perm !== 'granted') {
-                          toast.message('Sin permiso no podemos enviar avisos cuando la app esté cerrada.')
-                          return
-                        }
-                        const supabase = createClient()
-                        const {
-                          data: { session },
-                        } = await supabase.auth.getSession()
-                        if (!session?.access_token) {
-                          toast.error('Sesión no disponible.')
-                          return
-                        }
-                        const r = await registerWebPushIfPossible(session.access_token)
-                        if (r.ok) {
-                          toast.success('Dispositivo registrado para notificaciones en segundo plano.')
-                        } else if (r.reason === 'no_vapid') {
-                          toast.error('Falta configurar VAPID en el servidor (variable de entorno).')
-                        } else {
-                          toast.error(r.reason === 'no_push_api' ? 'Push no disponible en este navegador.' : 'No se pudo registrar. Reintentá.')
-                        }
-                      } finally {
-                        setPushDeviceBusy(false)
-                      }
-                    })()
-                  }}
-                >
-                  {pushDeviceBusy ? 'Registrando…' : 'Activar / sincronizar en este dispositivo'}
-                </Button>
-              </div>
+              <PushBackgroundSetupSection userId={currentUser.id} />
             </div>
             <div className="pt-2 border-t border-slate-200 dark:border-gray-700">
               <Label className="mb-3 block">Legal</Label>

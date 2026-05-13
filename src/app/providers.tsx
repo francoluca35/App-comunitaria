@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, type ReactNode } from 'react'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
+import { PushEnrollmentBanner } from '@/components/PushEnrollmentBanner'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
 import { AppConfigProvider, useAppConfig } from '@/app/providers/app-config-context'
 import { AuthProvider, useAuth } from '@/app/providers/auth-context'
@@ -55,6 +56,7 @@ function AppChrome() {
 
   return (
     <>
+      <PushEnrollmentBanner authLoading={authLoading} userId={currentUser?.id} />
       <RealtimeNotificationSubscriptions />
       <MobileNotificationsOncePrompt authLoading={authLoading} userId={currentUser?.id} />
     </>

@@ -1,6 +1,4 @@
-/**
- * Registra la suscripción Web Push y la guarda en el servidor (alertas en segundo plano).
- */
+import { notifyPushEnrollmentChanged } from '@/lib/push-enrollment-events'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
 	const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -89,6 +87,7 @@ export async function registerWebPushIfPossible(accessToken: string): Promise<{ 
 			const j = (await res.json().catch(() => ({}))) as { error?: string }
 			return { ok: false, reason: j.error ?? `http_${res.status}` }
 		}
+		notifyPushEnrollmentChanged()
 		return { ok: true }
 	} catch (e) {
 		console.warn('registerWebPushIfPossible:', e)

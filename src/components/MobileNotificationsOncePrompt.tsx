@@ -12,8 +12,8 @@ import {
 } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { registerWebPushIfPossible } from '@/lib/push-client'
-import { showPushEnrollmentPreviewFirstTime } from '@/lib/notifications'
+import { enrollPushDevice } from '@/lib/push-enrollment'
+import { isRunningAsInstalledPwa } from '@/hooks/usePwaInstallPrompt'
 import { toast } from 'sonner'
 import { CST } from '@/lib/cst-theme'
 
@@ -119,10 +119,14 @@ export function MobileNotificationsOncePrompt({ gateOpen = true, authLoading, us
 				return
 			}
 
-			const result = await registerWebPushIfPossible(session.access_token)
+			const result = await enrollPushDevice(session.access_token, { requestPermission: false })
 			if (result.ok) {
-				await showPushEnrollmentPreviewFirstTime()
-				toast.success('Listo: mismo aviso que verás con las alertas, aunque la app esté cerrada.')
+				toast.success('Listo: te avisaremos aunque la app esté cerrada.')
+				if (!isRunningAsInstalledPwa()) {
+					toast.message('Tip: instalá la app desde Configuración para mejores avisos en el celular.', {
+						duration: 6000,
+					})
+				}
 			} else if (result.reason === 'no_vapid') {
 				toast.message('Notificaciones activadas. El aviso push completo requiere VAPID en el servidor.')
 			} else {

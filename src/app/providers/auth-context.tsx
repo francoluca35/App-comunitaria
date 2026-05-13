@@ -229,6 +229,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: 'Usuario bloqueado.' }
         }
         if (profile) setCurrentUser(profileToUser(profile))
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          await registerWebPushIfPossible(token)
+        }
       }
 
       return { ok: true }
