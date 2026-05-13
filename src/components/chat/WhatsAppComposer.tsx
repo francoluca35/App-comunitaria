@@ -1,19 +1,54 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, Camera, Mic, Paperclip, Smile, X } from 'lucide-react'
+import { ArrowUp, Camera, Mic, Paperclip, Pause, Play, Send, Smile, Trash2 } from 'lucide-react'
 import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import { useVisualViewportKeyboardOverlap } from '@/hooks/useVisualViewportKeyboardOverlap'
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
 
 const QUICK_EMOJIS = ['😀', '😂', '❤️', '👍', '🔥', '😊', '🙏', '👏', '😮', '😢', '🎉', '✨', '👋', '💬', '📷']
+const WAVE_BARS = 28
+
+type RecordPhase = 'idle' | 'recording' | 'paused'
 
 function pickRecorderMime(): string {
 	if (typeof MediaRecorder === 'undefined') return ''
 	if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus'
 	if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm'
 	return ''
+}
+
+function formatMmSs(ms: number): string {
+	const totalSec = Math.max(0, Math.floor(ms / 1000))
+	const m = Math.floor(totalSec / 60)
+	const s = totalSec % 60
+	return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function RecordingWaveform({ levels, paused }: { levels: number[]; paused: boolean }) {
+	return (
+		<div className="flex min-w-0 flex-1 items-center justify-center gap-[3px] px-1" aria-hidden>
+			{levels.map((lvl, i) => {
+				const h = Math.max(3, Math.round(3 + lvl * 26))
+				return (
+					<span
+						key={i}
+						className={cn(
+							'w-[3px] shrink-0 rounded-full transition-[height,opacity,background-color] duration-100',
+							paused
+								? 'bg-slate-400/45 dark:bg-[#8696A0]/40'
+								: 'bg-slate-600/80 dark:bg-[#AEBAC1]'
+						)}
+						style={{
+							height: `${h}px`,
+							opacity: paused ? 0.5 : 0.35 + lvl * 0.65,
+						}}
+					/>
+				)
+			})}
+		</div>
+	)
 }
 
 export function WhatsAppComposer({
@@ -31,21 +66,45 @@ export function WhatsAppComposer({
 	sending: boolean
 	disabled?: boolean
 	onSendVoice: (blob: Blob, durationSec: number) => Promise<void>
-	/** Galería / cámara: sube la imagen al chat */
 	onSendImage?: (file: File) => Promise<void>
 }) {
-	const [isRecording, setIsRecording] = useState(false)
-	const [recordSeconds, setRecordSeconds] = useState(0)
+	const [recordPhase, setRecordPhase] = useState<RecordPhase>('idle')
+	const [recordMs, setRecordMs] = useState(0)
+	const [waveLevels, setWaveLevels] = useState<number[]>(() => Array(WAVE_BARS).fill(0.15))
 	const [emojiOpen, setEmojiOpen] = useState(false)
+
 	const recorderRef = useRef<MediaRecorder | null>(null)
 	const streamRef = useRef<MediaStream | null>(null)
 	const chunksRef = useRef<BlobPart[]>([])
 	const mimeRef = useRef('')
-	const startedAtRef = useRef(0)
-	const isRecordingRef = useRef(false)
+	const elapsedMsRef = useRef(0)
+	const segmentStartRef = useRef(0)
 	const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
 	const galleryInputRef = useRef<HTMLInputElement | null>(null)
 	const cameraInputRef = useRef<HTMLInputElement | null>(null)
+	const audioCtxRef = useRef<AudioContext | null>(null)
+	const analyserRef = useRef<AnalyserNode | null>(null)
+	const waveRafRef = useRef<number | null>(null)
+	const waveHistoryRef = useRef<number[]>(Array(WAVE_BARS).fill(0.08))
+	const phaseRef = useRef<RecordPhase>('idle')
+
+	const stopWaveLoop = useCallback(() => {
+		if (waveRafRef.current != null) {
+			cancelAnimationFrame(waveRafRef.current)
+			waveRafRef.current = null
+		}
+	}, [])
+
+	const stopAudioAnalyser = useCallback(() => {
+		stopWaveLoop()
+		try {
+			audioCtxRef.current?.close()
+		} catch {
+			// ignore
+		}
+		audioCtxRef.current = null
+		analyserRef.current = null
+	}, [stopWaveLoop])
 
 	const stopStreams = useCallback(() => {
 		streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -56,22 +115,102 @@ export function WhatsAppComposer({
 			clearInterval(tickRef.current)
 			tickRef.current = null
 		}
+		stopAudioAnalyser()
+	}, [stopAudioAnalyser])
+
+	const resetRecordingState = useCallback(() => {
+		elapsedMsRef.current = 0
+		segmentStartRef.current = 0
+		phaseRef.current = 'idle'
+		setRecordPhase('idle')
+		setRecordMs(0)
+		waveHistoryRef.current = Array(WAVE_BARS).fill(0.08)
+		setWaveLevels(Array(WAVE_BARS).fill(0.08))
+	}, [])
+
+	const getElapsedMs = useCallback(() => {
+		if (phaseRef.current === 'recording') {
+			return elapsedMsRef.current + (Date.now() - segmentStartRef.current)
+		}
+		return elapsedMsRef.current
+	}, [])
+
+	const startWaveLoop = useCallback(() => {
+		const analyser = analyserRef.current
+		if (!analyser) return
+		const timeBuf = new Uint8Array(analyser.fftSize)
+		const step = () => {
+			if (phaseRef.current !== 'recording') {
+				waveRafRef.current = null
+				return
+			}
+			analyser.getByteTimeDomainData(timeBuf)
+			let sumSq = 0
+			for (let i = 0; i < timeBuf.length; i++) {
+				const n = (timeBuf[i] - 128) / 128
+				sumSq += n * n
+			}
+			const rms = Math.sqrt(sumSq / timeBuf.length)
+			const amp = Math.min(1, rms * 3.2)
+
+			const hist = waveHistoryRef.current
+			hist.shift()
+			hist.push(amp)
+
+			const next = hist.map((v, i) => {
+				const neighbor = (hist[i - 1] ?? v) + (hist[i + 1] ?? v)
+				return Math.min(1, v * 0.72 + neighbor * 0.14)
+			})
+			waveHistoryRef.current = next
+			setWaveLevels([...next])
+			waveRafRef.current = requestAnimationFrame(step)
+		}
+		waveRafRef.current = requestAnimationFrame(step)
 	}, [])
 
 	const cancelRecording = useCallback(() => {
 		const rec = recorderRef.current
 		if (rec && rec.state !== 'inactive') {
 			rec.onstop = null
-			rec.stop()
+			try {
+				rec.stop()
+			} catch {
+				// ignore
+			}
 		}
 		stopStreams()
-		isRecordingRef.current = false
-		setIsRecording(false)
-		setRecordSeconds(0)
-	}, [stopStreams])
+		resetRecordingState()
+	}, [resetRecordingState, stopStreams])
 
-	const finalizeRecording = useCallback(async () => {
-		if (!isRecordingRef.current) return
+	const togglePause = useCallback(() => {
+		const rec = recorderRef.current
+		if (!rec) return
+
+		if (phaseRef.current === 'recording') {
+			elapsedMsRef.current += Date.now() - segmentStartRef.current
+			if (typeof rec.pause === 'function' && rec.state === 'recording') {
+				rec.pause()
+			}
+			stopWaveLoop()
+			phaseRef.current = 'paused'
+			setRecordPhase('paused')
+			setRecordMs(elapsedMsRef.current)
+			return
+		}
+
+		if (phaseRef.current === 'paused') {
+			segmentStartRef.current = Date.now()
+			if (typeof rec.resume === 'function' && rec.state === 'paused') {
+				rec.resume()
+			}
+			phaseRef.current = 'recording'
+			setRecordPhase('recording')
+			startWaveLoop()
+		}
+	}, [startWaveLoop, stopWaveLoop])
+
+	const sendRecording = useCallback(async () => {
+		if (phaseRef.current === 'idle') return
 		const rec = recorderRef.current
 		if (!rec || rec.state === 'inactive') {
 			cancelRecording()
@@ -83,21 +222,31 @@ export function WhatsAppComposer({
 			tickRef.current = null
 		}
 
-		const durationSec = (Date.now() - startedAtRef.current) / 1000
-		isRecordingRef.current = false
-		setIsRecording(false)
-		setRecordSeconds(0)
+		if (phaseRef.current === 'recording') {
+			elapsedMsRef.current += Date.now() - segmentStartRef.current
+		}
+		const durationSec = elapsedMsRef.current / 1000
+
+		phaseRef.current = 'idle'
+		setRecordPhase('idle')
+		setRecordMs(0)
+		stopWaveLoop()
 
 		await new Promise<void>((resolve) => {
 			rec.onstop = () => resolve()
-			rec.stop()
+			try {
+				rec.stop()
+			} catch {
+				resolve()
+			}
 		})
 
 		const blob = new Blob(chunksRef.current, { type: mimeRef.current || 'audio/webm' })
 		stopStreams()
+		resetRecordingState()
 
 		if (durationSec < 0.55) {
-			toast.message('Mantené pulsado un poco más para grabar')
+			toast.message('Grabá al menos medio segundo de audio')
 			return
 		}
 
@@ -106,20 +255,7 @@ export function WhatsAppComposer({
 		} catch {
 			toast.error('No se pudo enviar el audio')
 		}
-	}, [cancelRecording, onSendVoice, stopStreams])
-
-	useEffect(() => {
-		if (!isRecording) return
-		const onWinUp = () => {
-			void finalizeRecording()
-		}
-		window.addEventListener('pointerup', onWinUp)
-		window.addEventListener('pointercancel', onWinUp)
-		return () => {
-			window.removeEventListener('pointerup', onWinUp)
-			window.removeEventListener('pointercancel', onWinUp)
-		}
-	}, [isRecording, finalizeRecording])
+	}, [cancelRecording, onSendVoice, resetRecordingState, stopStreams, stopWaveLoop])
 
 	const startRecording = useCallback(async () => {
 		if (disabled || sending || value.trim().length > 0) return
@@ -130,6 +266,22 @@ export function WhatsAppComposer({
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 			streamRef.current = stream
+
+			const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+			if (Ctx) {
+				const ctx = new Ctx()
+				if (ctx.state === 'suspended') {
+					await ctx.resume()
+				}
+				const source = ctx.createMediaStreamSource(stream)
+				const analyser = ctx.createAnalyser()
+				analyser.fftSize = 256
+				analyser.smoothingTimeConstant = 0.28
+				source.connect(analyser)
+				audioCtxRef.current = ctx
+				analyserRef.current = analyser
+			}
+
 			const mime = pickRecorderMime()
 			const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
 			mimeRef.current = rec.mimeType || 'audio/webm'
@@ -137,19 +289,25 @@ export function WhatsAppComposer({
 			rec.ondataavailable = (e) => {
 				if (e.data.size) chunksRef.current.push(e.data)
 			}
-			rec.start()
+			rec.start(250)
 			recorderRef.current = rec
-			startedAtRef.current = Date.now()
-			isRecordingRef.current = true
-			setRecordSeconds(0)
-			setIsRecording(true)
+
+			elapsedMsRef.current = 0
+			segmentStartRef.current = Date.now()
+			phaseRef.current = 'recording'
+			setRecordMs(0)
+			setRecordPhase('recording')
+
 			tickRef.current = setInterval(() => {
-				setRecordSeconds(Math.floor((Date.now() - startedAtRef.current) / 1000))
-			}, 500)
+				setRecordMs(getElapsedMs())
+			}, 200)
+
+			startWaveLoop()
 		} catch {
 			toast.error('No se pudo acceder al micrófono')
+			cancelRecording()
 		}
-	}, [disabled, sending, value])
+	}, [cancelRecording, disabled, getElapsedMs, sending, startWaveLoop, value])
 
 	useEffect(() => () => cancelRecording(), [cancelRecording])
 
@@ -176,13 +334,12 @@ export function WhatsAppComposer({
 	const keyboardOverlapPx = useVisualViewportKeyboardOverlap()
 	const busy = !!disabled || sending
 	const showAttachments = Boolean(onSendImage)
+	const isRecordingUi = recordPhase !== 'idle'
 
 	return (
 		<div
 			className="shrink-0 bg-[#f0f2f5] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] dark:bg-[#202C33]"
-			style={
-				keyboardOverlapPx > 0 ? { transform: `translateY(-${keyboardOverlapPx}px)` } : undefined
-			}
+			style={keyboardOverlapPx > 0 ? { transform: `translateY(-${keyboardOverlapPx}px)` } : undefined}
 		>
 			<input
 				ref={galleryInputRef}
@@ -208,24 +365,45 @@ export function WhatsAppComposer({
 				}}
 			/>
 
-			{isRecording ? (
-				<div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 dark:border-transparent dark:bg-[#2A3942]">
-					<button
-						type="button"
-						className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-[#313D43] dark:text-[#E9EDEF] dark:hover:bg-[#3d4a52]"
-						onClick={(e) => {
-							e.stopPropagation()
-							cancelRecording()
-						}}
-						aria-label="Cancelar grabación"
-					>
-						<X className="h-5 w-5" />
-					</button>
-					<div className="min-w-0 flex-1 text-center">
-						<p className="text-xs font-medium text-slate-900 dark:text-[#E9EDEF]">Grabando…</p>
-						<p className="text-[11px] text-slate-600 dark:text-[#8696A0]">Soltá para enviar</p>
+			{isRecordingUi ? (
+				<div className="overflow-hidden rounded-2xl bg-white px-3 py-3 text-slate-900 shadow-md ring-1 ring-slate-200/90 dark:bg-[#111B21] dark:text-[#E9EDEF] dark:ring-white/5">
+					<div className="flex items-center gap-2">
+						<span className="shrink-0 tabular-nums text-sm font-medium text-slate-900 dark:text-white">
+							{formatMmSs(recordMs)}
+						</span>
+						<RecordingWaveform levels={waveLevels} paused={recordPhase === 'paused'} />
 					</div>
-					<span className="shrink-0 tabular-nums text-sm text-[#00A884]">{recordSeconds}s</span>
+					<div className="mt-4 flex items-center justify-between px-1">
+						<button
+							type="button"
+							className="flex h-11 w-11 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 dark:text-[#8696A0] dark:hover:bg-white/10"
+							onClick={cancelRecording}
+							aria-label="Descartar audio"
+						>
+							<Trash2 className="h-6 w-6" strokeWidth={1.75} />
+						</button>
+						<button
+							type="button"
+							className="flex h-12 w-12 items-center justify-center rounded-full text-[#EA0038] transition-transform active:scale-95"
+							onClick={togglePause}
+							aria-label={recordPhase === 'paused' ? 'Reanudar grabación' : 'Pausar grabación'}
+						>
+							{recordPhase === 'paused' ? (
+								<Play className="h-7 w-7 fill-current" />
+							) : (
+								<Pause className="h-7 w-7 fill-current" />
+							)}
+						</button>
+						<button
+							type="button"
+							disabled={sending}
+							className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#00A884] text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 dark:bg-white dark:text-[#111B21]"
+							onClick={() => void sendRecording()}
+							aria-label="Enviar audio"
+						>
+							<Send className="h-6 w-6 -translate-x-px translate-y-px" strokeWidth={2} />
+						</button>
+					</div>
 				</div>
 			) : (
 				<form
@@ -243,12 +421,7 @@ export function WhatsAppComposer({
 					>
 						<Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
 							<PopoverTrigger asChild>
-								<button
-									type="button"
-									disabled={busy}
-									className={iconBtnClass}
-									aria-label="Emojis"
-								>
+								<button type="button" disabled={busy} className={iconBtnClass} aria-label="Emojis">
 									<Smile className="h-[22px] w-[22px]" strokeWidth={1.75} />
 								</button>
 							</PopoverTrigger>
@@ -325,15 +498,12 @@ export function WhatsAppComposer({
 						<button
 							type="button"
 							disabled={busy}
-							onPointerDown={(e) => {
-								e.preventDefault()
-								void startRecording()
-							}}
+							onClick={() => void startRecording()}
 							className={cn(
 								'flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 sm:h-[52px] sm:w-[52px]',
 								'bg-[#00A884] text-white dark:bg-white dark:text-[#111827] dark:shadow-lg dark:ring-1 dark:ring-white/20'
 							)}
-							aria-label="Mantener pulsado para grabar voz"
+							aria-label="Grabar mensaje de voz"
 						>
 							<Mic className="h-6 w-6" />
 						</button>
