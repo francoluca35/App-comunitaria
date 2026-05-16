@@ -22,7 +22,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CST } from '@/lib/cst-theme'
 import { cn } from '@/app/components/ui/utils'
 import { ChatNotificationsProvider, useChatNotifications } from '@/contexts/ChatNotificationsContext'
-import { isFullscreenMobileChatPath } from '@/lib/chat-route-utils'
+import {
+  isFullscreenMobileChatPath,
+  isMobileImmersiveChatThreadPath,
+} from '@/lib/chat-route-utils'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -95,6 +98,8 @@ export function DashboardLayout({
   const [lateralLoaded, setLateralLoaded] = useState(false)
   const [lateralDetail, setLateralDetail] = useState<PublicidadDisplay | null>(null)
   const [lateralPairIndex, setLateralPairIndex] = useState(0)
+  const pathname = usePathname()
+  const immersiveMobileChat = isMobileImmersiveChatThreadPath(pathname)
   const { currentUser } = useApp()
 
   const [feedQuery, setFeedQuery] = useState('')
@@ -230,7 +235,12 @@ export function DashboardLayout({
           publicidad={lateralDetail}
         />
 
-        <header className="fixed inset-x-0 top-0 z-30 border-b border-white/15 bg-[#8B0015]/94 backdrop-blur-md dark:border-[#3a3b3c] dark:bg-[#242526]/95">
+        <header
+          className={cn(
+            'fixed inset-x-0 top-0 z-30 border-b border-white/15 bg-[#8B0015]/94 backdrop-blur-md dark:border-[#3a3b3c] dark:bg-[#242526]/95',
+            immersiveMobileChat && 'hidden lg:block'
+          )}
+        >
           <div className="flex flex-col gap-2 px-2 py-2.5 sm:gap-2.5 sm:px-3 sm:py-3 lg:px-2 xl:px-2">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
@@ -340,16 +350,22 @@ export function DashboardLayout({
 
         <div
           className={cn(
-            'flex min-w-0 flex-1 flex-col pt-24 md:pt-16 lg:ml-64',
+            'flex min-w-0 flex-1 flex-col lg:ml-64',
+            immersiveMobileChat ? 'pt-0 lg:pt-16' : 'pt-24 md:pt-16',
             fillViewport ? 'min-h-0 overflow-hidden xl:mr-[292px]' : 'xl:mr-[280px]'
           )}
         >
           <main
             className={cn(
-              'flex justify-center px-3 sm:px-4 lg:px-8',
-              fillViewport
-                ? 'min-h-0 flex-1 flex flex-col overflow-hidden py-3 sm:py-4'
-                : 'flex flex-1 overflow-auto pt-5 sm:pt-6 pb-5'
+              'flex justify-center lg:px-8',
+              immersiveMobileChat
+                ? 'min-h-0 flex-1 flex flex-col overflow-hidden p-0 lg:px-3 lg:py-4'
+                : cn(
+                    'px-3 sm:px-4',
+                    fillViewport
+                      ? 'min-h-0 flex-1 flex flex-col overflow-hidden py-3 sm:py-4'
+                      : 'flex flex-1 overflow-auto pt-5 sm:pt-6 pb-5'
+                  )
             )}
           >
             <div

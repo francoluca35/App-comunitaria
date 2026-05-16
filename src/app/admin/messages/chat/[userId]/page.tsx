@@ -25,7 +25,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, Calendar, Trash2 } from 'lucide-react'
+import { ArrowLeft, Calendar, House, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
@@ -332,6 +332,16 @@ export default function AdminChatPage() {
 						<p className="truncate text-[17px] font-medium text-slate-900 dark:text-[#E9EDEF]">{displayName}</p>
 						<p className="truncate text-xs text-slate-600 dark:text-[#8696A0]">{profile.email}</p>
 					</div>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="h-9 w-9 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+						onClick={() => router.push('/')}
+						aria-label="Ir al inicio"
+					>
+						<House className="h-5 w-5" />
+					</Button>
 					<Button
 						type="button"
 						variant="ghost"
