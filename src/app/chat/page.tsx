@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
+import { ChatHomeButton } from '@/components/chat/ChatHomeButton'
 import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
@@ -240,6 +241,8 @@ export default function ChatPage() {
 
 	const displayName = support.name ?? 'Soporte'
 	const subtitle = isMario ? 'Atención a la comunidad' : 'Chat con soporte'
+	const backToInbox =
+		currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos'
 
 	return (
 		<DashboardLayout fillViewport contentClassName="max-w-[720px] flex min-h-0 flex-1 flex-col">
@@ -248,12 +251,12 @@ export default function ChatPage() {
 					'flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-white sm:rounded-lg sm:border sm:border-slate-200 dark:bg-[#0B141A] dark:sm:border-[#2A3942]'
 				)}
 			>
-				<div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-[#f0f2f5] px-1 py-1.5 pr-2 dark:border-[#2A3942] dark:bg-[#202C33]">
+				<div className="grid w-full min-w-0 shrink-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-1 border-b border-slate-200 bg-[#f0f2f5] px-1 py-1.5 dark:border-[#2A3942] dark:bg-[#202C33]">
 					<Button
 						variant="ghost"
 						size="icon"
-						className="shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
-						onClick={() => router.push('/')}
+						className="h-9 w-9 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+						onClick={() => router.push(backToInbox)}
 						aria-label="Volver"
 					>
 						<ArrowLeft className="h-5 w-5" />
@@ -264,10 +267,13 @@ export default function ChatPage() {
 							{displayName[0]?.toUpperCase() ?? 'S'}
 						</AvatarFallback>
 					</Avatar>
-					<div className="min-w-0 flex-1">
-						<p className="truncate text-[17px] font-medium text-slate-900 dark:text-[#E9EDEF]">{displayName}</p>
+					<div className="min-w-0 overflow-hidden pr-0.5">
+						<p className="truncate text-[17px] font-medium leading-tight text-slate-900 dark:text-[#E9EDEF]">
+							{displayName}
+						</p>
 						<p className="truncate text-xs text-slate-600 dark:text-[#8696A0]">{subtitle}</p>
 					</div>
+					<ChatHomeButton onClick={() => router.push('/')} />
 				</div>
 
 				<div
