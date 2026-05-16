@@ -18,8 +18,14 @@ export function resolveMessageLink(
 	if (n.type !== 'message') return n.link_url ?? '/'
 	const u = n.link_url ?? ''
 	if (u.startsWith('/admin/messages/chat/')) return u
-	/** Vecino ↔ admin que no es Mario: `/message/{sender_id}` */
-	if (u.startsWith('/message/')) return u
+	/** Vecino ↔ equipo; admins/moderadores abren bandeja admin */
+	if (u.startsWith('/message/')) {
+		const peerMatch = u.match(/^\/message\/([^/]+)$/)
+		if (peerMatch && (currentUser?.isAdmin || currentUser?.isModerator)) {
+			return `/admin/messages/chat/${peerMatch[1]}`
+		}
+		return u
+	}
 	if (u === '/message' || u === '/message/') return '/message/mario'
 	if (u === '/chat') {
 		if (currentUser?.isAdmin || currentUser?.isModerator) return '/admin/messages'

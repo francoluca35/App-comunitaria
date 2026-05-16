@@ -23,6 +23,7 @@ import { CST } from '@/lib/cst-theme'
 import { cn } from '@/app/components/ui/utils'
 import { ChatNotificationsProvider, useChatNotifications } from '@/contexts/ChatNotificationsContext'
 import {
+  hidePublicationSearchPath,
   isFullscreenMobileChatPath,
   isMobileImmersiveChatThreadPath,
 } from '@/lib/chat-route-utils'
@@ -100,6 +101,7 @@ export function DashboardLayout({
   const [lateralPairIndex, setLateralPairIndex] = useState(0)
   const pathname = usePathname()
   const immersiveMobileChat = isMobileImmersiveChatThreadPath(pathname)
+  const hidePublicationSearch = hidePublicationSearchPath(pathname)
   const { currentUser } = useApp()
 
   const [feedQuery, setFeedQuery] = useState('')
@@ -266,18 +268,20 @@ export function DashboardLayout({
                 </span>
               </Link>
 
-              <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex md:px-4">
-                <label className="relative w-full max-w-xl">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
-                  <input
-                    type="search"
-                    value={feedQuery}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar en publicaciones…"
-                    className="w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-11 pr-4 text-sm text-[#2B2B2B] placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
-                  />
-                </label>
-              </div>
+              {!hidePublicationSearch ? (
+                <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex md:px-4">
+                  <label className="relative w-full max-w-xl">
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
+                    <input
+                      type="search"
+                      value={feedQuery}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar en publicaciones…"
+                      className="w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-11 pr-4 text-sm text-[#2B2B2B] placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
+                    />
+                  </label>
+                </div>
+              ) : null}
 
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:w-[250px] md:justify-end lg:w-[280px]">
                 {currentUser && (
@@ -316,18 +320,20 @@ export function DashboardLayout({
               </div>
             </div>
 
-            <div className="md:hidden">
-              <label className="relative block w-full">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
-                <input
-                  type="search"
-                  value={feedQuery}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar en publicaciones…"
+            {!hidePublicationSearch ? (
+              <div className="md:hidden">
+                <label className="relative block w-full">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
+                  <input
+                    type="search"
+                    value={feedQuery}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar en publicaciones…"
                     className="h-10 w-full rounded-xl border border-white/25 bg-white/95 py-0 pl-10 pr-3 text-sm text-[#2B2B2B] shadow-sm outline-none ring-1 ring-black/5 placeholder:text-[#7A5C52]/75 focus:border-white focus:ring-2 focus:ring-white/40 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:ring-0 dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
-                />
-              </label>
-            </div>
+                  />
+                </label>
+              </div>
+            ) : null}
           </div>
         </header>
 
@@ -351,7 +357,11 @@ export function DashboardLayout({
         <div
           className={cn(
             'flex min-w-0 flex-1 flex-col lg:ml-64',
-            immersiveMobileChat ? 'pt-0 lg:pt-16' : 'pt-24 md:pt-16',
+            immersiveMobileChat
+              ? 'pt-0 lg:pt-16'
+              : hidePublicationSearch
+                ? 'pt-16'
+                : 'pt-24 md:pt-16',
             fillViewport ? 'min-h-0 overflow-hidden xl:mr-[292px]' : 'xl:mr-[280px]'
           )}
         >

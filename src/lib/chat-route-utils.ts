@@ -12,6 +12,15 @@ export function isFullscreenMobileChatPath(pathname: string | null): boolean {
 	return false
 }
 
+/** Sección de chats: ocultar solo el buscador de publicaciones en el header. */
+export function hidePublicationSearchPath(pathname: string | null): boolean {
+	if (!pathname) return false
+	if (pathname === '/chat' || pathname.startsWith('/chat/')) return true
+	if (pathname.startsWith('/message')) return true
+	if (pathname === '/admin/messages' || pathname.startsWith('/admin/messages/')) return true
+	return false
+}
+
 /**
  * Conversación activa en móvil: ocultar header del dashboard (menú, buscador, etc.).
  */

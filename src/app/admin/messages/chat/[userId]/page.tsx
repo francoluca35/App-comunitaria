@@ -25,7 +25,8 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, Calendar, House, Trash2 } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { ChatAdminHeaderActions } from '@/components/chat/ChatAdminHeaderActions'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
@@ -302,14 +303,14 @@ export default function AdminChatPage() {
 		<DashboardLayout fillViewport contentClassName="max-w-[720px] flex min-h-0 flex-1 flex-col">
 			<div
 				className={cn(
-					'flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border-0 bg-white sm:rounded-lg sm:border sm:border-slate-200 dark:bg-[#0B141A] dark:sm:border-[#2A3942]'
+					'flex min-h-0 min-w-0 flex-1 flex-col rounded-none border-0 bg-white sm:rounded-lg sm:border sm:border-slate-200 dark:bg-[#0B141A] dark:sm:border-[#2A3942]'
 				)}
 			>
-				<div className="flex shrink-0 items-center gap-1 border-b border-slate-200 bg-[#f0f2f5] px-1 py-1.5 pr-1 dark:border-[#2A3942] dark:bg-[#202C33]">
+				<div className="grid w-full min-w-0 shrink-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-1 border-b border-slate-200 bg-[#f0f2f5] px-1 py-1.5 dark:border-[#2A3942] dark:bg-[#202C33]">
 					<Button
 						variant="ghost"
 						size="icon"
-						className="shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
+						className="h-9 w-9 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
 						onClick={() => router.push('/admin/messages')}
 						aria-label="Volver a la lista"
 					>
@@ -328,48 +329,28 @@ export default function AdminChatPage() {
 							</AvatarFallback>
 						</Avatar>
 					</button>
-					<div className="min-w-0 flex-1">
-						<p className="truncate text-[17px] font-medium text-slate-900 dark:text-[#E9EDEF]">{displayName}</p>
-						<p className="truncate text-xs text-slate-600 dark:text-[#8696A0]">{profile.email}</p>
+					<div className="min-w-0 overflow-hidden pr-0.5">
+						<p className="truncate text-[17px] font-medium leading-tight text-slate-900 dark:text-[#E9EDEF]">
+							{displayName}
+						</p>
+						{profile.email ? (
+							<p className="hidden truncate text-xs text-slate-600 sm:block dark:text-[#8696A0]">
+								{profile.email}
+							</p>
+						) : null}
 					</div>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-9 w-9 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
-						onClick={() => router.push('/')}
-						aria-label="Ir al inicio"
-					>
-						<House className="h-5 w-5" />
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-9 w-9 shrink-0 text-slate-600 hover:bg-slate-200/80 dark:text-[#AEBAC1] dark:hover:bg-white/10 dark:hover:text-white"
-						onClick={() => setShowClearByDateDialog(true)}
-						disabled={clearing}
-						aria-label="Vaciar mensajes por rango de fechas"
-					>
-						<Calendar className="h-5 w-5" />
-					</Button>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon"
-						className="h-9 w-9 shrink-0 text-red-600 hover:bg-slate-200/80 dark:text-red-400 dark:hover:bg-white/10 dark:hover:text-red-300"
-						onClick={() => setShowClearAllDialog(true)}
-						disabled={clearing}
-						aria-label="Vaciar todo el chat"
-					>
-						<Trash2 className="h-5 w-5" />
-					</Button>
+					<ChatAdminHeaderActions
+						onHome={() => router.push('/')}
+						onClearByDate={() => setShowClearByDateDialog(true)}
+						onClearAll={() => setShowClearAllDialog(true)}
+						clearing={clearing}
+					/>
 				</div>
 
 				<div
 					ref={messagesScrollRef}
 					onScroll={updateStickToBottomFromScroll}
-					className="chat-wa-wallpaper min-h-0 flex-1 overflow-y-auto"
+					className="chat-wa-wallpaper min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
 				>
 					{loading ? (
 						<p className="py-4 text-center text-sm text-slate-600 dark:text-[#8696A0]">Cargando mensajes...</p>

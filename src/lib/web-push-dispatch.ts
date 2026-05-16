@@ -184,14 +184,20 @@ export async function dispatchMessagePushForChatMessage(
 	}
 
 	if (!notif) {
-		const { data: sender } = await svc.from('profiles').select('name').eq('id', senderId).maybeSingle()
+		const [{ data: sender }, { data: receiver }] = await Promise.all([
+			svc.from('profiles').select('name').eq('id', senderId).maybeSingle(),
+			svc.from('profiles').select('role').eq('id', receiverId).maybeSingle(),
+		])
 		const title = (sender?.name as string | undefined)?.trim() || 'Nuevo mensaje'
+		const receiverIsAdmin = receiver?.role === 'admin'
 		notif = {
 			user_id: receiverId,
 			type: 'message',
 			title,
 			body: 'Te enviaron un mensaje',
-			link_url: `/message/${senderId}`,
+			link_url: receiverIsAdmin
+				? `/admin/messages/chat/${senderId}`
+				: `/message/${senderId}`,
 			related_id: senderId,
 		}
 	}
