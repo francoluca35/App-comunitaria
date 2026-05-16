@@ -66,3 +66,32 @@ export function chatContentPreviewLine(content: string): string {
 	if (p.kind === 'image') return 'Foto'
 	return content.trim().replace(/\s+/g, ' ').slice(0, 80)
 }
+
+/** Cuerpo amigable para push / campana (sin URLs ni payloads internos). */
+export function chatNotificationBody(content: string): string {
+	const p = parseChatMessagePayload(content)
+	if (p.kind === 'audio') return 'Te envió un mensaje de voz'
+	if (p.kind === 'image') return 'Te envió una foto'
+	const trimmed = content.trim().replace(/\s+/g, ' ')
+	if (!trimmed) return 'Te envió un mensaje'
+	if (trimmed.startsWith('__CHAT_') || trimmed.includes('.supabase.co')) {
+		return 'Te envió un mensaje'
+	}
+	return trimmed.length > 120 ? `${trimmed.slice(0, 117)}…` : trimmed
+}
+
+/** Corrige textos viejos guardados en BD con JSON o URLs técnicas. */
+export function sanitizeChatNotificationBody(body: string): string {
+	const t = body.trim()
+	if (!t) return 'Te envió un mensaje'
+	if (t.startsWith('__CHAT_AUDIO__') || t.includes('__CHAT_AUDIO__')) {
+		return 'Te envió un mensaje de voz'
+	}
+	if (t.startsWith('__CHAT_IMAGE__') || t.includes('__CHAT_IMAGE__')) {
+		return 'Te envió una foto'
+	}
+	if (t.startsWith('__CHAT_') || t.includes('.supabase.co')) {
+		return 'Te envió un mensaje'
+	}
+	return t.length > 220 ? `${t.slice(0, 217)}…` : t
+}

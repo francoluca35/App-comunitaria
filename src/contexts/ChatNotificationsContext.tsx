@@ -10,7 +10,9 @@ import {
 	type ReactNode,
 } from 'react'
 import { useApp } from '@/app/providers'
+import { getSessionSafe } from '@/lib/auth-api'
 import { createClient } from '@/lib/supabase/client'
+import { chatNotificationBody } from '@/lib/chat-message-payload'
 import { showSystemNotification } from '@/lib/notifications'
 import {
 	groupMessageThreads,
@@ -77,13 +79,24 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 	const fetchMessageRows = useCallback(async () => {
 		if (!currentUser?.id) return
 		try {
-			const {
+			let {
 				data: { session },
-			} = await supabase.auth.getSession()
+			} = await getSessionSafe(supabase)
 			if (!session?.access_token) return
-			const res = await fetch('/api/notifications', {
-				headers: { Authorization: `Bearer ${session.access_token}` },
-			})
+
+			const load = async (token: string) =>
+				fetch('/api/notifications', {
+					headers: { Authorization: `Bearer ${token}` },
+				})
+
+			let res = await load(session.access_token)
+			if (res.status === 401) {
+				const { data: refreshed } = await supabase.auth.refreshSession()
+				if (refreshed.session?.access_token) {
+					res = await load(refreshed.session.access_token)
+				}
+			}
+
 			const data: unknown = await res.json().catch(() => null)
 			if (!res.ok || !Array.isArray(data)) return
 			const only = (data as ChatNotificationRow[]).filter((r) => r.type === 'message')
@@ -94,7 +107,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 				console.warn('[ChatNotifications] fetchMessageRows:', e)
 			}
 		}
-	}, [currentUser?.id, supabase.auth])
+	}, [currentUser?.id, supabase])
 
 	useEffect(() => {
 		void fetchMessageRows()
@@ -160,12 +173,12 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 						system_generated?: boolean | null
 					}
 					if (row.system_generated) return
+					const previewBody = chatNotificationBody(row.content ?? '')
 					const optimistic: ChatNotificationRow = {
 						id: `opt-${row.id}`,
 						type: 'message',
 						title: 'Nuevo mensaje',
-						body:
-							(row.content ?? '').slice(0, 80) + (row.content && row.content.length > 80 ? '…' : ''),
+						body: previewBody,
 						link_url: messageChatInboxUrl(row.sender_id, currentUser, marioProfileId),
 						related_id: row.sender_id,
 						read_at: null,
@@ -173,8 +186,8 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 					}
 					setRows((prev) => [optimistic, ...prev])
 					void showSystemNotification({
-						title: 'Nuevo mensaje',
-						body: optimistic.body ?? 'Te enviaron un mensaje',
+						title: 'CST Comunidad',
+						body: previewBody,
 						tag: `chat-msg-${row.sender_id}`,
 						url: messageChatInboxUrl(row.sender_id, currentUser, marioProfileId),
 						urgent: true,

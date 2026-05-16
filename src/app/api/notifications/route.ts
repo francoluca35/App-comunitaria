@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { resolveUserIdFromBearerToken } from '@/lib/supabase/server'
 
 export type NotificationType =
   | 'message'
@@ -38,9 +38,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const supabase = createClient(token)
-  const { data: { user } } = await supabase.auth.getUser(token)
-  if (!user?.id) {
+  const { userId, supabase } = await resolveUserIdFromBearerToken(token)
+  if (!userId) {
     return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
   }
 
@@ -49,7 +48,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('notifications')
     .select('id, type, title, body, link_url, related_id, read_at, created_at')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -69,9 +68,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const supabase = createClient(token)
-  const { data: { user } } = await supabase.auth.getUser(token)
-  if (!user?.id) {
+  const { userId, supabase } = await resolveUserIdFromBearerToken(token)
+  if (!userId) {
     return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
   }
 
@@ -86,7 +84,7 @@ export async function PATCH(request: NextRequest) {
   const query = supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
 
   if (ids?.length) {
     query.in('id', ids)

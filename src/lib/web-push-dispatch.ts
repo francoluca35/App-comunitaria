@@ -1,3 +1,4 @@
+import { sanitizeChatNotificationBody } from '@/lib/chat-message-payload'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { ensureWebPushConfigured, webpush } from '@/lib/web-push-config'
 
@@ -57,7 +58,9 @@ export function buildWebPushPayload(record: NotificationPushRecord): WebPushPayl
 		const peer =
 			record.related_id && isUuid(record.related_id) ? record.related_id : 'unknown'
 		const title = (record.title ?? '').trim() || 'Nuevo mensaje'
-		const bodyRaw = (record.body ?? 'Te escribieron').trim() || 'Te enviaron un mensaje'
+		const bodyRaw = sanitizeChatNotificationBody(
+			(record.body ?? 'Te escribieron').trim() || 'Te enviaron un mensaje'
+		)
 		const body = bodyRaw.length > 220 ? `${bodyRaw.slice(0, 217)}…` : bodyRaw
 		const url =
 			typeof record.link_url === 'string' && record.link_url.startsWith('/')

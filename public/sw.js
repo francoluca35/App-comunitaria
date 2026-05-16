@@ -30,9 +30,9 @@ const URGENT_VIBRATE = [280, 100, 280, 100, 400]
 self.addEventListener('push', (event) => {
   if (!event.data) return
   let payload = {
-    title: 'Comunidad',
+    title: 'CST Comunidad',
     body: '',
-    tag: 'comunidad',
+    tag: 'cst-comunidad',
     icon: ICON_PATH,
     url: '/',
     urgent: false,

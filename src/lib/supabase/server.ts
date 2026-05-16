@@ -44,3 +44,18 @@ export function getUserIdFromToken(accessToken: string): string | null {
   const payload = decodeJwtPayload(accessToken)
   return payload?.sub ?? null
 }
+
+/** Resuelve user id desde Bearer: getUser de Supabase y, si falla, sub del JWT (mismo criterio que /api/auth/me). */
+export async function resolveUserIdFromBearerToken(accessToken: string): Promise<{
+	userId: string | null
+	supabase: ReturnType<typeof createClient>
+}> {
+	const supabase = createClient(accessToken)
+	const {
+		data: { user },
+	} = await supabase.auth.getUser(accessToken)
+	if (user?.id) {
+		return { userId: user.id, supabase }
+	}
+	return { userId: getUserIdFromToken(accessToken), supabase }
+}

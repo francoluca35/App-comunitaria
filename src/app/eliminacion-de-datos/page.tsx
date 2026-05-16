@@ -16,7 +16,7 @@ export default function DataDeletionPage() {
 				{
 					heading: '1. Como solicitar la eliminacion',
 					paragraphs: [
-						'Envia un correo a soporte@tudominio.com con el asunto: Eliminar mis datos.',
+						'Envia un correo a contacto@comunidaddesantotome.com.ar con el asunto: Eliminar mis datos.',
 						'Inclui tu nombre de usuario y, si ingresaste con Facebook, el identificador asociado a tu cuenta para acelerar la validacion.',
 					],
 				},

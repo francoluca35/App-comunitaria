@@ -18,7 +18,9 @@ import {
   Flag,
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
+import { getSessionSafe } from '@/lib/auth-api'
 import { createClient } from '@/lib/supabase/client'
+import { sanitizeChatNotificationBody } from '@/lib/chat-message-payload'
 import { showSystemNotification } from '@/lib/notifications'
 import {
   Popover,
@@ -110,46 +112,67 @@ export function NotificationBell({
 
   const totalUnreadBadge = unreadNonMessageCount + unreadMessageCount
 
-  const fetchNotifications = useCallback(async () => {
-    if (!currentUser?.id) return
-    setLoading(true)
-    setFetchError(null)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        setFetchError('No hay sesión')
-        return
+  const fetchNotifications = useCallback(
+    async (opts?: { showErrorToast?: boolean }) => {
+      if (!currentUser?.id) return
+      setLoading(true)
+      setFetchError(null)
+      try {
+        let {
+          data: { session },
+        } = await getSessionSafe(supabase)
+        if (!session?.access_token) {
+          setFetchError('No hay sesión')
+          return
+        }
+
+        const load = async (token: string) =>
+          fetch('/api/notifications', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+
+        let res = await load(session.access_token)
+        if (res.status === 401) {
+          const { data: refreshed } = await supabase.auth.refreshSession()
+          if (refreshed.session?.access_token) {
+            session = refreshed.session
+            res = await load(refreshed.session.access_token)
+          }
+        }
+
+        const data: unknown = await res.json().catch(() => null)
+        if (!res.ok) {
+          const msg =
+            data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
+              ? (data as { error: string }).error
+              : `Error ${res.status}`
+          setFetchError(msg)
+          if (opts?.showErrorToast) {
+            toast.error('No se pudieron cargar las notificaciones', { description: msg, id: 'notifications-fetch' })
+          }
+          return
+        }
+        if (!Array.isArray(data)) {
+          setFetchError('Respuesta inválida del servidor')
+          if (opts?.showErrorToast) {
+            toast.error('Notificaciones: respuesta inválida', { id: 'notifications-fetch' })
+          }
+          return
+        }
+        const rows = (data as AppNotification[]).filter((r) => r.type !== 'message')
+        rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        setNotifications(rows)
+      } finally {
+        setLoading(false)
       }
-      const res = await fetch('/api/notifications', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      const data: unknown = await res.json().catch(() => null)
-      if (!res.ok) {
-        const msg =
-          data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
-            ? (data as { error: string }).error
-            : `Error ${res.status}`
-        setFetchError(msg)
-        toast.error('No se pudieron cargar las notificaciones', { description: msg })
-        return
-      }
-      if (!Array.isArray(data)) {
-        setFetchError('Respuesta inválida del servidor')
-        toast.error('Notificaciones: respuesta inválida')
-        return
-      }
-      const rows = (data as AppNotification[]).filter((r) => r.type !== 'message')
-      rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      setNotifications(rows)
-    } finally {
-      setLoading(false)
-    }
-  }, [currentUser?.id, supabase.auth])
+    },
+    [currentUser?.id, supabase]
+  )
 
   const openPopover = (o: boolean) => {
     setOpen(o)
     if (o) {
-      void fetchNotifications()
+      void fetchNotifications({ showErrorToast: true })
       void fetchMessageRows()
     }
   }
@@ -180,7 +203,6 @@ export function NotificationBell({
         void fetchMessageRows()
       }, 400)
     }
-    schedule()
     document.addEventListener('visibilitychange', schedule)
     window.addEventListener('focus', schedule)
     return () => {
@@ -213,9 +235,11 @@ export function NotificationBell({
             })
           }
           if (row.type === 'message') {
+            const sender = row.title?.trim() || 'Alguien'
+            const body = sanitizeChatNotificationBody(row.body ?? 'Te enviaron un mensaje')
             void showSystemNotification({
-              title: row.title,
-              body: row.body ?? 'Te enviaron un mensaje',
+              title: 'CST Comunidad',
+              body: `${sender}: ${body}`,
               tag: `chat-peer-${row.related_id ?? row.id}`,
               url: row.link_url ?? '/message/contactos',
               urgent: true,
@@ -402,7 +426,9 @@ export function NotificationBell({
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{sender}</p>
                               {latest.body ? (
-                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-600 dark:text-gray-400">{latest.body}</p>
+                                <p className="mt-0.5 line-clamp-2 text-xs text-slate-600 dark:text-gray-400">
+                                  {sanitizeChatNotificationBody(latest.body)}
+                                </p>
                               ) : null}
                               <p className="mt-1 text-[10px] text-slate-400 dark:text-gray-500">
                                 {unreadN > 1 ? `${unreadN} sin leer · ` : ''}

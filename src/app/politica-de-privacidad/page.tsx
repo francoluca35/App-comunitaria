@@ -38,7 +38,7 @@ export default function PrivacyPolicyPage() {
 					heading: '4. Tus derechos',
 					paragraphs: [
 						'Podes solicitar acceso, rectificacion o eliminacion de tus datos, segun corresponda por ley.',
-						'Para consultas sobre privacidad, contactanos desde los canales oficiales de la plataforma.',
+						'Para consultas sobre privacidad o soporte, escribinos a contacto@comunidaddesantotome.com.ar.',
 					],
 				},
 			]}

@@ -86,7 +86,7 @@ export default function ConfiguracionPage() {
                         if (result.ok) {
                           toast.success('Preferencia guardada')
                           await showSystemNotification({
-                            title: 'Comunidad',
+                            title: 'CST Comunidad',
                             body: 'Notificaciones configuradas. Vas a recibir avisos aquí.',
                             tag: 'notification-preference',
                           })

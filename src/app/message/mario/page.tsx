@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
+import { chatNotificationBody } from '@/lib/chat-message-payload'
 import { showSystemNotification } from '@/lib/notifications'
 import { isMarioAccountEmail } from '@/lib/mario-account'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
@@ -141,8 +142,8 @@ export default function MarioMessagePage() {
 						currentUser?.notificationPreference === 'all'
 					if (isIncoming && wantMessages) {
 						showSystemNotification({
-							title: 'Nuevo mensaje',
-							body: `Mario te envió un mensaje`,
+							title: 'CST Comunidad',
+							body: `Mario: ${chatNotificationBody(row.content ?? '')}`,
 							tag: `chat-${myId}-${otherId}`,
 							url: MARIO_CHAT_URL,
 						})

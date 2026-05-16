@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
+import { chatNotificationBody } from '@/lib/chat-message-payload'
 import { showSystemNotification } from '@/lib/notifications'
 import { WhatsAppMessageBubble } from '@/components/chat/WhatsAppMessageBubble'
 import { WhatsAppComposer } from '@/components/chat/WhatsAppComposer'
@@ -163,9 +164,10 @@ export default function MessageWithPeerPage() {
 						currentUser?.notificationPreference === 'messages_only' ||
 						currentUser?.notificationPreference === 'all'
 					if (isIncoming && wantMessages) {
+						const sender = peer?.name?.trim() || 'Alguien'
 						showSystemNotification({
-							title: 'Nuevo mensaje',
-							body: `${peer?.name?.trim() || 'Alguien'} te envió un mensaje`,
+							title: 'CST Comunidad',
+							body: `${sender}: ${chatNotificationBody(row.content ?? '')}`,
 							tag: `chat-${myId}-${otherId}`,
 							url: `/message/${otherId}`,
 						})

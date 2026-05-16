@@ -16,6 +16,7 @@ import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { Chrome, Download, Facebook, Share2 } from 'lucide-react'
+import { LoginLegalLinks, LoginOAuthTrustNote } from '@/components/login/LoginTrustFooter'
 
 export default function LoginPage() {
 	const { login, register, loginWithGoogle, loginWithFacebook } = useAuth()
@@ -256,7 +257,8 @@ export default function LoginPage() {
 									<span className="text-xs text-white/45 os-light:text-[#7A5C52]">o con</span>
 									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
 								</div>
-								<div className="grid grid-cols-2 gap-2.5">
+								<LoginOAuthTrustNote variant="mobile-dark" />
+								<div className="mt-3 grid grid-cols-2 gap-2.5">
 									<button
 										type="button"
 										onClick={() => {
@@ -281,6 +283,9 @@ export default function LoginPage() {
 										<Facebook className="h-4 w-4 text-[#8B0015]" />
 										<span>Facebook</span>
 									</button>
+								</div>
+								<div className="mt-4">
+									<LoginLegalLinks variant="mobile-dark" />
 								</div>
 								<div className="mt-4 flex flex-col items-center gap-2 text-sm">
 									<button
@@ -427,7 +432,8 @@ export default function LoginPage() {
 									<span className="text-xs text-white/45 os-light:text-[#7A5C52]">o con</span>
 									<div className="h-px flex-1 bg-white/10 os-light:bg-[#D8D2CC]" />
 								</div>
-								<div className="grid grid-cols-2 gap-2.5">
+								<LoginOAuthTrustNote variant="mobile-dark" />
+								<div className="mt-3 grid grid-cols-2 gap-2.5">
 									<button
 										type="button"
 										onClick={() => {
@@ -452,6 +458,9 @@ export default function LoginPage() {
 										<Facebook className="h-4 w-4 text-[#8B0015]" />
 										<span>Facebook</span>
 									</button>
+								</div>
+								<div className="mt-4">
+									<LoginLegalLinks variant="mobile-dark" />
 								</div>
 								<div className="mt-4 flex flex-col items-center gap-2 text-sm">
 									<button
@@ -750,7 +759,9 @@ export default function LoginPage() {
 								<div className="h-px flex-1 bg-slate-300" />
 							</div>
 
-							<div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+							<LoginOAuthTrustNote variant="desktop" />
+
+							<div className="mt-3 grid grid-cols-2 gap-2.5 sm:gap-3">
 						
 								<button
 									type="button"
@@ -776,6 +787,10 @@ export default function LoginPage() {
 									<Facebook className="h-4 w-4 text-[#8B0015] sm:h-5 sm:w-5" />
 									<span>Facebook</span>
 								</button>
+							</div>
+
+							<div className="mt-4">
+								<LoginLegalLinks variant="desktop" />
 							</div>
 
 							<div className="mt-4 text-center text-[13px] text-slate-500 sm:mt-5 sm:text-[14px]">

@@ -156,7 +156,7 @@ function CommunityHeroBanner({
 					aria-hidden
 				/>
 				<div className="absolute inset-0 z-[3] flex flex-col items-center justify-center px-4 py-6 max-[360px]:px-3 max-[360px]:py-5 sm:px-6 sm:py-8 md:px-8 lg:py-10">
-						<div className="mx-auto flex w-auto max-w-[min(100%,13.25rem)] items-center gap-1.5 rounded-lg border border-white/45 bg-black/35 px-2 py-1.5 text-white shadow-[0_5px_14px_rgba(0,0,0,0.38)] backdrop-blur-md supports-[backdrop-filter]:bg-black/25 max-[360px]:max-w-[min(100%,12.5rem)] max-[360px]:gap-1 max-[360px]:px-1.5 max-[360px]:py-1 sm:max-w-[16.25rem] sm:gap-1.5 sm:px-2.5 sm:py-1.5 md:max-w-[17.25rem] lg:max-w-[18.25rem] lg:gap-2 lg:px-3 lg:py-2">
+						<div className="mx-auto flex w-auto max-w-[min(100%,13.25rem)] -translate-y-5 items-center gap-1.5 rounded-lg border border-white/45 bg-black/35 px-2 py-1.5 text-white shadow-[0_5px_14px_rgba(0,0,0,0.38)] backdrop-blur-md supports-[backdrop-filter]:bg-black/25 max-[360px]:max-w-[min(100%,12.5rem)] max-[360px]:-translate-y-4 max-[360px]:gap-1 max-[360px]:px-1.5 max-[360px]:py-1 sm:max-w-[16.25rem] sm:-translate-y-6 sm:gap-1.5 sm:px-2.5 sm:py-1.5 md:max-w-[17.25rem] md:translate-y-0 lg:max-w-[18.25rem] lg:gap-2 lg:px-3 lg:py-2">
 							<div className="relative shrink-0">
 								<Avatar className="h-7 w-7 border border-white/45 sm:h-8 sm:w-8 md:h-9 md:w-9 lg:h-10 lg:w-10">
 									<AvatarImage src={heroReferentPhotoUrl} alt={heroReferentName} />

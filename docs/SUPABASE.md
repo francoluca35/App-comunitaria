@@ -62,7 +62,15 @@ where email = 'admin@comunidad.com';
 
 (El usuario `admin@comunidad.com` tiene que existir en **Authentication → Users**; si no, crealo antes.)
 
-## 6. Uso en la app
+## 6. Producción: marca en login (Google / OAuth)
+
+Para que en el celular no aparezca el subdominio técnico `*.supabase.co` al iniciar sesión:
+
+1. **Supabase → Authentication → URL Configuration**: Site URL = `https://www.comunidaddesantotome.com.ar` y Redirect URLs con ese dominio.
+2. **Google Cloud → OAuth consent screen**: nombre de app **CST Comunidad**, logo, política de privacidad `https://www.comunidaddesantotome.com.ar/politica-de-privacidad`.
+3. (Opcional, plan de pago) **Supabase Custom Domain** para Auth, p. ej. `auth.comunidaddesantotome.com.ar`, y actualizar `NEXT_PUBLIC_SUPABASE_URL`.
+
+## 7. Uso en la app
 
 El cliente ya está en `src/lib/supabase/client.ts`:
 
