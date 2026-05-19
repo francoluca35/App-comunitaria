@@ -598,6 +598,18 @@ export default function ProfilePage() {
             </Button>
           </div>
         )}
+        {currentUser.isAdminMaster && !currentUser.isAdmin && (
+          <div className="mt-4">
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-[#8B0015]/30 sm:w-auto"
+              onClick={() => router.push('/admin/moderation')}
+            >
+              <Shield className="mr-2 h-4 w-4" />
+              Moderar publicaciones
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Móvil: pestañas */}

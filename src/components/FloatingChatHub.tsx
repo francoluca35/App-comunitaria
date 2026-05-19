@@ -41,6 +41,8 @@ import {
 } from '@/lib/chat-inbox-previews'
 import { CST } from '@/lib/cst-theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
+import { chatMessageSelect, fetchChatMessagesBetween, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
+import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
 
 const DESKTOP_MQ = '(min-width: 1024px)'
 
@@ -67,13 +69,7 @@ function matchProfile(profile: AdminProfile, query: string): boolean {
 	)
 }
 
-interface ChatMsg {
-	id: string
-	sender_id: string
-	receiver_id: string
-	content: string
-	created_at: string
-}
+type ChatMsg = ChatMessageWithReceipts
 
 export function FloatingChatHub() {
 	const { currentUser, adminProfiles, adminProfilesLoading, loadAdminProfiles } = useApp()
@@ -100,6 +96,12 @@ export function FloatingChatHub() {
 	const BOTTOM_SCROLL_THRESHOLD_PX = 80
 
 	const myId = currentUser?.id ?? ''
+	const { onConversationOpen, onIncomingMessage, onMessageUpdated } = useChatReceiptEffects(
+		supabase,
+		myId,
+		peerId ?? '',
+		setMessages
+	)
 
 	const {
 		threads,
@@ -210,11 +212,7 @@ export function FloatingChatHub() {
 			if (!myId || !otherId) return
 			stickToBottomRef.current = true
 			setThreadLoading(true)
-			const { data, error } = await supabase
-				.from('chat_messages')
-				.select('id, sender_id, receiver_id, content, created_at')
-				.or(`and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`)
-				.order('created_at', { ascending: true })
+			const { data, error } = await fetchChatMessagesBetween(supabase, myId, otherId)
 			setThreadLoading(false)
 			if (error) {
 				toast.error('No se pudieron cargar los mensajes')
@@ -222,8 +220,9 @@ export function FloatingChatHub() {
 				return
 			}
 			setMessages((data as ChatMsg[]) ?? [])
+			void onConversationOpen()
 		},
-		[myId, supabase]
+		[myId, supabase, onConversationOpen]
 	)
 
 	useEffect(() => {
@@ -258,13 +257,26 @@ export function FloatingChatHub() {
 						(row.sender_id === peerId && row.receiver_id === myId)
 					if (!ok) return
 					setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+					if (row.receiver_id === myId) void onIncomingMessage(row)
+				}
+			)
+			.on(
+				'postgres_changes',
+				{ event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+				(payload) => {
+					const row = payload.new as ChatMsg
+					const ok =
+						(row.sender_id === myId && row.receiver_id === peerId) ||
+						(row.sender_id === peerId && row.receiver_id === myId)
+					if (!ok) return
+					onMessageUpdated(row)
 				}
 			)
 			.subscribe()
 		return () => {
 			supabase.removeChannel(ch)
 		}
-	}, [dockOpen, isDesktop, peerId, myId, supabase])
+	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessage, onMessageUpdated])
 
 	const closeDock = () => {
 		setDockOpen(false)
@@ -346,7 +358,7 @@ export function FloatingChatHub() {
 		const { data: newMsg, error } = await supabase
 			.from('chat_messages')
 			.insert({ sender_id: myId, receiver_id: peerId, content: t })
-			.select('id, sender_id, receiver_id, content, created_at')
+			.select(chatMessageSelect())
 			.single()
 		setSending(false)
 		if (error) {

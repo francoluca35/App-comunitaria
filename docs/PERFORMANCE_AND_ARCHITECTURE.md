@@ -10,7 +10,7 @@ Este documento resume los problemas que se identificaron en la revisión técnic
 
 **Solución:**
 
-- Migración SQL: `supabase/migrations/comment_counts_for_posts_rpc.sql`
+- Migración SQL: `supabase/migrations/20260520_fix_feed_rls_and_schema.sql` (incluye la RPC; también existe `comment_counts_for_posts_rpc.sql` solo con la función)
   - Función `public.comment_counts_for_posts(p_post_ids uuid[])` que devuelve filas `(post_id, comment_count)` con un `GROUP BY` en la base.
   - `GRANT EXECUTE` a `anon` y `authenticated` para que el cliente de Supabase pueda invocarla con las mismas reglas RLS que aplican al rol.
 - En `src/app/providers/community-context.tsx`, `refreshCommentCountsForPostIds`:
@@ -21,7 +21,7 @@ Este documento resume los problemas que se identificaron en la revisión técnic
 
 **Despliegue (migrar a RPC en Supabase):**
 
-1. En el [SQL Editor](https://supabase.com/dashboard) del proyecto, ejecutá el contenido completo de `supabase/migrations/comment_counts_for_posts_rpc.sql` (o usá la CLI de Supabase si tenés el proyecto linkeado: `supabase db push` / migraciones según tu flujo).
+1. En el [SQL Editor](https://supabase.com/dashboard) del proyecto, ejecutá el contenido completo de `supabase/migrations/20260520_fix_feed_rls_and_schema.sql`.
 2. Verificá que exista la función: en SQL, `select proname from pg_proc join pg_namespace n on n.oid = pronamespace where n.nspname = 'public' and proname = 'comment_counts_for_posts';`
 3. En la app, abrí el feed: en la consola del navegador no debería aparecer el warning `comment_counts_for_posts (RPC):` si la RPC responde bien. Si aparece, revisá RLS sobre `comments` y que `GRANT EXECUTE` esté aplicado.
 

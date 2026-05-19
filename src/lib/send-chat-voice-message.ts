@@ -1,14 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { encodeChatAudioMessage } from '@/lib/chat-message-payload'
+import {
+	chatMessageSelect,
+	resolveChatReceiptsSupport,
+	type ChatMessageWithReceipts,
+} from '@/lib/chat-read-receipts'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatAudio } from '@/lib/upload-chat-audio'
-export type ChatMessageRow = {
-	id: string
-	sender_id: string
-	receiver_id: string
-	content: string
-	created_at: string
-}
+
+export type ChatMessageRow = ChatMessageWithReceipts
 
 export async function sendChatVoiceMessage(
 	supabase: SupabaseClient,
@@ -25,10 +25,11 @@ export async function sendChatVoiceMessage(
 	const d = Math.round(durationSec * 10) / 10
 	const content = encodeChatAudioMessage({ u: up.publicUrl, d })
 
+	await resolveChatReceiptsSupport(supabase)
 	const { data: newMsg, error } = await supabase
 		.from('chat_messages')
 		.insert({ sender_id: myId, receiver_id: otherId, content })
-		.select('id, sender_id, receiver_id, content, created_at')
+		.select(chatMessageSelect())
 		.single()
 
 	if (error) {

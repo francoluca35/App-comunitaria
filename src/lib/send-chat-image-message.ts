@@ -3,7 +3,13 @@ import imageCompression from 'browser-image-compression'
 import { encodeChatImageMessage } from '@/lib/chat-message-payload'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatImage } from '@/lib/upload-chat-image'
-import type { ChatMessageRow } from '@/lib/send-chat-voice-message'
+import {
+	chatMessageSelect,
+	resolveChatReceiptsSupport,
+	type ChatMessageWithReceipts,
+} from '@/lib/chat-read-receipts'
+
+type ChatMessageRow = ChatMessageWithReceipts
 
 export async function sendChatImageMessage(
 	supabase: SupabaseClient,
@@ -33,10 +39,11 @@ export async function sendChatImageMessage(
 
 	const content = encodeChatImageMessage({ u: up.publicUrl })
 
+	await resolveChatReceiptsSupport(supabase)
 	const { data: newMsg, error } = await supabase
 		.from('chat_messages')
 		.insert({ sender_id: myId, receiver_id: otherId, content })
-		.select('id, sender_id, receiver_id, content, created_at')
+		.select(chatMessageSelect())
 		.single()
 
 	if (error) {

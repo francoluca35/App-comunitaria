@@ -19,66 +19,67 @@ Editá `.env.local` y pegá la URL y la anon key.
 
 ## 3. Base de datos
 
-1. En el dashboard: **SQL Editor**.
-2. Abrí el archivo `supabase/schema.sql` de este repo y copiá todo.
-3. Pegalo en el editor y ejecutá **Run**.
+### Proyecto nuevo (primera vez)
 
-Con eso quedan creadas:
+1. **SQL Editor** → pegá y ejecutá `supabase/schema.sql` completo.
 
-- **profiles**: usuario (email, name, avatar_url, role, status). Se llena solo al registrarse con `role = viewer`.
-- **posts**: publicaciones (author_id, title, description, category, status, whatsapp_number).
-- **post_media**: URLs de imágenes/videos por publicación.
-- **comments**: comentarios.
-- **app_config**: configuración (comentarios, WhatsApp, límites).
-- **Trigger**: al registrarse en Auth se crea la fila en `profiles` con `role = viewer`.
+### Proyecto que ya existe (tu caso habitual)
+
+**No ejecutes `schema.sql` entero** (falla con *policy already exists*).
+
+Ejecutá **una sola vez**, en este orden:
+
+1. `supabase/migrations/20260520_fix_feed_rls_and_schema.sql`  
+   Arregla: columna `proposed_category_label`, categorías, RLS sin recursión (error 500 en `posts`), RPC `comment_counts_for_posts`, permisos admin / admin_master / moderador.
+
+2. Si solo faltaba borrar posts de admin_master y ya corriste el paso 1, no hace falta `20260519_admin_master_posts_rls.sql` (el paso 1 lo reemplaza).
+
+3. `supabase/migrations/20260521_chat_message_receipts.sql` — tildes de lectura en el chat.
+
+Tablas principales:
+
+- **profiles**: usuarios (`role`: viewer, moderator, admin, admin_master)
+- **posts** + **post_media** + **comments**
+- **post_categories** / **publicidad_categories**
+- **app_config**
 
 ## 4. Storage (imágenes y videos)
 
-1. En el dashboard: **Storage → New bucket**.
-2. Nombre: `publicaciones`. Marcá **Public bucket** (para poder usar las URLs en la app).
-3. En **SQL Editor** ejecutá el contenido de `supabase/storage-policies.sql` (políticas de subida/lectura/borrado).
-
-Las URLs que guardes en `post_media` serán de la forma:
-`https://tu-proyecto.supabase.co/storage/v1/object/public/publicaciones/...`
+1. **Storage → New bucket** → nombre `publicaciones`, **Public bucket**.
+2. Ejecutá `supabase/storage-policies.sql`.
 
 ## 5. Primer admin
 
-Los usuarios que se registren por la app tendrán siempre `role = viewer`. El primer admin se define a mano:
+En **Table Editor → profiles**, poné `role = 'admin'` al usuario, o:
 
-**Opción A – Desde el dashboard**
+```sql
+update public.profiles set role = 'admin' where email = 'tu@email.com';
+```
 
-1. **Authentication → Users**: si ya tenés un usuario, copiá su **UUID**. Si no, creá uno (Add user) y copiá el UUID.
-2. **Table Editor → profiles**: buscá la fila con ese `id` y cambiá `role` a `admin`. Guardá.
+Super admin: `role = 'admin_master'`.
 
-**Opción B – Por SQL**
+## 6. Verificar que el feed funciona
 
 En SQL Editor:
 
 ```sql
-update public.profiles
-set role = 'admin'
-where email = 'admin@comunidad.com';
+select column_name from information_schema.columns
+where table_name = 'posts' and column_name = 'proposed_category_label';
+
+select proname from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and proname = 'comment_counts_for_posts';
 ```
 
-(El usuario `admin@comunidad.com` tiene que existir en **Authentication → Users**; si no, crealo antes.)
+En la app: recargá el inicio. En la consola **no** deberían aparecer `500` en `/rest/v1/posts`.
 
-## 6. Producción: marca en login (Google / OAuth)
+## 7. Producción: login (Google / OAuth)
 
-Para que en el celular no aparezca el subdominio técnico `*.supabase.co` al iniciar sesión:
+Ver sección de URL Configuration y OAuth en la documentación del proyecto.
 
-1. **Supabase → Authentication → URL Configuration**: Site URL = `https://www.comunidaddesantotome.com.ar` y Redirect URLs con ese dominio.
-2. **Google Cloud → OAuth consent screen**: nombre de app **CST Comunidad**, logo, política de privacidad `https://www.comunidaddesantotome.com.ar/politica-de-privacidad`.
-3. (Opcional, plan de pago) **Supabase Custom Domain** para Auth, p. ej. `auth.comunidaddesantotome.com.ar`, y actualizar `NEXT_PUBLIC_SUPABASE_URL`.
-
-## 7. Uso en la app
-
-El cliente ya está en `src/lib/supabase/client.ts`:
+## 8. Cliente en la app
 
 ```ts
 import { createClient } from '@/lib/supabase/client'
-
 const supabase = createClient()
-// supabase.auth.signUp(...)  |  supabase.from('posts').select(...)  |  etc.
 ```
-
-Próximos pasos: conectar el login/registro y las pantallas de publicaciones a Supabase (reemplazar el mock de `providers.tsx` por llamadas a `supabase.auth` y a las tablas).

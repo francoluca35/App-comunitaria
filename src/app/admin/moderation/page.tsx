@@ -21,6 +21,10 @@ import { ArrowLeft, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, Ima
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
+import {
+  canPermanentlyDeletePosts,
+  canViewAllPostsForModeration,
+} from '@/lib/post-admin-permissions'
 
 export default function AdminModerationPage() {
   const router = useRouter()
@@ -35,7 +39,8 @@ export default function AdminModerationPage() {
     setDialogImageError(false)
   }, [selectedPost?.id, currentImageIndex])
 
-  const canModerate = currentUser?.isAdmin || currentUser?.isModerator
+  const canModerate = canViewAllPostsForModeration(currentUser)
+  const canDeletePosts = canPermanentlyDeletePosts(currentUser)
   if (!canModerate) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
@@ -191,7 +196,9 @@ export default function AdminModerationPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push(currentUser?.isAdmin ? '/admin' : '/')}
+              onClick={() =>
+                router.push(currentUser?.isAdmin ? '/admin' : currentUser?.isAdminMaster ? '/profile' : '/')
+              }
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -405,14 +412,16 @@ export default function AdminModerationPage() {
                   </>
                 )}
 
-                <Button
-                  variant="outline"
-                  className="w-full text-red-600 dark:text-red-400"
-                  onClick={() => handleDeletePost(selectedPost)}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Eliminar Permanentemente
-                </Button>
+                {canDeletePosts ? (
+                  <Button
+                    variant="outline"
+                    className="w-full text-red-600 dark:text-red-400"
+                    onClick={() => handleDeletePost(selectedPost)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Eliminar permanentemente
+                  </Button>
+                ) : null}
               </DialogFooter>
             </>
           )}

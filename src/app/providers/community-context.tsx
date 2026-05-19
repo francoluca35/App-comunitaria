@@ -11,7 +11,8 @@ import React, {
   type ReactNode,
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MOCK_POSTS, MOCK_USERS } from '@/app/providers/constants'
+import { MOCK_USERS } from '@/app/providers/constants'
+import { filterUuids } from '@/lib/uuid'
 import {
   dedupePostsById,
   mapSupabasePostRow,
@@ -24,6 +25,7 @@ import { commentCountsFromRpcRows } from '@/app/providers/comment-counts'
 import { useAuth } from '@/app/providers/auth-context'
 import { useAppConfig } from '@/app/providers/app-config-context'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
 import type {
   AdminProfile,
   Comment,
@@ -100,15 +102,16 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       feedNextOffsetRef.current = 0
       try {
         const u = currentUserRef.current
-        if (u?.isAdmin || u?.isModerator) {
+        if (canViewAllPostsForModeration(u)) {
           const { data, error } = await supabase
             .from('posts')
             .select(POSTS_SELECT)
             .order('created_at', { ascending: false })
           if (bail()) return
           if (error) {
+            console.error('fetchPosts (staff):', error.message)
             if (showLoading) {
-              setPosts(MOCK_POSTS)
+              setPosts([])
               setPostsHasMore(false)
             }
             return
@@ -129,8 +132,9 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
         if (bail()) return
         if (error) {
+          console.error('fetchPosts:', error.message)
           if (showLoading) {
-            setPosts(MOCK_POSTS)
+            setPosts([])
             setPostsHasMore(false)
           }
           return
@@ -155,9 +159,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
         if (bail()) return
         setPosts(list)
-      } catch {
+      } catch (e) {
+        console.error('fetchPosts:', e)
         if (showLoading) {
-          setPosts(MOCK_POSTS)
+          setPosts([])
           setPostsHasMore(false)
         }
       } finally {
@@ -169,7 +174,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
   const loadMorePosts = useCallback(async () => {
     const u = currentUserRef.current
-    if (u?.isAdmin || u?.isModerator) return
+    if (canViewAllPostsForModeration(u)) return
     if (loadMoreInFlightRef.current || !postsHasMoreRef.current) return
     loadMoreInFlightRef.current = true
     setPostsLoadingMore(true)
@@ -211,10 +216,17 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [authLoading, fetchPostsIntoState, currentUser?.id, currentUser?.isAdmin, currentUser?.isModerator])
+  }, [
+    authLoading,
+    fetchPostsIntoState,
+    currentUser?.id,
+    currentUser?.isAdmin,
+    currentUser?.isAdminMaster,
+    currentUser?.isModerator,
+  ])
 
   useEffect(() => {
-    if (!currentUser?.isAdmin && !currentUser?.isModerator) return
+    if (!canViewAllPostsForModeration(currentUser)) return
     const channel = supabase
       .channel('posts-live-admin')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'posts' }, (payload) => {
@@ -260,11 +272,11 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser?.isAdmin, currentUser?.isModerator, supabase])
+  }, [currentUser?.isAdmin, currentUser?.isAdminMaster, currentUser?.isModerator, supabase])
 
   const refreshCommentCountsForPostIds = useCallback(
     async (postIds: string[]) => {
-      const unique = [...new Set(postIds)].filter(Boolean)
+      const unique = filterUuids([...new Set(postIds)])
       if (unique.length === 0) return
       const CHUNK = 100
       try {

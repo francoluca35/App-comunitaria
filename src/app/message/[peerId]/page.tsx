@@ -19,14 +19,10 @@ import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
+import { chatMessageSelect, fetchChatMessagesBetween, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
+import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
 
-interface ChatMessage {
-	id: string
-	sender_id: string
-	receiver_id: string
-	content: string
-	created_at: string
-}
+type ChatMessage = ChatMessageWithReceipts
 
 interface PeerProfile {
 	id: string
@@ -64,6 +60,12 @@ export default function MessageWithPeerPage() {
 	const supabase = useMemo(() => createClient(), [])
 	const myId = currentUser?.id ?? ''
 	const otherId = peer?.id ?? ''
+	const { onConversationOpen, onIncomingMessage, onMessageUpdated } = useChatReceiptEffects(
+		supabase,
+		myId,
+		otherId,
+		setMessages
+	)
 	const backToTeamList =
 		currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos'
 
@@ -120,17 +122,14 @@ export default function MessageWithPeerPage() {
 	const loadMessages = async () => {
 		if (!myId || !otherId) return
 		setLoading(true)
-		const { data, error } = await supabase
-			.from('chat_messages')
-			.select('id, sender_id, receiver_id, content, created_at')
-			.or(`and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`)
-			.order('created_at', { ascending: true })
+		const { data, error } = await fetchChatMessagesBetween(supabase, myId, otherId)
 		setLoading(false)
 		if (error) {
 			toast.error('Error al cargar mensajes')
 			return
 		}
 		setMessages((data as ChatMessage[]) ?? [])
+		void onConversationOpen()
 	}
 
 	useEffect(() => {
@@ -159,6 +158,7 @@ export default function MessageWithPeerPage() {
 						(row.sender_id === otherId && row.receiver_id === myId)
 					if (!isThisConversation) return
 					setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
+					if (row.receiver_id === myId) void onIncomingMessage(row)
 
 					const isIncoming = row.receiver_id === myId && row.sender_id !== myId
 					const wantMessages =
@@ -175,25 +175,32 @@ export default function MessageWithPeerPage() {
 					}
 				}
 			)
+			.on(
+				'postgres_changes',
+				{ event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+				(payload) => {
+					const row = payload.new as ChatMessage
+					const isThisConversation =
+						(row.sender_id === myId && row.receiver_id === otherId) ||
+						(row.sender_id === otherId && row.receiver_id === myId)
+					if (!isThisConversation) return
+					onMessageUpdated(row)
+				}
+			)
 			.subscribe()
 		return () => {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference])
+	}, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference, onIncomingMessage, onMessageUpdated])
 
 	const pollInterval = 2000
 	useEffect(() => {
 		if (!myId || !otherId) return
 		const tick = () => {
-			supabase
-				.from('chat_messages')
-				.select('id, sender_id, receiver_id, content, created_at')
-				.or(`and(sender_id.eq.${myId},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${myId})`)
-				.order('created_at', { ascending: true })
-				.then(({ data }) => {
-					if (data?.length) setMessages(data as ChatMessage[])
-				})
+			void fetchChatMessagesBetween(supabase, myId, otherId).then(({ data }) => {
+				if (data?.length) setMessages(data as ChatMessage[])
+			})
 		}
 		const id = setInterval(tick, pollInterval)
 		return () => clearInterval(id)
@@ -272,7 +279,7 @@ export default function MessageWithPeerPage() {
 		const { data: newMsg, error } = await supabase
 			.from('chat_messages')
 			.insert({ sender_id: myId, receiver_id: otherId, content: text })
-			.select('id, sender_id, receiver_id, content, created_at')
+			.select(chatMessageSelect())
 			.single()
 		setSending(false)
 		if (error) {

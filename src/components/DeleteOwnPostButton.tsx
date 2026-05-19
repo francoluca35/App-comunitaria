@@ -7,6 +7,7 @@ import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
 import { toast } from 'sonner'
 import { cn } from '@/app/components/ui/utils'
+import { canPermanentlyDeletePosts } from '@/lib/post-admin-permissions'
 
 type Props = {
   postId: string
@@ -31,16 +32,18 @@ export function DeleteOwnPostButton({
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
-  if (!currentUser || currentUser.id !== authorId) return null
+  const isAuthor = currentUser?.id === authorId
+  const isStaffDelete = canPermanentlyDeletePosts(currentUser) && !isAuthor
+
+  if (!currentUser || (!isAuthor && !canPermanentlyDeletePosts(currentUser))) return null
 
   const handle = async (e?: React.MouseEvent) => {
     e?.preventDefault()
     e?.stopPropagation()
-    if (
-      !window.confirm(
-        '¿Eliminar esta publicación de forma permanente? También se borrarán los comentarios. No se puede deshacer.'
-      )
-    ) {
+    const confirmMessage = isStaffDelete
+      ? '¿Eliminar esta publicación de forma permanente como administrador? También se borrarán los comentarios. No se puede deshacer.'
+      : '¿Eliminar esta publicación de forma permanente? También se borrarán los comentarios. No se puede deshacer.'
+    if (!window.confirm(confirmMessage)) {
       return
     }
     setBusy(true)

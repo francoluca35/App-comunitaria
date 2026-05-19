@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
 import { Post, useApp } from '@/app/providers'
+import { canPermanentlyDeletePosts } from '@/lib/post-admin-permissions'
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card'
 import { PostPublicationActions } from '@/components/PostPublicationActions'
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
@@ -27,6 +28,7 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 	const [descriptionOverflowsCollapsed, setDescriptionOverflowsCollapsed] = useState(false)
 	const descriptionRef = useRef<HTMLParagraphElement | null>(null)
 	const isMine = currentUser?.id === post.authorId
+	const showDelete = isMine || canPermanentlyDeletePosts(currentUser)
 	const commentCount =
 		config.commentsEnabled && Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
 			? commentCountByPostId[post.id]
@@ -76,12 +78,12 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 
 	return (
 		<Card className="relative gap-0 overflow-hidden rounded-none border-x-0 border-b border-[#CED0D4] border-t-0 bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
-			{isMine ? (
+			{showDelete ? (
 				<div className="absolute right-2 top-3 z-10 sm:right-3">
 					<DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
 				</div>
 			) : null}
-			<CardContent className={`p-4 ${isMine ? 'pr-14' : ''}`}>
+			<CardContent className={`p-4 ${showDelete ? 'pr-14' : ''}`}>
 				<div className="mb-2 flex items-start gap-2.5">
 					<Avatar className="h-10 w-10 shrink-0">
 						<AvatarImage src={post.authorAvatar} />

@@ -8,12 +8,16 @@ import { MessageContent } from '@/components/MessageContent'
 import { parseChatMessagePayload } from '@/lib/chat-message-payload'
 import { VoiceMessageRow } from '@/components/chat/VoiceMessageRow'
 import { ChatImageBubble } from '@/components/chat/ChatImageBubble'
+import { ChatMessageReceiptTicks } from '@/components/chat/ChatMessageReceiptTicks'
+import { getChatReceiptStatus } from '@/lib/chat-read-receipts'
 
 export type BubbleMessage = {
 	id: string
 	content: string
 	created_at: string
 	sender_id: string
+	delivered_at?: string | null
+	read_at?: string | null
 }
 
 export function WhatsAppMessageBubble({ message, isMine }: { message: BubbleMessage; isMine: boolean }) {
@@ -23,6 +27,7 @@ export function WhatsAppMessageBubble({ message, isMine }: { message: BubbleMess
 
 	const payload = parseChatMessagePayload(message.content)
 	const timeStr = format(new Date(message.created_at), 'HH:mm')
+	const receiptStatus = isMine ? getChatReceiptStatus(message) : null
 	const isDark = mounted && resolvedTheme === 'dark'
 	const textVariant = isDark
 		? isMine
@@ -56,8 +61,11 @@ export function WhatsAppMessageBubble({ message, isMine }: { message: BubbleMess
 							<MessageContent content={message.content} variant={textVariant} />
 						)}
 					</div>
-					<span className="shrink-0 self-end pb-0.5 text-[10px] tabular-nums leading-none text-slate-500 dark:text-[#8696A0]">
-						{timeStr}
+					<span className="flex shrink-0 items-center gap-0.5 self-end pb-0.5">
+						<span className="text-[10px] tabular-nums leading-none text-slate-500 dark:text-[#8696A0]">
+							{timeStr}
+						</span>
+						{receiptStatus ? <ChatMessageReceiptTicks status={receiptStatus} /> : null}
 					</span>
 				</div>
 			</div>

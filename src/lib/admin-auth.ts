@@ -30,7 +30,7 @@ export async function requireAdmin(request: NextRequest): Promise<
     .select('role')
     .eq('id', user.id)
     .maybeSingle()
-  if (profile?.role !== 'admin') {
+  if (profile?.role !== 'admin' && profile?.role !== 'admin_master') {
     return { ok: false, response: NextResponse.json({ error: 'Se requieren permisos de administrador' }, { status: 403 }) }
   }
   const serviceClient = createServiceRoleClient()
@@ -43,7 +43,7 @@ export async function requireStaff(request: NextRequest): Promise<
       ok: true
       supabase: ReturnType<typeof createClient>
       serviceClient: ReturnType<typeof createServiceRoleClient> | null
-      role: 'admin' | 'moderator'
+      role: 'admin' | 'admin_master' | 'moderator'
     }
   | { ok: false; response: NextResponse }
 > {
@@ -60,7 +60,7 @@ export async function requireStaff(request: NextRequest): Promise<
   }
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
   const role = profile?.role
-  if (role !== 'admin' && role !== 'moderator') {
+  if (role !== 'admin' && role !== 'admin_master' && role !== 'moderator') {
     return {
       ok: false,
       response: NextResponse.json({ error: 'Se requieren permisos de moderación' }, { status: 403 }),

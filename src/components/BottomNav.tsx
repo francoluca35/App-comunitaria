@@ -37,7 +37,7 @@ export function BottomNav() {
             </Link>
           )}
 
-          {currentUser?.isModerator && !currentUser?.isAdmin && (
+          {(currentUser?.isModerator || currentUser?.isAdminMaster) && !currentUser?.isAdmin && (
             <Link
               href="/admin/moderation"
               className={linkClass(pathname.startsWith('/admin/moderation'))}

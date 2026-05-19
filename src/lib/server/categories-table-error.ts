@@ -17,4 +17,4 @@ export function isMissingCategoriesTable(error: {
 }
 
 export const CATEGORIES_MIGRATION_MESSAGE =
-  'Ejecutá en Supabase → SQL Editor el archivo supabase/migrations/post_and_publicidad_categories.sql para crear las tablas post_categories y publicidad_categories.'
+  'Ejecutá en Supabase → SQL Editor el archivo supabase/migrations/20260520_fix_feed_rls_and_schema.sql (o post_and_publicidad_categories.sql).'

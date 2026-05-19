@@ -119,7 +119,12 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 
 	const canDeleteComment = useCallback((commentAuthorId: string) => {
 		if (!currentUser || !post) return false
-		return currentUser.isAdmin || commentAuthorId === currentUser.id || post.authorId === currentUser.id
+		return (
+			currentUser.isAdmin ||
+			currentUser.isAdminMaster ||
+			commentAuthorId === currentUser.id ||
+			post.authorId === currentUser.id
+		)
 	}, [currentUser, post])
 
 	const handleDeleteComment = useCallback(async (commentId: string) => {
@@ -309,9 +314,21 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 														</Avatar>
 														<div className="min-w-0 flex-1">
 															<div className="inline-block max-w-full rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#242526]">
-																<p className="truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-[#E4E6EB]">
-																	{comment.authorName}
-																</p>
+																<div className="flex items-center justify-between gap-2">
+																	<p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-[#E4E6EB]">
+																		{comment.authorName}
+																	</p>
+																	{canDeleteComment(comment.authorId) ? (
+																		<button
+																			type="button"
+																			onClick={() => void handleDeleteComment(comment.id)}
+																			className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
+																		>
+																			<Trash2 className="h-3.5 w-3.5 shrink-0" />
+																			Eliminar
+																		</button>
+																	) : null}
+																</div>
 																<p className="mt-0.5 break-words text-[15px] leading-snug text-[#1C1E21] dark:text-[#E4E6EB]">
 																	{comment.text}
 																</p>
@@ -322,53 +339,40 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 																	</div>
 																) : null}
 															</div>
-															<div className="mt-1 flex items-center gap-2 pl-2">
+															<div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto pl-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 																<button
 																	type="button"
 																	onClick={() => void handleToggleLike(comment.id)}
-																	className={`text-[12px] font-semibold transition-colors ${
+																	className={`shrink-0 whitespace-nowrap text-[12px] font-semibold transition-colors ${
 																		comment.likedByMe
 																			? 'text-[#1b74e4] dark:text-[#2D88FF]'
 																			: 'text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]'
 																	}`}
 																>
-																	Me gusta {comment.likeCount > 0 ? `(${comment.likeCount})` : ''}
+																	Me gusta{comment.likeCount > 0 ? ` (${comment.likeCount})` : ''}
 																</button>
-																<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
 																<button
 																	type="button"
 																	onClick={() => handleReplyClick(comment.id, comment.authorName)}
-																	className="text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]"
+																	className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]"
 																>
 																	Responder
 																</button>
-															{currentUser ? (
-																<>
-																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																	<button
-																		type="button"
-																		onClick={() => void handleReportComment(comment.id)}
-																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
-																	>
-																		<Flag className="h-3 w-3" />
-																		Reportar
-																	</button>
-																</>
-															) : null}
-															{canDeleteComment(comment.authorId) ? (
-																<>
-																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																	<button
-																		type="button"
-																		onClick={() => void handleDeleteComment(comment.id)}
-																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
-																	>
-																		<Trash2 className="h-3 w-3" />
-																		Eliminar
-																	</button>
-																</>
-															) : null}
-																<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
+																{currentUser ? (
+																	<>
+																		<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																		<button
+																			type="button"
+																			onClick={() => void handleReportComment(comment.id)}
+																			className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
+																		>
+																			<Flag className="h-3 w-3 shrink-0" />
+																			Reportar
+																		</button>
+																	</>
+																) : null}
+																<span className="shrink-0 whitespace-nowrap text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
 																	{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
 																</span>
 															</div>
@@ -481,9 +485,21 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 													</Avatar>
 													<div className="min-w-0 flex-1">
 														<div className="rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#242526]">
-															<p className="truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-white">
-																{comment.authorName}
-															</p>
+															<div className="flex items-center justify-between gap-2">
+																<p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-white">
+																	{comment.authorName}
+																</p>
+																{canDeleteComment(comment.authorId) ? (
+																	<button
+																		type="button"
+																		onClick={() => void handleDeleteComment(comment.id)}
+																		className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
+																	>
+																		<Trash2 className="h-3.5 w-3.5 shrink-0" />
+																		Eliminar
+																	</button>
+																) : null}
+															</div>
 															<p className="mt-0.5 break-words text-[15px] leading-snug text-[#1C1E21] dark:text-[#E4E6EB]">
 																{comment.text}
 															</p>
@@ -494,53 +510,40 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 																</div>
 															) : null}
 														</div>
-														<div className="mt-1 flex items-center gap-2 pl-2">
+														<div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto pl-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 															<button
 																type="button"
 																onClick={() => void handleToggleLike(comment.id)}
-																className={`text-[12px] font-semibold transition-colors ${
+																className={`shrink-0 whitespace-nowrap text-[12px] font-semibold transition-colors ${
 																	comment.likedByMe
 																		? 'text-[#1b74e4] dark:text-[#2D88FF]'
 																		: 'text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]'
 																}`}
 															>
-																Me gusta {comment.likeCount > 0 ? `(${comment.likeCount})` : ''}
+																Me gusta{comment.likeCount > 0 ? ` (${comment.likeCount})` : ''}
 															</button>
-															<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+															<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
 															<button
 																type="button"
 																onClick={() => handleReplyClick(comment.id, comment.authorName)}
-																className="text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
+																className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
 															>
 																Responder
 															</button>
 															{currentUser ? (
 																<>
-																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
+																	<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
 																	<button
 																		type="button"
 																		onClick={() => void handleReportComment(comment.id)}
-																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
+																		className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
 																	>
-																		<Flag className="h-3 w-3" />
+																		<Flag className="h-3 w-3 shrink-0" />
 																		Reportar
 																	</button>
 																</>
 															) : null}
-															{canDeleteComment(comment.authorId) ? (
-																<>
-																	<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																	<button
-																		type="button"
-																		onClick={() => void handleDeleteComment(comment.id)}
-																		className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
-																	>
-																		<Trash2 className="h-3 w-3" />
-																		Eliminar
-																	</button>
-																</>
-															) : null}
-															<span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
+															<span className="shrink-0 whitespace-nowrap text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
 																{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
 															</span>
 														</div>
