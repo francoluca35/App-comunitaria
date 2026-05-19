@@ -65,24 +65,54 @@ export async function fetchChatMessagesBetween(
 	otherId: string
 ): Promise<{ data: ChatMessageWithReceipts[] | null; error: PostgrestError | null }> {
 	await resolveChatReceiptsSupport(supabase)
-	let result = await supabase
+	const first = await supabase
 		.from('chat_messages')
 		.select(chatMessageSelect())
 		.or(conversationOrFilter(myId, otherId))
 		.order('created_at', { ascending: true })
 
-	if (result.error && isMissingReceiptColumnError(result.error)) {
+	if (first.error && isMissingReceiptColumnError(first.error)) {
 		receiptsSupported = false
-		result = await supabase
+		const fallback = await supabase
 			.from('chat_messages')
 			.select(CHAT_MESSAGE_SELECT_BASE)
 			.or(conversationOrFilter(myId, otherId))
 			.order('created_at', { ascending: true })
+		return {
+			data: (fallback.data ?? null) as ChatMessageWithReceipts[] | null,
+			error: fallback.error,
+		}
 	}
 
 	return {
-		data: (result.data ?? null) as ChatMessageWithReceipts[] | null,
-		error: result.error,
+		data: (first.data ?? null) as ChatMessageWithReceipts[] | null,
+		error: first.error,
+	}
+}
+
+export async function insertChatMessage(
+	supabase: SupabaseClient,
+	row: { sender_id: string; receiver_id: string; content: string }
+): Promise<{ data: ChatMessageWithReceipts | null; error: PostgrestError | null }> {
+	await resolveChatReceiptsSupport(supabase)
+	const first = await supabase.from('chat_messages').insert(row).select(chatMessageSelect()).single()
+
+	if (first.error && isMissingReceiptColumnError(first.error)) {
+		receiptsSupported = false
+		const fallback = await supabase
+			.from('chat_messages')
+			.insert(row)
+			.select(CHAT_MESSAGE_SELECT_BASE)
+			.single()
+		return {
+			data: (fallback.data ?? null) as ChatMessageWithReceipts | null,
+			error: fallback.error,
+		}
+	}
+
+	return {
+		data: (first.data ?? null) as ChatMessageWithReceipts | null,
+		error: first.error,
 	}
 }
 

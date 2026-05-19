@@ -41,7 +41,7 @@ import {
 } from '@/lib/chat-inbox-previews'
 import { CST } from '@/lib/cst-theme'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
-import { chatMessageSelect, fetchChatMessagesBetween, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
+import { fetchChatMessagesBetween, insertChatMessage, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
 import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
 
 const DESKTOP_MQ = '(min-width: 1024px)'
@@ -355,11 +355,11 @@ export function FloatingChatHub() {
 		const t = draft.trim()
 		if (!t || !myId || !peerId) return
 		setSending(true)
-		const { data: newMsg, error } = await supabase
-			.from('chat_messages')
-			.insert({ sender_id: myId, receiver_id: peerId, content: t })
-			.select(chatMessageSelect())
-			.single()
+		const { data: newMsg, error } = await insertChatMessage(supabase, {
+			sender_id: myId,
+			receiver_id: peerId,
+			content: t,
+		})
 		setSending(false)
 		if (error) {
 			toast.error(error.message ?? 'Error al enviar')
@@ -367,7 +367,7 @@ export function FloatingChatHub() {
 		}
 		if (newMsg) {
 			stickToBottomRef.current = true
-			setMessages((prev) => [...prev, newMsg as ChatMsg])
+			setMessages((prev) => [...prev, newMsg])
 			void notifyReceiverPushAfterSend(supabase, peerId, newMsg.id)
 		}
 		setDraft('')

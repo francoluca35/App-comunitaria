@@ -3,11 +3,7 @@ import imageCompression from 'browser-image-compression'
 import { encodeChatImageMessage } from '@/lib/chat-message-payload'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatImage } from '@/lib/upload-chat-image'
-import {
-	chatMessageSelect,
-	resolveChatReceiptsSupport,
-	type ChatMessageWithReceipts,
-} from '@/lib/chat-read-receipts'
+import { insertChatMessage, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
 
 type ChatMessageRow = ChatMessageWithReceipts
 
@@ -39,18 +35,17 @@ export async function sendChatImageMessage(
 
 	const content = encodeChatImageMessage({ u: up.publicUrl })
 
-	await resolveChatReceiptsSupport(supabase)
-	const { data: newMsg, error } = await supabase
-		.from('chat_messages')
-		.insert({ sender_id: myId, receiver_id: otherId, content })
-		.select(chatMessageSelect())
-		.single()
+	const { data: newMsg, error } = await insertChatMessage(supabase, {
+		sender_id: myId,
+		receiver_id: otherId,
+		content,
+	})
 
-	if (error) {
-		return { error: error.message ?? 'Error al enviar la foto' }
+	if (error || !newMsg) {
+		return { error: error?.message ?? 'Error al enviar la foto' }
 	}
 
-	void notifyReceiverPushAfterSend(supabase, otherId, (newMsg as ChatMessageRow).id)
+	void notifyReceiverPushAfterSend(supabase, otherId, newMsg.id)
 
-	return { message: newMsg as ChatMessageRow }
+	return { message: newMsg }
 }

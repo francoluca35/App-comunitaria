@@ -35,7 +35,7 @@ import { sendChatVoiceMessage } from '@/lib/send-chat-voice-message'
 import { sendChatImageMessage } from '@/lib/send-chat-image-message'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
-import { chatMessageSelect, fetchChatMessagesBetween, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
+import { fetchChatMessagesBetween, insertChatMessage, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
 import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
 
 export type ChatMessage = ChatMessageWithReceipts
@@ -201,11 +201,11 @@ export default function AdminChatPage() {
 		const text = message.trim()
 		if (!text || !myId || !otherId) return
 		setSending(true)
-		const { data: newMsg, error } = await supabase
-			.from('chat_messages')
-			.insert({ sender_id: myId, receiver_id: otherId, content: text })
-			.select(chatMessageSelect())
-			.single()
+		const { data: newMsg, error } = await insertChatMessage(supabase, {
+			sender_id: myId,
+			receiver_id: otherId,
+			content: text,
+		})
 		setSending(false)
 		if (error) {
 			toast.error(error.message ?? 'Error al enviar')
@@ -213,7 +213,7 @@ export default function AdminChatPage() {
 		}
 		if (newMsg) {
 			stickToBottomRef.current = true
-			setMessages((prev) => [...prev, newMsg as ChatMessage])
+			setMessages((prev) => [...prev, newMsg])
 			void notifyReceiverPushAfterSend(supabase, otherId, newMsg.id)
 		}
 		setMessage('')
