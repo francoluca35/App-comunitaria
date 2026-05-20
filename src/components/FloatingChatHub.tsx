@@ -96,12 +96,8 @@ export function FloatingChatHub() {
 	const BOTTOM_SCROLL_THRESHOLD_PX = 80
 
 	const myId = currentUser?.id ?? ''
-	const { onConversationOpen, onIncomingMessage, onMessageUpdated } = useChatReceiptEffects(
-		supabase,
-		myId,
-		peerId ?? '',
-		setMessages
-	)
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+		useChatReceiptEffects(supabase, myId, peerId ?? '', setMessages)
 
 	const {
 		threads,
@@ -220,7 +216,7 @@ export function FloatingChatHub() {
 				return
 			}
 			setMessages((data as ChatMsg[]) ?? [])
-			void onConversationOpen()
+			await onConversationOpen()
 		},
 		[myId, supabase, onConversationOpen]
 	)
@@ -257,7 +253,7 @@ export function FloatingChatHub() {
 						(row.sender_id === peerId && row.receiver_id === myId)
 					if (!ok) return
 					setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
-					if (row.receiver_id === myId) void onIncomingMessage(row)
+					if (row.receiver_id === myId) void onIncomingMessageWhileChatOpen(row)
 				}
 			)
 			.on(
@@ -276,7 +272,17 @@ export function FloatingChatHub() {
 		return () => {
 			supabase.removeChannel(ch)
 		}
-	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessage, onMessageUpdated])
+	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
+
+	useEffect(() => {
+		if (!dockOpen || !isDesktop || !peerId || !myId) return
+		const tick = () => {
+			void pollReceipts()
+		}
+		tick()
+		const id = setInterval(tick, 1500)
+		return () => clearInterval(id)
+	}, [dockOpen, isDesktop, peerId, myId, pollReceipts])
 
 	const closeDock = () => {
 		setDockOpen(false)

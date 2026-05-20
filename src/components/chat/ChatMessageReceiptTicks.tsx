@@ -9,12 +9,13 @@ type Props = {
 	className?: string
 }
 
-/** Una tilde = enviado; dos grises = recibido; dos violetas = leído. */
+/** Una tilde = enviado; dos grises = entregado; dos violetas = leído. */
 export function ChatMessageReceiptTicks({ status, className }: Props) {
 	if (status === 'sent') {
 		return (
 			<Check
-				className={cn('h-3.5 w-3.5 shrink-0 text-slate-500 dark:text-[#8696A0]', className)}
+				strokeWidth={2.5}
+				className={cn('h-[13px] w-[13px] shrink-0 text-[#8696A0]', className)}
 				aria-label="Enviado"
 			/>
 		)
@@ -23,12 +24,13 @@ export function ChatMessageReceiptTicks({ status, className }: Props) {
 	const isRead = status === 'read'
 	return (
 		<CheckCheck
+			strokeWidth={2.5}
 			className={cn(
-				'h-3.5 w-3.5 shrink-0',
-				isRead ? 'text-violet-600 dark:text-violet-400' : 'text-slate-500 dark:text-[#8696A0]',
+				'h-[13px] w-[13px] shrink-0',
+				isRead ? 'text-violet-600 dark:text-violet-400' : 'text-[#8696A0]',
 				className
 			)}
-			aria-label={isRead ? 'Leído' : 'Recibido'}
+			aria-label={isRead ? 'Leído' : 'Entregado'}
 		/>
 	)
 }

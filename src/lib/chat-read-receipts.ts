@@ -6,7 +6,7 @@ export const CHAT_MESSAGE_SELECT_BASE =
 export const CHAT_MESSAGE_SELECT_WITH_RECEIPTS =
 	`${CHAT_MESSAGE_SELECT_BASE}, delivered_at, read_at`
 
-/** Preferir `chatMessageSelect()` o `fetchChatMessagesBetween`. */
+/** Preferir `fetchChatMessagesBetween` o `insertChatMessage`. */
 export const CHAT_MESSAGE_SELECT = CHAT_MESSAGE_SELECT_WITH_RECEIPTS
 
 export type ChatMessageWithReceipts = {
@@ -23,17 +23,13 @@ export type ChatReceiptStatus = 'sent' | 'delivered' | 'read'
 
 let receiptsSupported: boolean | null = null
 
-function isMissingReceiptColumnError(error: PostgrestError | null): boolean {
+function isMissingReceiptSchemaError(error: PostgrestError | null): boolean {
 	if (!error) return false
 	const msg = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase()
 	return (
 		error.code === '42703' ||
 		error.code === 'PGRST204' ||
 		error.code === '42883' ||
-		msg.includes('delivered_at') ||
-		msg.includes('read_at') ||
-		msg.includes('mark_chat_message_delivered') ||
-		msg.includes('mark_chat_conversation_read') ||
 		(msg.includes('column') && msg.includes('does not exist')) ||
 		(msg.includes('function') && msg.includes('does not exist'))
 	)
@@ -47,7 +43,7 @@ export function resetChatReceiptsSupportCache(): void {
 	receiptsSupported = null
 }
 
-/** Detecta si la migración de acuses de lectura está aplicada en Supabase. */
+/** Detecta si existen las columnas de acuse de lectura. */
 export async function resolveChatReceiptsSupport(supabase: SupabaseClient): Promise<boolean> {
 	if (receiptsSupported === true) return true
 	const { error } = await supabase
@@ -58,11 +54,11 @@ export async function resolveChatReceiptsSupport(supabase: SupabaseClient): Prom
 		receiptsSupported = true
 		return true
 	}
-	if (isMissingReceiptColumnError(error)) {
+	if (isMissingReceiptSchemaError(error)) {
 		receiptsSupported = false
 		return false
 	}
-	return receiptsSupported ?? false
+	return receiptsSupported ?? true
 }
 
 export function chatMessageSelect(): string {
@@ -85,7 +81,7 @@ export async function fetchChatMessagesBetween(
 		.or(conversationOrFilter(myId, otherId))
 		.order('created_at', { ascending: true })
 
-	if (first.error && isMissingReceiptColumnError(first.error)) {
+	if (first.error && isMissingReceiptSchemaError(first.error)) {
 		receiptsSupported = false
 		const fallback = await supabase
 			.from('chat_messages')
@@ -115,7 +111,7 @@ export async function insertChatMessage(
 	await resolveChatReceiptsSupport(supabase)
 	const first = await supabase.from('chat_messages').insert(row).select(chatMessageSelect()).single()
 
-	if (first.error && isMissingReceiptColumnError(first.error)) {
+	if (first.error && isMissingReceiptSchemaError(first.error)) {
 		receiptsSupported = false
 		const fallback = await supabase
 			.from('chat_messages')
@@ -147,24 +143,58 @@ export function getChatReceiptStatus(msg: {
 	return 'sent'
 }
 
-async function markDeliveredViaRpc(
+/** Une mensajes locales con datos frescos (prioriza acuses de lectura del servidor). */
+export function syncMessagesWithServerReceipts(
+	prev: ChatMessageWithReceipts[],
+	fetched: ChatMessageWithReceipts[]
+): ChatMessageWithReceipts[] {
+	if (fetched.length === 0) return prev
+	const byId = new Map(fetched.map((m) => [m.id, m]))
+	if (prev.length === 0) return fetched
+	return prev.map((m) => {
+		const fresh = byId.get(m.id)
+		if (!fresh) return m
+		return {
+			...m,
+			delivered_at: fresh.delivered_at ?? m.delivered_at ?? null,
+			read_at: fresh.read_at ?? m.read_at ?? null,
+		}
+	}).concat(fetched.filter((f) => !prev.some((p) => p.id === f.id)))
+}
+
+async function rpcMarkDelivered(
 	supabase: SupabaseClient,
 	messageId: string
 ): Promise<PostgrestError | null> {
-	const { error } = await supabase.rpc('mark_chat_message_delivered', {
-		p_message_id: messageId,
-	})
-	return error
+	const attempts = [{ p_message_id: messageId }, { message_id: messageId }]
+	let lastError: PostgrestError | null = null
+	for (const args of attempts) {
+		const { error } = await supabase.rpc('mark_chat_message_delivered', args)
+		if (!error) return null
+		lastError = error
+		if (isMissingReceiptSchemaError(error)) return error
+	}
+	return lastError
 }
 
-async function markReadViaRpc(
+async function rpcMarkConversationRead(
 	supabase: SupabaseClient,
 	peerId: string
 ): Promise<PostgrestError | null> {
-	const { error } = await supabase.rpc('mark_chat_conversation_read', {
-		p_peer_id: peerId,
-	})
-	return error
+	const attempts = [
+		{ p_other_user_id: peerId },
+		{ p_peer_id: peerId },
+		{ other_user_id: peerId },
+		{ peer_id: peerId },
+	]
+	let lastError: PostgrestError | null = null
+	for (const args of attempts) {
+		const { error } = await supabase.rpc('mark_chat_conversation_read', args)
+		if (!error) return null
+		lastError = error
+		if (isMissingReceiptSchemaError(error)) return error
+	}
+	return lastError
 }
 
 /** Marca un mensaje como recibido en el dispositivo del receptor. */
@@ -176,21 +206,23 @@ export async function markChatMessageDelivered(
 	await resolveChatReceiptsSupport(supabase)
 	if (!areChatReceiptsEnabled()) return
 
-	const rpcError = await markDeliveredViaRpc(supabase, messageId)
-	if (!rpcError) return
-	if (isMissingReceiptColumnError(rpcError)) {
+	const rpcError = await rpcMarkDelivered(supabase, messageId)
+	if (!rpcError) {
+		receiptsSupported = true
+		return
+	}
+	if (isMissingReceiptSchemaError(rpcError)) {
 		receiptsSupported = false
 		return
 	}
 
 	const now = new Date().toISOString()
-	const { error } = await supabase
+	await supabase
 		.from('chat_messages')
 		.update({ delivered_at: now })
 		.eq('id', messageId)
 		.eq('receiver_id', receiverId)
 		.is('delivered_at', null)
-	if (isMissingReceiptColumnError(error)) receiptsSupported = false
 }
 
 /** Marca como leídos los mensajes entrantes de una conversación abierta. */
@@ -202,31 +234,30 @@ export async function markChatConversationRead(
 	await resolveChatReceiptsSupport(supabase)
 	if (!areChatReceiptsEnabled()) return
 
-	const rpcError = await markReadViaRpc(supabase, otherId)
-	if (!rpcError) return
-	if (isMissingReceiptColumnError(rpcError)) {
+	const rpcError = await rpcMarkConversationRead(supabase, otherId)
+	if (!rpcError) {
+		receiptsSupported = true
+		return
+	}
+	if (isMissingReceiptSchemaError(rpcError)) {
 		receiptsSupported = false
 		return
 	}
 
 	const now = new Date().toISOString()
-	const { error: readError } = await supabase
+	await supabase
 		.from('chat_messages')
 		.update({ read_at: now, delivered_at: now })
 		.eq('receiver_id', myId)
 		.eq('sender_id', otherId)
 		.is('read_at', null)
 
-	const { error: deliveredError } = await supabase
+	await supabase
 		.from('chat_messages')
 		.update({ delivered_at: now })
 		.eq('receiver_id', myId)
 		.eq('sender_id', otherId)
 		.is('delivered_at', null)
-
-	if (isMissingReceiptColumnError(readError) || isMissingReceiptColumnError(deliveredError)) {
-		receiptsSupported = false
-	}
 }
 
 export function mergeChatMessageUpdate<T extends { id: string }>(
@@ -234,4 +265,22 @@ export function mergeChatMessageUpdate<T extends { id: string }>(
 	updated: T & Partial<ChatMessageWithReceipts>
 ): T[] {
 	return prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+}
+
+/** Actualiza en el remitente las tildes de sus mensajes salientes. */
+export function applyOutgoingReceiptUpdates(
+	prev: ChatMessageWithReceipts[],
+	updated: ChatMessageWithReceipts,
+	myId: string
+): ChatMessageWithReceipts[] {
+	if (updated.sender_id !== myId) return prev
+	return prev.map((m) =>
+		m.id === updated.id
+			? {
+					...m,
+					delivered_at: updated.delivered_at ?? m.delivered_at ?? null,
+					read_at: updated.read_at ?? m.read_at ?? null,
+				}
+			: m
+	)
 }

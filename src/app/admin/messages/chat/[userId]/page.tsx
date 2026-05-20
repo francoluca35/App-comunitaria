@@ -72,12 +72,8 @@ export default function AdminChatPage() {
 	const profile = userId ? adminProfiles.find((p) => p.id === userId) : null
 	const myId = currentUser?.id ?? ''
 	const otherId = userId ?? ''
-	const { onConversationOpen, onIncomingMessage, onMessageUpdated } = useChatReceiptEffects(
-		supabase,
-		myId,
-		otherId,
-		setMessages
-	)
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	const loadMessages = async () => {
 		if (!myId || !otherId) return
@@ -89,7 +85,7 @@ export default function AdminChatPage() {
 			return
 		}
 		setMessages((data as ChatMessage[]) ?? [])
-		void onConversationOpen()
+		await onConversationOpen()
 	}
 
 	useEffect(() => {
@@ -118,7 +114,7 @@ export default function AdminChatPage() {
 						(row.sender_id === otherId && row.receiver_id === myId)
 					if (isThisConversation) {
 						setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
-						if (row.receiver_id === myId) void onIncomingMessage(row)
+						if (row.receiver_id === myId) void onIncomingMessageWhileChatOpen(row)
 						const isIncoming = row.receiver_id === myId && row.sender_id === otherId
 						if (isIncoming && profile?.name) {
 							showSystemNotification({
@@ -148,20 +144,18 @@ export default function AdminChatPage() {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, profile?.name, onIncomingMessage, onMessageUpdated])
+	}, [myId, otherId, profile?.name, onIncomingMessageWhileChatOpen, onMessageUpdated])
 
-	const pollInterval = 2000
+	const pollInterval = 1500
 	useEffect(() => {
 		if (!myId || !otherId) return
 		const tick = () => {
-			void fetchChatMessagesBetween(supabase, myId, otherId).then(({ data }) => {
-				if (data) setMessages(data as ChatMessage[])
-			})
+			void pollReceipts()
 		}
+		tick()
 		const id = setInterval(tick, pollInterval)
 		return () => clearInterval(id)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId])
+	}, [myId, otherId, pollReceipts])
 
 	if (!currentUser?.isAdmin) {
 		return (

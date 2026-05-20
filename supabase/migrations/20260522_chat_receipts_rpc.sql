@@ -36,7 +36,7 @@ begin
 end;
 $$;
 
-create or replace function public.mark_chat_conversation_read(p_peer_id uuid)
+create or replace function public.mark_chat_conversation_read(p_other_user_id uuid)
 returns void
 language plpgsql
 security definer
@@ -51,13 +51,13 @@ begin
 	set read_at = now(),
 		delivered_at = coalesce(delivered_at, now())
 	where receiver_id = auth.uid()
-		and sender_id = p_peer_id
+		and sender_id = p_other_user_id
 		and read_at is null;
 
 	update public.chat_messages
 	set delivered_at = now()
 	where receiver_id = auth.uid()
-		and sender_id = p_peer_id
+		and sender_id = p_other_user_id
 		and delivered_at is null;
 end;
 $$;

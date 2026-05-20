@@ -60,12 +60,8 @@ export default function MarioMessagePage() {
 
 	const myId = currentUser?.id ?? ''
 	const otherId = mario?.id ?? ''
-	const { onConversationOpen, onIncomingMessage, onMessageUpdated } = useChatReceiptEffects(
-		supabase,
-		myId,
-		otherId,
-		setMessages
-	)
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	useEffect(() => {
 		if (!currentUser) return
@@ -106,7 +102,7 @@ export default function MarioMessagePage() {
 			return
 		}
 		setMessages((data as ChatMessage[]) ?? [])
-		void onConversationOpen()
+		await onConversationOpen()
 	}
 
 	useEffect(() => {
@@ -135,7 +131,7 @@ export default function MarioMessagePage() {
 						(row.sender_id === otherId && row.receiver_id === myId)
 					if (!isThisConversation) return
 					setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]))
-					if (row.receiver_id === myId) void onIncomingMessage(row)
+					if (row.receiver_id === myId) void onIncomingMessageWhileChatOpen(row)
 
 					const isIncoming = row.receiver_id === myId && row.sender_id !== myId
 					const wantMessages =
@@ -169,20 +165,18 @@ export default function MarioMessagePage() {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, supabase, onIncomingMessage, onMessageUpdated])
+	}, [myId, otherId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
 
-	const pollInterval = 2000
+	const pollInterval = 1500
 	useEffect(() => {
 		if (!myId || !otherId) return
 		const tick = () => {
-			void fetchChatMessagesBetween(supabase, myId, otherId).then(({ data }) => {
-				if (data) setMessages(data as ChatMessage[])
-			})
+			void pollReceipts()
 		}
+		tick()
 		const id = setInterval(tick, pollInterval)
 		return () => clearInterval(id)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId])
+	}, [myId, otherId, pollReceipts])
 
 	if (!currentUser) {
 		return (
