@@ -176,7 +176,7 @@ export default function MarioMessagePage() {
 		if (!myId || !otherId) return
 		const tick = () => {
 			void fetchChatMessagesBetween(supabase, myId, otherId).then(({ data }) => {
-				if (data?.length) setMessages(data as ChatMessage[])
+				if (data) setMessages(data as ChatMessage[])
 			})
 		}
 		const id = setInterval(tick, pollInterval)

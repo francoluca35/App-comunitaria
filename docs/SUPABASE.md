@@ -34,7 +34,11 @@ Ejecutá **una sola vez**, en este orden:
 
 2. Si solo faltaba borrar posts de admin_master y ya corriste el paso 1, no hace falta `20260519_admin_master_posts_rls.sql` (el paso 1 lo reemplaza).
 
-3. `supabase/migrations/20260521_chat_message_receipts.sql` — tildes de lectura en el chat.
+3. `supabase/migrations/20260521_chat_message_receipts.sql` — columnas `delivered_at` / `read_at`.
+
+4. `supabase/migrations/20260522_chat_receipts_rpc.sql` — funciones RPC para marcar entregado/leído (necesario para que las tildes funcionen con RLS).
+
+**Realtime:** en el dashboard de Supabase, activá Realtime para la tabla `chat_messages` (INSERT y UPDATE) para que el remitente vea las tildes al instante.
 
 Tablas principales:
 

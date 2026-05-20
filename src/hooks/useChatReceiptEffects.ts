@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
 	areChatReceiptsEnabled,
@@ -8,6 +8,7 @@ import {
 	markChatConversationRead,
 	markChatMessageDelivered,
 	mergeChatMessageUpdate,
+	resolveChatReceiptsSupport,
 	type ChatMessageWithReceipts,
 } from '@/lib/chat-read-receipts'
 
@@ -17,6 +18,10 @@ export function useChatReceiptEffects(
 	otherId: string,
 	setMessages: React.Dispatch<React.SetStateAction<ChatMessageWithReceipts[]>>
 ) {
+	useEffect(() => {
+		void resolveChatReceiptsSupport(supabase)
+	}, [supabase])
+
 	const applyReadLocally = useCallback(() => {
 		if (!areChatReceiptsEnabled()) return
 		const now = new Date().toISOString()

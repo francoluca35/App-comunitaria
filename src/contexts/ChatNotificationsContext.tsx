@@ -13,6 +13,7 @@ import { useApp } from '@/app/providers'
 import { getSessionSafe } from '@/lib/auth-api'
 import { createClient } from '@/lib/supabase/client'
 import { chatNotificationBody } from '@/lib/chat-message-payload'
+import { markChatMessageDelivered } from '@/lib/chat-read-receipts'
 import { showSystemNotification } from '@/lib/notifications'
 import {
 	groupMessageThreads,
@@ -173,6 +174,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 						system_generated?: boolean | null
 					}
 					if (row.system_generated) return
+					void markChatMessageDelivered(supabase, row.id, currentUser.id)
 					const previewBody = chatNotificationBody(row.content ?? '')
 					const optimistic: ChatNotificationRow = {
 						id: `opt-${row.id}`,
