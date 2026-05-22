@@ -17,6 +17,7 @@ import {
 	formatChatListTime,
 	type PeerPreview,
 } from '@/lib/chat-inbox-previews'
+import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 
 function normalize(s: string): string {
 	return s
@@ -48,16 +49,17 @@ export default function AdminMessagesPage() {
 	const [search, setSearch] = useState('')
 	const [lastByPeer, setLastByPeer] = useState<Record<string, PeerPreview>>({})
 	const hasRequestedLoad = useRef(false)
+	const isStaffAdmin = canUseAdminContactSearch(currentUser)
 
 	useEffect(() => {
-		if (!currentUser?.isAdmin || hasRequestedLoad.current) return
+		if (!isStaffAdmin || hasRequestedLoad.current) return
 		hasRequestedLoad.current = true
 		loadAdminProfiles()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [currentUser?.isAdmin])
+	}, [isStaffAdmin])
 
 	useEffect(() => {
-		if (!currentUser?.isAdmin || !currentUser.id) return
+		if (!isStaffAdmin || !currentUser?.id) return
 		let cancelled = false
 		void (async () => {
 			const map = await loadChatInboxPreviews(supabase, currentUser.id)
@@ -66,7 +68,7 @@ export default function AdminMessagesPage() {
 		return () => {
 			cancelled = true
 		}
-	}, [currentUser?.id, currentUser?.isAdmin, supabase])
+	}, [currentUser?.id, isStaffAdmin, supabase])
 
 	const filtered = useMemo(() => {
 		return adminProfiles.filter((p) => matchProfile(p, search))
@@ -77,7 +79,7 @@ export default function AdminMessagesPage() {
 		[filtered, lastByPeer]
 	)
 
-	if (!currentUser?.isAdmin) {
+	if (!isStaffAdmin) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
 				<Card className="w-full max-w-md">

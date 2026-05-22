@@ -33,6 +33,7 @@ import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import type { ChatNotificationRow } from '@/lib/chat-notification-ui'
 import { resolveMessageLink } from '@/lib/chat-notification-ui'
+import { shouldShowNotificationInBell } from '@/lib/notification-display'
 import { useChatNotifications } from '@/contexts/ChatNotificationsContext'
 
 const defaultTriggerClass =
@@ -86,8 +87,10 @@ export function NotificationBell({
   const [loading, setLoading] = useState(false)
   const [sendingWelcomeId, setSendingWelcomeId] = useState<string | null>(null)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
-  const { threads, unreadMessageCount, markNotificationIdsRead, fetchMessageRows } = useChatNotifications()
+  const { threads, unreadMessageCount, markNotificationIdsRead, removeMessageNotificationIds, fetchMessageRows } =
+    useChatNotifications()
 
   const messageThreadsUnread = useMemo(
     () => threads.filter((t) => t.items.some((x) => !x.read_at)),
@@ -159,7 +162,9 @@ export function NotificationBell({
           }
           return
         }
-        const rows = (data as AppNotification[]).filter((r) => r.type !== 'message')
+        const rows = (data as AppNotification[]).filter(
+          (r) => r.type !== 'message' && shouldShowNotificationInBell(r.type)
+        )
         rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         setNotifications(rows)
       } finally {
@@ -222,6 +227,7 @@ export function NotificationBell({
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${currentUser.id}` },
         (payload) => {
           const row = payload.new as AppNotification
+          if (!shouldShowNotificationInBell(row.type)) return
           if (row.type === 'community_alert' || row.type === 'community_alert_critical') {
             void showSystemNotification({
               title: row.title,
@@ -298,6 +304,55 @@ export function NotificationBell({
     }
   }
 
+  const deleteNotificationsOnServer = async (ids?: string[]) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return false
+    const realIds = ids?.filter((id) => !id.startsWith('opt-'))
+    const res = await fetch('/api/notifications', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(realIds?.length ? { ids: realIds } : {}),
+    })
+    return res.ok
+  }
+
+  const deleteNotifications = async (ids: string[]) => {
+    if (!ids.length) return
+    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)))
+    removeMessageNotificationIds(ids)
+    const ok = await deleteNotificationsOnServer(ids)
+    if (!ok) {
+      toast.error('No se pudo eliminar la notificación')
+      void fetchNotifications()
+      void fetchMessageRows()
+      return
+    }
+    void fetchMessageRows()
+  }
+
+  const clearAllNotifications = async () => {
+    if (notifications.length === 0 && messageThreadsUnread.length === 0) return
+    setDeleting(true)
+    const messageIds = threads.flatMap((t) => t.items.map((x) => x.id))
+    setNotifications([])
+    removeMessageNotificationIds(messageIds)
+    const ok = await deleteNotificationsOnServer()
+    setDeleting(false)
+    if (!ok) {
+      toast.error('No se pudo vaciar la bandeja')
+      void fetchNotifications()
+      void fetchMessageRows()
+      return
+    }
+    toast.success('Bandeja vaciada')
+    void fetchMessageRows()
+  }
+
+  const hasDeletableItems = notifications.length > 0 || messageThreadsUnread.length > 0
+
   const handleNotificationClick = (n: AppNotification) => {
     if (n.type === 'new_profile') return
     if (!n.read_at) void markAsRead([n.id])
@@ -371,18 +426,26 @@ export function NotificationBell({
         align="end"
         sideOffset={8}
       >
-        <div className="border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 dark:text-white">Notificaciones</h3>
-          {totalUnreadBadge > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-              onClick={markAllAsRead}
-            >
-              Marcar todas leídas
-            </Button>
-          )}
+        <div className="border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-slate-900 dark:text-white shrink-0">Notificaciones</h3>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {totalUnreadBadge > 0 ? (
+              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => void markAllAsRead()}>
+                Marcar leídas
+              </Button>
+            ) : null}
+            {hasDeletableItems ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-slate-600 hover:text-red-700 dark:text-gray-400 dark:hover:text-red-400"
+                disabled={deleting}
+                onClick={() => void clearAllNotifications()}
+              >
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Vaciar'}
+              </Button>
+            ) : null}
+          </div>
         </div>
         <ScrollArea className="h-[320px] max-sm:h-[min(70dvh,34rem)]">
           {loading ? (
@@ -415,10 +478,11 @@ export function NotificationBell({
                       const sender = (latest.title ?? 'Chat').trim() || 'Chat'
                       return (
                         <li key={t.peerId}>
+                          <div className="flex w-full items-stretch">
                           <button
                             type="button"
                             onClick={() => onOpenMessageThread(t)}
-                            className="flex w-full gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-gray-800/80"
+                            className="flex min-w-0 flex-1 gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-gray-800/80"
                           >
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-gray-700 dark:text-gray-300">
                               <MessageCircle className="h-4 w-4" />
@@ -436,6 +500,15 @@ export function NotificationBell({
                               </p>
                             </div>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => void deleteNotifications(t.items.map((x) => x.id))}
+                            className="shrink-0 px-3 text-slate-400 transition-colors hover:bg-slate-100 hover:text-red-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                            aria-label="Eliminar mensajes de este chat"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          </div>
                         </li>
                       )
                     })}
@@ -450,7 +523,7 @@ export function NotificationBell({
                     {isNewProfile ? (
                       <div
                         className={cn(
-                          'w-full flex gap-3 px-4 py-3 text-left border-b border-slate-100 dark:border-gray-800/50 last:border-0',
+                          'relative w-full flex gap-3 px-4 py-3 pr-10 text-left border-b border-slate-100 dark:border-gray-800/50 last:border-0',
                           !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20'
                         )}
                       >
@@ -498,18 +571,29 @@ export function NotificationBell({
                             </Button>
                           </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => void deleteNotifications([n.id])}
+                          className="absolute right-2 top-2 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-red-600 dark:hover:bg-gray-700 dark:hover:text-red-400"
+                          aria-label="Eliminar notificación"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     ) : (
+                      <div
+                        className={cn(
+                          'relative flex w-full border-b border-slate-100 dark:border-gray-800/50 last:border-0',
+                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
+                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500',
+                          n.type === 'community_alert_critical' && !n.read_at && 'border-l-4 border-l-red-600'
+                        )}
+                      >
                       <button
                         type="button"
                         onClick={() => handleNotificationClick(n)}
                         className={cn(
-                          'w-full flex gap-3 px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
-                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 pl-3',
-                          n.type === 'community_alert_critical' &&
-                            !n.read_at &&
-                            'border-l-4 border-l-red-600 pl-3'
+                          'min-w-0 flex-1 flex gap-3 px-4 py-3 pr-10 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors',
                         )}
                       >
                         <span
@@ -534,6 +618,15 @@ export function NotificationBell({
                           </p>
                         </div>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteNotifications([n.id])}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-200/80 hover:text-red-600 dark:hover:bg-gray-700 dark:hover:text-red-400"
+                        aria-label="Eliminar notificación"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      </div>
                     )}
                   </li>
                 )

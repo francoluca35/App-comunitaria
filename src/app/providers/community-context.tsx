@@ -446,8 +446,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     await fetchPostsIntoState(false)
   }, [fetchPostsIntoState])
 
+  const canLoadAdminProfiles = currentUser?.isAdmin || currentUser?.isAdminMaster
+
   useEffect(() => {
-    if (!currentUser?.isAdmin) return
+    if (!canLoadAdminProfiles) return
     let cancelled = false
     const load = async () => {
       const {
@@ -470,10 +472,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [supabase, currentUser?.id, currentUser?.isAdmin])
+  }, [supabase, currentUser?.id, canLoadAdminProfiles])
 
   const loadAdminProfiles = useCallback(async () => {
-    if (!currentUser?.isAdmin) return
+    if (!canLoadAdminProfiles) return
     setAdminProfilesLoading(true)
     try {
       const {
@@ -488,7 +490,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     } finally {
       setAdminProfilesLoading(false)
     }
-  }, [supabase, currentUser?.isAdmin])
+  }, [supabase, canLoadAdminProfiles])
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const {

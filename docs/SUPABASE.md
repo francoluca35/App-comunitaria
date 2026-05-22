@@ -40,6 +40,8 @@ Ejecutá **una sola vez**, en este orden:
 
 **Realtime:** en el dashboard de Supabase, activá Realtime para la tabla `chat_messages` (INSERT y UPDATE) para que el remitente vea las tildes al instante.
 
+5. `supabase/migrations/20260523_notifications_delete.sql` — eliminar notificaciones de la bandeja (botón **Vaciar** en la campana).
+
 Tablas principales:
 
 - **profiles**: usuarios (`role`: viewer, moderator, admin, admin_master)

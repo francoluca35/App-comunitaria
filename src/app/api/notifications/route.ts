@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { NOTIFICATION_TYPES_HIDDEN_IN_BELL } from '@/lib/notification-display'
 import { resolveUserIdFromBearerToken } from '@/lib/supabase/server'
 
 export type NotificationType =
@@ -45,12 +46,16 @@ export async function GET(request: NextRequest) {
 
   const limit = Math.min(Number(request.nextUrl.searchParams.get('limit')) || 50, 100)
 
-  const { data, error } = await supabase
+  const hiddenTypes = [...NOTIFICATION_TYPES_HIDDEN_IN_BELL]
+  let query = supabase
     .from('notifications')
     .select('id, type, title, body, link_url, related_id, read_at, created_at')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  if (hiddenTypes.length) {
+    const inList = `(${hiddenTypes.map((t) => `"${t}"`).join(',')})`
+    query = query.not('type', 'in', inList)
+  }
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(limit)
 
   if (error) {
     console.error('GET notifications error:', error)
@@ -98,4 +103,44 @@ export async function PATCH(request: NextRequest) {
   }
 
   return NextResponse.json({ ok: true })
+}
+
+/** DELETE: eliminar notificaciones (body: { ids?: string[] } o vaciar todas del usuario) */
+export async function DELETE(request: NextRequest) {
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null
+  if (!token) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
+  const { userId, supabase } = await resolveUserIdFromBearerToken(token)
+  if (!userId) {
+    return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
+  }
+
+  let body: { ids?: string[] } = {}
+  try {
+    const raw = await request.text()
+    if (raw.trim()) {
+      body = JSON.parse(raw) as { ids?: string[] }
+    }
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
+  }
+
+  const ids = body.ids?.filter((id) => typeof id === 'string' && id.length > 0 && !id.startsWith('opt-'))
+
+  let query = supabase.from('notifications').delete({ count: 'exact' }).eq('user_id', userId)
+  if (ids?.length) {
+    query = query.in('id', ids)
+  }
+
+  const { error, count } = await query
+
+  if (error) {
+    console.error('DELETE notifications error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, deleted: count ?? 0 })
 }

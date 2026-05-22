@@ -51,48 +51,6 @@ export function RealtimeNotificationSubscriptions() {
             }
           }
         )
-        .on(
-          'postgres_changes',
-          { event: 'DELETE', schema: 'public', table: 'posts', filter: `author_id=eq.${myId}` },
-          (payload) => {
-            const old = payload.old as { id?: string; author_id?: string }
-            if (old?.author_id && old.author_id !== myId) return
-            showSystemNotification({
-              title: 'Publicación eliminada',
-              body: 'Tu publicación fue eliminada permanentemente.',
-              tag: `post-deleted-${old?.id ?? ''}`,
-              url: '/mis-publicaciones',
-            })
-          }
-        )
-        .subscribe()
-      channels.push(ch)
-    }
-
-    // ---------- ADMIN y MODERATOR: nueva publicación pendiente de moderar (siempre en tiempo real) ----------
-    if (isAdmin || isModerator) {
-      const ch = supabase
-        .channel(`notif-posts-pending-${myId}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'posts' },
-          async (payload) => {
-            const row = payload.new as { id: string; author_id: string; status: string }
-            if (row.status !== 'pending') return
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('name')
-              .eq('id', row.author_id)
-              .single()
-            const name = (profile?.name ?? 'Alguien').trim() || 'Alguien'
-            showSystemNotification({
-              title: 'Publicación para moderar',
-              body: `${name} hizo una publicación - moderar`,
-              tag: `post-pending-${row.id}`,
-              url: '/admin/moderation',
-            })
-          }
-        )
         .subscribe()
       channels.push(ch)
     }

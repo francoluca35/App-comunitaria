@@ -37,6 +37,7 @@ import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
 import { fetchChatMessagesBetween, insertChatMessage, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
 import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
+import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 
 export type ChatMessage = ChatMessageWithReceipts
 
@@ -157,7 +158,7 @@ export default function AdminChatPage() {
 		return () => clearInterval(id)
 	}, [myId, otherId, pollReceipts])
 
-	if (!currentUser?.isAdmin) {
+	if (!canUseAdminContactSearch(currentUser)) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
 				<Card className="w-full max-w-md">

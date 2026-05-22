@@ -28,6 +28,7 @@ type ChatNotificationsContextValue = {
 	unreadThreadCount: number
 	marioProfileId: string | null
 	markNotificationIdsRead: (ids: string[]) => Promise<void>
+	removeMessageNotificationIds: (ids: string[]) => void
 	fetchMessageRows: () => Promise<void>
 }
 
@@ -214,6 +215,10 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 		[threads]
 	)
 
+	const removeMessageNotificationIds = useCallback((ids: string[]) => {
+		setRows((prev) => prev.filter((n) => !ids.includes(n.id)))
+	}, [])
+
 	const markNotificationIdsRead = useCallback(async (ids: string[]) => {
 		const realIds = ids.filter((id) => !id.startsWith('opt-'))
 		setRows((prev) => prev.map((n) => (ids.includes(n.id) ? { ...n, read_at: new Date().toISOString() } : n)))
@@ -241,6 +246,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 				unreadThreadCount,
 				marioProfileId,
 				markNotificationIdsRead,
+				removeMessageNotificationIds,
 				fetchMessageRows,
 			}) satisfies ChatNotificationsContextValue,
 		[
@@ -249,6 +255,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 			unreadThreadCount,
 			marioProfileId,
 			markNotificationIdsRead,
+			removeMessageNotificationIds,
 			fetchMessageRows,
 		]
 	)

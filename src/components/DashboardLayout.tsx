@@ -27,6 +27,8 @@ import {
   isFullscreenMobileChatPath,
   isMobileImmersiveChatThreadPath,
 } from '@/lib/chat-route-utils'
+import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
+import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -56,7 +58,9 @@ function MobileChatInboxShortcut({ headerIconBtn }: { headerIconBtn: string }) {
   const { unreadMessageCount } = useChatNotifications()
   if (!currentUser || !isFullscreenMobileChatPath(pathname)) return null
   const inboxHref =
-    currentUser.isAdmin || currentUser.isModerator ? '/admin/messages' : '/message/contactos'
+    currentUser.isAdmin || currentUser.isAdminMaster || currentUser.isModerator
+      ? '/admin/messages'
+      : '/message/contactos'
   const label =
     unreadMessageCount > 0
       ? `Bandeja de mensajes (${unreadMessageCount} sin leer)`
@@ -103,6 +107,7 @@ export function DashboardLayout({
   const immersiveMobileChat = isMobileImmersiveChatThreadPath(pathname)
   const hidePublicationSearch = hidePublicationSearchPath(pathname)
   const { currentUser } = useApp()
+  const useContactSearch = canUseAdminContactSearch(currentUser)
 
   const [feedQuery, setFeedQuery] = useState('')
   const setQuery = useCallback((q: string) => setFeedQuery(q), [])
@@ -270,16 +275,20 @@ export function DashboardLayout({
 
               {!hidePublicationSearch ? (
                 <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex md:px-4">
-                  <label className="relative w-full max-w-xl">
-                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
-                    <input
-                      type="search"
-                      value={feedQuery}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Buscar en publicaciones…"
-                      className="w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-11 pr-4 text-sm text-[#2B2B2B] placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
-                    />
-                  </label>
+                  {useContactSearch ? (
+                    <AdminHeaderContactSearch variant="desktop" className="max-w-xl" />
+                  ) : (
+                    <label className="relative w-full max-w-xl">
+                      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
+                      <input
+                        type="search"
+                        value={feedQuery}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Buscar en publicaciones…"
+                        className="w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-11 pr-4 text-sm text-[#2B2B2B] placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
+                      />
+                    </label>
+                  )}
                 </div>
               ) : null}
 
@@ -322,16 +331,20 @@ export function DashboardLayout({
 
             {!hidePublicationSearch ? (
               <div className="md:hidden">
-                <label className="relative block w-full">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
-                  <input
-                    type="search"
-                    value={feedQuery}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar en publicaciones…"
-                    className="h-10 w-full rounded-xl border border-white/25 bg-white/95 py-0 pl-10 pr-3 text-sm text-[#2B2B2B] shadow-sm outline-none ring-1 ring-black/5 placeholder:text-[#7A5C52]/75 focus:border-white focus:ring-2 focus:ring-white/40 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:ring-0 dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
-                  />
-                </label>
+                {useContactSearch ? (
+                  <AdminHeaderContactSearch variant="mobile" />
+                ) : (
+                  <label className="relative block w-full">
+                    <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7A5C52] dark:text-[#b0b3b8]" />
+                    <input
+                      type="search"
+                      value={feedQuery}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Buscar en publicaciones…"
+                      className="h-10 w-full rounded-xl border border-white/25 bg-white/95 py-0 pl-10 pr-3 text-sm text-[#2B2B2B] shadow-sm outline-none ring-1 ring-black/5 placeholder:text-[#7A5C52]/75 focus:border-white focus:ring-2 focus:ring-white/40 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:ring-0 dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30"
+                    />
+                  </label>
+                )}
               </div>
             ) : null}
           </div>
