@@ -9,6 +9,8 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { ArrowLeft, LayoutGrid, PenLine } from 'lucide-react'
 import { CST } from '@/lib/cst-theme'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
+import { canCreateAlerts } from '@/lib/post-admin-permissions'
+import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
 
 type DrawFn = (ctx: CanvasRenderingContext2D, t: number) => void
 type PrimaryCard = {
@@ -580,6 +582,7 @@ export default function CreateHubPage() {
 
 	const hasExtravios = postCategories.some((c) => c.slug === 'extravios')
 	const hasAlertas = postCategories.some((c) => c.slug === 'alertas')
+	const userCanCreateAlerts = canCreateAlerts(currentUser)
 	const hasAvisos = postCategories.some((c) => c.slug === 'avisos')
 	const hasObjetos = postCategories.some((c) => c.slug === 'objetos')
 	const hasNoticias = postCategories.some((c) => c.slug === 'noticias')
@@ -603,18 +606,31 @@ export default function CreateHubPage() {
 			: []),
 		...(hasAlertas
 			? [
-					{
-						id: 'alert',
-						title: 'Alerta importante',
-						desc: `Título, descripción, hasta ${POST_MEDIA_LIMITS.maxImagesAlertas} fotos y hasta ${POST_MEDIA_LIMITS.maxVideosAlertas} videos.`,
-						badge: 'PRIORITARIO',
-						badgeBg: '#c04a00',
-						badgeColor: '#ffe8d0',
-						bg: 'linear-gradient(135deg,#9f1239 0%,#be123c 100%)',
-						draw: drawAlert,
-						size: 72,
-						targetHref: '/create/alerta',
-					},
+					userCanCreateAlerts
+						? {
+								id: 'alert',
+								title: 'Alerta importante',
+								desc: `Título, descripción, hasta ${POST_MEDIA_LIMITS.maxImagesAlertas} fotos y hasta ${POST_MEDIA_LIMITS.maxVideosAlertas} videos.`,
+								badge: 'PRIORITARIO',
+								badgeBg: '#c04a00',
+								badgeColor: '#ffe8d0',
+								bg: 'linear-gradient(135deg,#9f1239 0%,#be123c 100%)',
+								draw: drawAlert,
+								size: 72,
+								targetHref: '/create/alerta',
+							}
+						: {
+								id: 'alert-report',
+								title: 'Informar a admin de alerta',
+								desc: 'Escribile a Mario por chat o enviá fotos; él la sube como alerta oficial si corresponde.',
+								badge: 'VÍA CHAT',
+								badgeBg: '#1d4ed8',
+								badgeColor: '#dbeafe',
+								bg: 'linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%)',
+								draw: drawAlert,
+								size: 72,
+								targetHref: ALERT_REPORT_CHAT_PATH,
+							},
 				]
 			: []),
 		{

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, type PostMediaItem } from '@/app/providers'
 import {
@@ -22,6 +22,8 @@ import {
   ensureDefaultDescriptionPrefix,
   isDescriptionOnlyDefaultPrefix,
 } from '@/lib/default-description-prefix'
+import { canCreateAlerts } from '@/lib/post-admin-permissions'
+import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
 
 const ALERT_CATEGORY_SLUG = 'alertas'
 const alertRed = '#B91C1C'
@@ -38,6 +40,14 @@ export default function CreateAlertaPage() {
     () => postCategories.some((c) => c.slug === ALERT_CATEGORY_SLUG),
     [postCategories]
   )
+
+  const userCanCreateAlerts = canCreateAlerts(currentUser)
+
+  useEffect(() => {
+    if (!currentUser || userCanCreateAlerts) return
+    toast.info('Las alertas las publica un administrador. Podés informar a Mario por el chat.')
+    router.replace(ALERT_REPORT_CHAT_PATH)
+  }, [currentUser, userCanCreateAlerts, router])
 
   const maxImagesAlertas = POST_MEDIA_LIMITS.maxImagesAlertas
   const maxVideosAlertas = POST_MEDIA_LIMITS.maxVideosAlertas
@@ -104,6 +114,11 @@ export default function CreateAlertaPage() {
       router.push('/login')
       return
     }
+    if (!userCanCreateAlerts) {
+      toast.error('Solo administradores pueden publicar alertas. Informá a Mario por el chat.')
+      router.push(ALERT_REPORT_CHAT_PATH)
+      return
+    }
     if (!hasAlertCategory) {
       toast.error('La categoría de alertas no está disponible. Contactá a un administrador.')
       return
@@ -165,6 +180,14 @@ export default function CreateAlertaPage() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (!userCanCreateAlerts) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: CST.fondo }}>
+        <p className="text-sm text-[#7A5C52]">Redirigiendo al chat con Mario…</p>
       </div>
     )
   }

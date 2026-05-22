@@ -22,6 +22,8 @@ import {
 	ensureDefaultDescriptionPrefix,
 	isDescriptionOnlyDefaultPrefix,
 } from '@/lib/default-description-prefix'
+import { canCreateAlerts } from '@/lib/post-admin-permissions'
+import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
 
 const OBJETO_TIPOS = [
   { value: 'perdi', label: 'Perdí' },
@@ -189,6 +191,11 @@ function CreateOtroForm() {
 
     if (!category) {
       toast.error('Falta la categoría')
+      return
+    }
+    if (category === 'alertas' && !canCreateAlerts(currentUser)) {
+      toast.error('Solo administradores pueden publicar alertas. Informá a Mario por el chat.')
+      router.push(ALERT_REPORT_CHAT_PATH)
       return
     }
     if (category === 'propuesta') {

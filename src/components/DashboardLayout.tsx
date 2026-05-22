@@ -106,6 +106,8 @@ export function DashboardLayout({
   const pathname = usePathname()
   const immersiveMobileChat = isMobileImmersiveChatThreadPath(pathname)
   const hidePublicationSearch = hidePublicationSearchPath(pathname)
+  /** Bandeja de chats (no hilo): en PC el panel va centrado entre sidebars; móvil sin cambios. */
+  const centerChatInboxOnDesktop = hidePublicationSearch && !immersiveMobileChat
   const { currentUser } = useApp()
   const useContactSearch = canUseAdminContactSearch(currentUser)
 
@@ -249,7 +251,7 @@ export function DashboardLayout({
           )}
         >
           <div className="flex flex-col gap-2 px-2 py-2.5 sm:gap-2.5 sm:px-3 sm:py-3 lg:px-2 xl:px-2">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex w-full min-w-0 items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setSidebarOpen(true)}
@@ -292,7 +294,14 @@ export function DashboardLayout({
                 </div>
               ) : null}
 
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:w-[250px] md:justify-end lg:w-[280px]">
+              <div
+                className={cn(
+                  'flex shrink-0 items-center gap-1.5 sm:gap-2',
+                  hidePublicationSearch
+                    ? 'ml-auto'
+                    : 'md:w-[250px] md:justify-end lg:w-[280px]'
+                )}
+              >
                 {currentUser && (
                   <NotificationBell
                     triggerClassName="rounded-2xl border border-white/25 bg-white text-[#2B2B2B] shadow-sm hover:bg-white/95 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:hover:bg-[#4e4f50]"
@@ -381,6 +390,7 @@ export function DashboardLayout({
           <main
             className={cn(
               'flex justify-center lg:px-8',
+              centerChatInboxOnDesktop && 'lg:items-center',
               immersiveMobileChat
                 ? 'min-h-0 flex-1 flex flex-col overflow-hidden p-0 lg:px-3 lg:py-4'
                 : cn(
@@ -395,6 +405,8 @@ export function DashboardLayout({
               className={cn(
                 'w-full',
                 contentClassName ?? 'max-w-3xl',
+                centerChatInboxOnDesktop &&
+                  'lg:w-full lg:max-w-[720px] lg:flex-[0_1_42rem] lg:self-center',
                 fillViewport && 'flex min-h-0 flex-1 flex-col'
               )}
             >

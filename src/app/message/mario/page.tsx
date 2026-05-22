@@ -22,6 +22,7 @@ import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { cn } from '@/app/components/ui/utils'
 import { fetchChatMessagesBetween, insertChatMessage, type ChatMessageWithReceipts } from '@/lib/chat-read-receipts'
 import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
+import { ALERT_REPORT_CHAT_HINT } from '@/lib/alert-report-chat'
 
 type ChatMessage = ChatMessageWithReceipts
 
@@ -37,6 +38,7 @@ const MARIO_CHAT_URL = '/message/mario'
 export default function MarioMessagePage() {
 	const router = useRouter()
 	const { currentUser } = useApp()
+	const [reportingAlert, setReportingAlert] = useState(false)
 	const [mario, setMario] = useState<MarioProfile | null>(null)
 	const [marioLoading, setMarioLoading] = useState(true)
 	const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -62,6 +64,17 @@ export default function MarioMessagePage() {
 	const otherId = mario?.id ?? ''
 	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return
+		const p = new URLSearchParams(window.location.search)
+		setReportingAlert(p.get('sugerencia') === 'alerta')
+	}, [])
+
+	useEffect(() => {
+		if (!reportingAlert || !currentUser || isMarioAccountEmail(currentUser.email)) return
+		setMessage((prev) => (prev.trim() ? prev : 'Quiero informar una alerta: '))
+	}, [reportingAlert, currentUser])
 
 	useEffect(() => {
 		if (!currentUser) return
@@ -307,6 +320,12 @@ export default function MarioMessagePage() {
 					</div>
 					<ChatHomeButton onClick={() => router.push('/')} />
 				</div>
+
+				{reportingAlert && !isMarioUser ? (
+					<div className="shrink-0 border-b border-amber-200/80 bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+						{ALERT_REPORT_CHAT_HINT}
+					</div>
+				) : null}
 
 				<div
 					ref={messagesScrollRef}

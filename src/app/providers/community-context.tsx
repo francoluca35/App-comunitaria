@@ -600,6 +600,13 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: 'Tu cuenta está suspendida. No podés publicar hasta que se cumpla la fecha indicada.' }
       }
 
+      if (post.category === 'alertas' && !(u.isAdmin || u.isAdminMaster)) {
+        return {
+          ok: false,
+          error: 'Solo administradores pueden publicar alertas. Informá a Mario por el chat.',
+        }
+      }
+
       const isProposedCategory = post.category === 'propuesta' && Boolean(post.proposedCategoryLabel?.trim())
       const status: PostStatus = isProposedCategory ? 'pending' : u.isAdmin ? 'approved' : 'pending'
 
