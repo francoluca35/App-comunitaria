@@ -56,6 +56,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   new_profile: UserPlus,
   community_alert: AlertTriangle,
   community_alert_critical: BellRing,
+  community_notice: Megaphone,
   comment_report: Flag,
 }
 
@@ -228,14 +229,20 @@ export function NotificationBell({
         (payload) => {
           const row = payload.new as AppNotification
           if (!shouldShowNotificationInBell(row.type)) return
-          if (row.type === 'community_alert' || row.type === 'community_alert_critical') {
+          if (
+            row.type === 'community_alert' ||
+            row.type === 'community_alert_critical' ||
+            row.type === 'community_notice'
+          ) {
             void showSystemNotification({
               title: row.title,
               body: row.body ?? undefined,
               tag:
                 row.type === 'community_alert_critical'
                   ? `extravio-alert-${row.related_id ?? row.id}`
-                  : `community-alert-${row.related_id ?? row.id}`,
+                  : row.type === 'community_notice'
+                    ? `community-notice-${row.related_id ?? row.id}`
+                    : `community-alert-${row.related_id ?? row.id}`,
               url: row.link_url ?? '/',
               urgent: true,
             })
@@ -586,7 +593,8 @@ export function NotificationBell({
                           'relative flex w-full border-b border-slate-100 dark:border-gray-800/50 last:border-0',
                           !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
                           n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500',
-                          n.type === 'community_alert_critical' && !n.read_at && 'border-l-4 border-l-red-600'
+                          n.type === 'community_alert_critical' && !n.read_at && 'border-l-4 border-l-red-600',
+                          n.type === 'community_notice' && !n.read_at && 'border-l-4 border-l-sky-500'
                         )}
                       >
                       <button
@@ -603,7 +611,9 @@ export function NotificationBell({
                               ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
                               : n.type === 'community_alert'
                                 ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200'
-                                : 'bg-slate-200 dark:bg-gray-700'
+                                : n.type === 'community_notice'
+                                  ? 'bg-sky-100 dark:bg-sky-900/50 text-sky-900 dark:text-sky-100'
+                                  : 'bg-slate-200 dark:bg-gray-700'
                           )}
                         >
                           <Icon className="w-4 h-4" />

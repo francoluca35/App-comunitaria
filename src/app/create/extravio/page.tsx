@@ -19,9 +19,10 @@ import { ArrowLeft, Upload, UserSearch, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CST } from '@/lib/cst-theme'
 import {
-	ensureDefaultDescriptionPrefix,
-	isDescriptionOnlyDefaultPrefix,
+	buildPostDescription,
+	isDescriptionEmptyForSubmit,
 } from '@/lib/default-description-prefix'
+import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
 
 const EXTRAVIO_CATEGORY_SLUG = 'extravios'
 const criticalRed = '#991B1B'
@@ -64,6 +65,11 @@ export default function CreateExtravioPage() {
 	const [whatsappNumber, setWhatsappNumber] = useState('')
 	const [attachments, setAttachments] = useState<LocalAttachment[]>([])
 	const [sending, setSending] = useState(false)
+	const {
+		includeMarioPrefix,
+		setIncludeMarioPrefix,
+		canToggleMarioPrefix,
+	} = useMarioPrefixOption(currentUser)
 
 	const hasExtravioCategory = useMemo(
 		() => postCategories.some((c) => c.slug === EXTRAVIO_CATEGORY_SLUG),
@@ -139,7 +145,7 @@ export default function CreateExtravioPage() {
 			toast.error('Esta categoría no está disponible. Contactá a un administrador.')
 			return
 		}
-		if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
+		if (!title.trim() || isDescriptionEmptyForSubmit(descriptionRest, includeMarioPrefix)) {
 			toast.error('Completá título y descripción')
 			return
 		}
@@ -169,7 +175,9 @@ export default function CreateExtravioPage() {
 			}
 			const result = await addPost({
 				title: title.trim(),
-				description: ensureDefaultDescriptionPrefix(descriptionRest),
+				description: buildPostDescription(descriptionRest, {
+					includePrefix: includeMarioPrefix,
+				}),
 				category: EXTRAVIO_CATEGORY_SLUG,
 				media,
 				whatsappNumber: config.whatsappEnabled
@@ -292,6 +300,9 @@ export default function CreateExtravioPage() {
 						}
 						value={descriptionRest}
 						onChange={setDescriptionRest}
+						includePrefix={includeMarioPrefix}
+						allowPrefixToggle={canToggleMarioPrefix}
+						onIncludePrefixChange={setIncludeMarioPrefix}
 						placeholder="Datos para reconocer a la persona, última vez vista, teléfono de contacto, pedido de difusión."
 						maxTotalLength={2000}
 						rows={6}

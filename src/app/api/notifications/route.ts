@@ -12,6 +12,7 @@ export type NotificationType =
   | 'new_profile'
   | 'community_alert'
   | 'community_alert_critical'
+  | 'community_notice'
   | 'publicidad_pending'
   | 'publicidad_payment_link'
   | 'publicidad_rejected'

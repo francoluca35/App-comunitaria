@@ -19,11 +19,12 @@ import { ArrowLeft, AlertTriangle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { CST } from '@/lib/cst-theme'
 import {
-  ensureDefaultDescriptionPrefix,
-  isDescriptionOnlyDefaultPrefix,
+  buildPostDescription,
+  isDescriptionEmptyForSubmit,
 } from '@/lib/default-description-prefix'
 import { canCreateAlerts } from '@/lib/post-admin-permissions'
 import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
+import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
 
 const ALERT_CATEGORY_SLUG = 'alertas'
 const alertRed = '#B91C1C'
@@ -42,6 +43,11 @@ export default function CreateAlertaPage() {
   )
 
   const userCanCreateAlerts = canCreateAlerts(currentUser)
+  const {
+    includeMarioPrefix,
+    setIncludeMarioPrefix,
+    canToggleMarioPrefix,
+  } = useMarioPrefixOption(currentUser)
 
   useEffect(() => {
     if (!currentUser || userCanCreateAlerts) return
@@ -123,7 +129,7 @@ export default function CreateAlertaPage() {
       toast.error('La categoría de alertas no está disponible. Contactá a un administrador.')
       return
     }
-    if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
+    if (!title.trim() || isDescriptionEmptyForSubmit(descriptionRest, includeMarioPrefix)) {
       toast.error('Completá título y descripción')
       return
     }
@@ -144,7 +150,9 @@ export default function CreateAlertaPage() {
       }
       const result = await addPost({
         title: title.trim(),
-        description: ensureDefaultDescriptionPrefix(descriptionRest),
+        description: buildPostDescription(descriptionRest, {
+          includePrefix: includeMarioPrefix,
+        }),
         category: ALERT_CATEGORY_SLUG,
         media,
       })
@@ -267,6 +275,9 @@ export default function CreateAlertaPage() {
             }
             value={descriptionRest}
             onChange={setDescriptionRest}
+            includePrefix={includeMarioPrefix}
+            allowPrefixToggle={canToggleMarioPrefix}
+            onIncludePrefixChange={setIncludeMarioPrefix}
             placeholder="Qué pasó, dónde, cuándo y qué hacer o a quién avisar."
             maxTotalLength={2000}
             rows={5}

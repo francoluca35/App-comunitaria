@@ -12,7 +12,7 @@ import {
 /**
  * Database Webhook de Supabase → Web Push en segundo plano.
  *
- * Tipos soportados: `community_alert`, `community_alert_critical`, `message` (chat).
+ * Tipos soportados: `community_alert`, `community_alert_critical`, `community_notice` (avisos), `message` (chat).
  * Los mensajes también se envían vía POST /api/push/dispatch-message (más rápido); este webhook actúa de respaldo.
  *
  * Configuración: ver docs/PUSH_WEBHOOK_SETUP.md

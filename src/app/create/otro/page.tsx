@@ -19,9 +19,10 @@ import { PrefixedDescriptionField } from '@/components/PrefixedDescriptionField'
 import { ArrowLeft, AlertCircle, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-	ensureDefaultDescriptionPrefix,
-	isDescriptionOnlyDefaultPrefix,
+	buildPostDescription,
+	isDescriptionEmptyForSubmit,
 } from '@/lib/default-description-prefix'
+import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
 import { canCreateAlerts } from '@/lib/post-admin-permissions'
 import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
 
@@ -90,6 +91,11 @@ function CreateOtroForm() {
   const [whatsappNumber, setWhatsappNumber] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
+  const {
+    includeMarioPrefix,
+    setIncludeMarioPrefix,
+    canToggleMarioPrefix,
+  } = useMarioPrefixOption(currentUser)
 
   useEffect(() => {
     if (categoryLocked) {
@@ -123,8 +129,8 @@ function CreateOtroForm() {
     if (!objetoTextoGenerado) return null
     const extra = descriptionRest.trim()
     const combined = extra ? `${objetoTextoGenerado}\n\n${extra}` : objetoTextoGenerado
-    return ensureDefaultDescriptionPrefix(combined)
-  }, [objetoTextoGenerado, descriptionRest])
+    return buildPostDescription(combined, { includePrefix: includeMarioPrefix })
+  }, [objetoTextoGenerado, descriptionRest, includeMarioPrefix])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -228,15 +234,18 @@ function CreateOtroForm() {
         return
       }
     } else {
-      if (!title.trim() || isDescriptionOnlyDefaultPrefix(descriptionRest)) {
+      if (!title.trim() || isDescriptionEmptyForSubmit(descriptionRest, includeMarioPrefix)) {
         toast.error('Completa título y descripción')
         return
       }
     }
 
-    if (isAvisoONoticia && config.whatsappEnabled && !whatsappNumber.trim()) {
-      toast.error('Ingresá un número de WhatsApp')
-      return
+    if (config.whatsappEnabled && whatsappNumber.trim()) {
+      const waDigits = whatsappNumber.replace(/\D/g, '')
+      if (waDigits.length > 0 && waDigits.length < 6) {
+        toast.error('El número de WhatsApp es demasiado corto')
+        return
+      }
     }
 
     const tipoLabel =
@@ -248,14 +257,15 @@ function CreateOtroForm() {
         ? `${tipoLabel} — ${objetoCosa.trim()}`
         : title.trim()
 
-    const descriptionToSend = ensureDefaultDescriptionPrefix(
+    const descriptionToSend = buildPostDescription(
       category === 'objetos' && objetoTipo
         ? (() => {
             const base = buildObjetoTextoPublicacion(objetoTipo, objetoCosa, objetoLugar, objetoDia) ?? ''
             const extra = descriptionRest.trim()
             return extra ? `${base}\n\n${extra}` : base
           })()
-        : descriptionRest.trim()
+        : descriptionRest.trim(),
+      { includePrefix: includeMarioPrefix }
     )
 
     setSending(true)
@@ -283,10 +293,14 @@ function CreateOtroForm() {
         toast.error(result.error ?? 'Error al enviar')
         return
       }
+      const isStaffPublisher =
+        currentUser.isAdmin || currentUser.isAdminMaster
       toast.success(
         category === 'propuesta'
           ? 'Enviado. Si un moderador aprueba, se creará la categoría que pediste y tu publicación quedará ahí.'
-          : 'Publicación enviada. Será revisada por un administrador.'
+          : category === 'avisos' && isStaffPublisher
+            ? 'Aviso publicado. Toda la comunidad recibirá notificación y un mensaje de Mario con el enlace.'
+            : 'Publicación enviada. Será revisada por un administrador.'
       )
       router.push('/')
     } finally {
@@ -477,6 +491,9 @@ function CreateOtroForm() {
                 }
                 value={descriptionRest}
                 onChange={setDescriptionRest}
+                includePrefix={includeMarioPrefix}
+                allowPrefixToggle={canToggleMarioPrefix}
+                onIncludePrefixChange={setIncludeMarioPrefix}
                 placeholder="Si querés agregar un detalle extra, escribilo acá…"
                 maxTotalLength={1000}
                 rows={4}
@@ -514,6 +531,9 @@ function CreateOtroForm() {
                 }
                 value={descriptionRest}
                 onChange={setDescriptionRest}
+                includePrefix={includeMarioPrefix}
+                allowPrefixToggle={canToggleMarioPrefix}
+                onIncludePrefixChange={setIncludeMarioPrefix}
                 placeholder={
                   isAvisoONoticia
                     ? 'Contá los detalles que quieras compartir con el barrio…'
@@ -530,7 +550,7 @@ function CreateOtroForm() {
           {config.whatsappEnabled && (
             <div className="space-y-2">
               <Label htmlFor="whatsapp">
-                WhatsApp {isAvisoONoticia ? <span className="text-red-500">*</span> : '(opcional)'}
+                WhatsApp <span className="font-normal text-slate-500">(opcional)</span>
               </Label>
               <Input
                 id="whatsapp"
@@ -538,12 +558,9 @@ function CreateOtroForm() {
                 placeholder="+54 9 11 1234-5678"
                 value={whatsappNumber}
                 onChange={(e) => setWhatsappNumber(e.target.value)}
-                required={isAvisoONoticia}
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isAvisoONoticia
-                  ? 'Así pueden contactarte desde la publicación'
-                  : 'Si lo agregás, otros podrán contactarte por WhatsApp'}
+                Si lo agregás, otros podrán contactarte por WhatsApp desde la publicación
               </p>
             </div>
           )}

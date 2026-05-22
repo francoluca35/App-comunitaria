@@ -42,6 +42,8 @@ Ejecutá **una sola vez**, en este orden:
 
 5. `supabase/migrations/20260523_notifications_delete.sql` — eliminar notificaciones de la bandeja (botón **Vaciar** en la campana).
 
+6. `supabase/migrations/20260524_avisos_community_broadcast.sql` — al aprobar/publicar un **aviso**, notificación masiva (`community_notice`) y mensaje de Mario a cada usuario (mismo canal push que alertas).
+
 Tablas principales:
 
 - **profiles**: usuarios (`role`: viewer, moderator, admin, admin_master)

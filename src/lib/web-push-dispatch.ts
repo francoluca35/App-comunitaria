@@ -54,6 +54,18 @@ export function buildWebPushPayload(record: NotificationPushRecord): WebPushPayl
 			kind: 'community_alert',
 		}
 	}
+	if (record.type === 'community_notice') {
+		const tag = `community-notice-${record.related_id ?? 'unknown'}`
+		return {
+			title: record.title ?? 'Nuevo aviso',
+			body: record.body ?? '',
+			tag,
+			url: record.link_url ?? '/',
+			urgent: true,
+			critical: false,
+			kind: 'community_alert',
+		}
+	}
 	if (record.type === 'message') {
 		const peer =
 			record.related_id && isUuid(record.related_id) ? record.related_id : 'unknown'

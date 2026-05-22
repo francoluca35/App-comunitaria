@@ -22,6 +22,8 @@ import { ArrowLeft, AlertCircle, Dog, Search, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/app/components/ui/utils'
 import { CST } from '@/lib/cst-theme'
+import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
+import { MarioPrefixToggle } from '@/components/PrefixedDescriptionField'
 
 function todayIsoDate(): string {
   const d = new Date()
@@ -41,6 +43,11 @@ export default function CreateAnimalesPage() {
   const [telefono, setTelefono] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
+  const {
+    includeMarioPrefix,
+    setIncludeMarioPrefix,
+    canToggleMarioPrefix,
+  } = useMarioPrefixOption(currentUser)
 
   const mascotasSlug = useMemo(() => {
     if (postCategories.some((c) => c.slug === 'mascotas')) return 'mascotas'
@@ -54,14 +61,17 @@ export default function CreateAnimalesPage() {
   const previewDescription = useMemo(() => {
     if (!ubicacion.trim() || !telefono.trim()) return null
     if (caso === 'perdido' && !respondeNombre.trim()) return null
-    return buildAnimalesDescription({
-      caso,
-      ubicacion: ubicacion.trim(),
-      fechaIso,
-      telefono: telefono.trim(),
-      respondeNombre: respondeNombre.trim(),
-    })
-  }, [caso, ubicacion, fechaIso, telefono, respondeNombre])
+    return buildAnimalesDescription(
+      {
+        caso,
+        ubicacion: ubicacion.trim(),
+        fechaIso,
+        telefono: telefono.trim(),
+        respondeNombre: respondeNombre.trim(),
+      },
+      { includePrefix: includeMarioPrefix }
+    )
+  }, [caso, ubicacion, fechaIso, telefono, respondeNombre, includeMarioPrefix])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -121,13 +131,16 @@ export default function CreateAnimalesPage() {
     }
 
     const title = buildAnimalesTitle(caso, ubicacion)
-    const description = buildAnimalesDescription({
-      caso,
-      ubicacion: ubicacion.trim(),
-      fechaIso,
-      telefono: telefono.trim(),
-      respondeNombre: respondeNombre.trim(),
-    })
+    const description = buildAnimalesDescription(
+      {
+        caso,
+        ubicacion: ubicacion.trim(),
+        fechaIso,
+        telefono: telefono.trim(),
+        respondeNombre: respondeNombre.trim(),
+      },
+      { includePrefix: includeMarioPrefix }
+    )
 
     setSending(true)
     try {
@@ -264,6 +277,15 @@ export default function CreateAnimalesPage() {
               className="h-12 rounded-xl border-2 border-[#D8D2CC]"
             />
           </div>
+        ) : null}
+
+        {canToggleMarioPrefix ? (
+          <MarioPrefixToggle
+            id="animales-mario-prefix"
+            includePrefix={includeMarioPrefix}
+            onIncludePrefixChange={setIncludeMarioPrefix}
+            className="mb-4 flex items-start gap-2 rounded-xl border-2 border-[#D8D2CC] bg-white px-3 py-2.5"
+          />
         ) : null}
 
         <Card className="mb-6 border-[#D8D2CC] bg-white">

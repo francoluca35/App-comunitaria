@@ -1,6 +1,6 @@
 /** Plantillas para publicaciones de mascotas (Fase B): texto fijo + campos mínimos. */
 
-import { ensureDefaultDescriptionPrefix } from './default-description-prefix'
+import { buildPostDescription, type MarioPrefixOptions } from './default-description-prefix'
 
 export type AnimalCaso = 'encontrado' | 'perdido'
 
@@ -16,26 +16,31 @@ export function formatFechaAR(isoDate: string): string {
   return `${d}/${m}/${y}`
 }
 
-export function buildAnimalesDescription(params: {
-  caso: AnimalCaso
-  ubicacion: string
-  fechaIso: string
-  telefono: string
-  /** Solo “Perdí”: texto único tras “responde a nombre de …” */
-  respondeNombre?: string
-}): string {
+export function buildAnimalesDescription(
+  params: {
+    caso: AnimalCaso
+    ubicacion: string
+    fechaIso: string
+    telefono: string
+    /** Solo “Perdí”: texto único tras “responde a nombre de …” */
+    respondeNombre?: string
+  },
+  prefixOptions: MarioPrefixOptions = {}
+): string {
   const { caso, ubicacion, fechaIso, telefono, respondeNombre } = params
   const fecha = formatFechaAR(fechaIso)
   const u = ubicacion.trim()
   const t = telefono.trim()
   if (caso === 'encontrado') {
-    return ensureDefaultDescriptionPrefix(
-      `Encontré una mascota en ${u}, el ${fecha}. Buscamos al dueño o a la familia. Comunicarse al teléfono ${t}.`
+    return buildPostDescription(
+      `Encontré una mascota en ${u}, el ${fecha}. Buscamos al dueño o a la familia. Comunicarse al teléfono ${t}.`,
+      prefixOptions
     )
   }
   const rn = (respondeNombre ?? '').trim()
-  return ensureDefaultDescriptionPrefix(
-    `Perdí mi mascota; responde a nombre de ${rn}. Última zona donde se la vio: ${u}, el ${fecha}. Comunicarse al teléfono ${t} si tenés novedades.`
+  return buildPostDescription(
+    `Perdí mi mascota; responde a nombre de ${rn}. Última zona donde se la vio: ${u}, el ${fecha}. Comunicarse al teléfono ${t} si tenés novedades.`,
+    prefixOptions
   )
 }
 
