@@ -17,6 +17,13 @@ import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { Chrome, Download, Facebook, Share2 } from 'lucide-react'
 import { LoginLegalLinks, LoginOAuthTrustNote } from '@/components/login/LoginTrustFooter'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+	buildArgentinaMobileE164,
+	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+	normalizeArgentinaLocalDigits,
+	validateArgentinaLocalDigits,
+} from '@/lib/argentina-phone'
 
 export default function LoginPage() {
 	const { login, register, loginWithGoogle, loginWithFacebook } = useAuth()
@@ -31,7 +38,8 @@ export default function LoginPage() {
 	const [loginPassword, setLoginPassword] = useState('')
 	const [registerName, setRegisterName] = useState('')
 	const [registerBirthDate, setRegisterBirthDate] = useState('')
-	const [registerPhone, setRegisterPhone] = useState('')
+	const [registerPhonePrefix, setRegisterPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+	const [registerPhoneLocal, setRegisterPhoneLocal] = useState('')
 	const [registerProvince, setRegisterProvince] = useState('')
 	const [registerLocality, setRegisterLocality] = useState('')
 	const [registerEmail, setRegisterEmail] = useState('')
@@ -83,7 +91,7 @@ export default function LoginPage() {
 		if (
 			!registerName.trim() ||
 			!registerBirthDate ||
-			!registerPhone.trim() ||
+			!normalizeArgentinaLocalDigits(registerPhoneLocal) ||
 			!registerProvince.trim() ||
 			!registerLocality.trim() ||
 			!registerEmail.trim() ||
@@ -104,13 +112,19 @@ export default function LoginPage() {
 			toast.error('La contraseña y la confirmación no coinciden')
 			return
 		}
+		if (!validateArgentinaLocalDigits(registerPhoneLocal)) {
+			toast.error('El teléfono es demasiado corto')
+			return
+		}
+
+		const registerPhone = buildArgentinaMobileE164(registerPhonePrefix, registerPhoneLocal)!
 
 		setLoading(true)
 		try {
 			const result = await register({
 				name: registerName.trim(),
 				birthDate: registerBirthDate,
-				phone: registerPhone.trim(),
+				phone: registerPhone,
 				province: registerProvince.trim(),
 				locality: registerLocality.trim(),
 				email: registerEmail.trim(),
@@ -338,20 +352,20 @@ export default function LoginPage() {
 											required
 										/>
 									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="mobile-register-phone" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
-											Teléfono
-										</Label>
-										<Input
-											id="mobile-register-phone"
-											type="tel"
-											value={registerPhone}
-											onChange={(e) => setRegisterPhone(e.target.value)}
-											placeholder="Ej: 11 1234-5678"
-											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
-											required
-										/>
-									</div>
+									<ArgentinaWhatsAppPhoneField
+										idPrefix="mobile-register-phone"
+										prefix={registerPhonePrefix}
+										onPrefixChange={setRegisterPhonePrefix}
+										localNumber={registerPhoneLocal}
+										onLocalNumberChange={setRegisterPhoneLocal}
+										required
+										label={
+											<span className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
+												Teléfono
+											</span>
+										}
+										className="[&_label]:text-xs [&_select]:h-11 [&_select]:rounded-lg [&_select]:border-white/10 [&_select]:bg-white/5 [&_select]:text-white os-light:[&_select]:border-[#D8D2CC] os-light:[&_select]:bg-white os-light:[&_select]:text-[#2B2B2B] [&>div:last-of-type]:rounded-lg [&>div:last-of-type]:border-white/10 [&>div:last-of-type]:bg-white/5 os-light:[&>div:last-of-type]:border-[#D8D2CC] os-light:[&>div:last-of-type]:bg-white [&_input]:text-white os-light:[&_input]:text-[#2B2B2B] [&_p]:text-white/50 os-light:[&_p]:text-[#9a918a]"
+									/>
 									<div className="space-y-1.5">
 										<Label htmlFor="mobile-register-province" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
 											Provincia
@@ -654,20 +668,16 @@ export default function LoginPage() {
 											required
 										/>
 									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="register-phone" className="text-sm font-medium text-slate-600">
-											Teléfono
-										</Label>
-										<Input
-											id="register-phone"
-											type="tel"
-											value={registerPhone}
-											onChange={(e) => setRegisterPhone(e.target.value)}
-											placeholder="Ej: 11 1234-5678"
-											className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-sm shadow-none focus-visible:border-[#7c281d] focus-visible:ring-0 sm:text-base"
-											required
-										/>
-									</div>
+									<ArgentinaWhatsAppPhoneField
+										idPrefix="register-phone"
+										prefix={registerPhonePrefix}
+										onPrefixChange={setRegisterPhonePrefix}
+										localNumber={registerPhoneLocal}
+										onLocalNumberChange={setRegisterPhoneLocal}
+										required
+										label={<span className="text-sm font-medium text-slate-600">Teléfono</span>}
+										className="[&_select]:rounded-none [&_select]:border-0 [&_select]:border-b [&_select]:border-slate-300 [&_select]:bg-transparent [&_select]:px-0 [&_select]:shadow-none [&>div:last-of-type]:rounded-none [&>div:last-of-type]:border-0 [&>div:last-of-type]:border-b [&>div:last-of-type]:border-slate-300 [&>div:last-of-type]:bg-transparent [&>div:last-of-type]:shadow-none [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:shadow-none"
+									/>
 								</div>
 								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 									<div className="space-y-1.5">

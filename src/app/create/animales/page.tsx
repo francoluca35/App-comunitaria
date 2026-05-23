@@ -24,6 +24,14 @@ import { cn } from '@/app/components/ui/utils'
 import { CST } from '@/lib/cst-theme'
 import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
 import { MarioPrefixToggle } from '@/components/PrefixedDescriptionField'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+  buildArgentinaMobileE164,
+  DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+  formatArgentinaMobileForDisplay,
+  normalizeArgentinaLocalDigits,
+  validateArgentinaLocalDigits,
+} from '@/lib/argentina-phone'
 
 function todayIsoDate(): string {
   const d = new Date()
@@ -40,7 +48,8 @@ export default function CreateAnimalesPage() {
   const [respondeNombre, setRespondeNombre] = useState('')
   const [ubicacion, setUbicacion] = useState('')
   const [fechaIso, setFechaIso] = useState(todayIsoDate)
-  const [telefono, setTelefono] = useState('')
+  const [telefonoPrefix, setTelefonoPrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [telefonoLocal, setTelefonoLocal] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
   const {
@@ -58,20 +67,29 @@ export default function CreateAnimalesPage() {
 
   const maxImagesMascotas = POST_MEDIA_LIMITS.maxImagesMascotas
 
+  const telefonoE164 = useMemo(
+    () => buildArgentinaMobileE164(telefonoPrefix, telefonoLocal),
+    [telefonoPrefix, telefonoLocal]
+  )
+  const telefonoDisplay = useMemo(
+    () => (telefonoE164 ? formatArgentinaMobileForDisplay(telefonoE164) : ''),
+    [telefonoE164]
+  )
+
   const previewDescription = useMemo(() => {
-    if (!ubicacion.trim() || !telefono.trim()) return null
+    if (!ubicacion.trim() || !telefonoDisplay) return null
     if (caso === 'perdido' && !respondeNombre.trim()) return null
     return buildAnimalesDescription(
       {
         caso,
         ubicacion: ubicacion.trim(),
         fechaIso,
-        telefono: telefono.trim(),
+        telefono: telefonoDisplay,
         respondeNombre: respondeNombre.trim(),
       },
       { includePrefix: includeMarioPrefix }
     )
-  }, [caso, ubicacion, fechaIso, telefono, respondeNombre, includeMarioPrefix])
+  }, [caso, ubicacion, fechaIso, telefonoDisplay, respondeNombre, includeMarioPrefix])
 
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -121,10 +139,15 @@ export default function CreateAnimalesPage() {
       toast.error('Indicá en qué calle o zona fue')
       return
     }
-    if (!telefono.trim()) {
+    if (!normalizeArgentinaLocalDigits(telefonoLocal)) {
       toast.error('Indicá un teléfono de contacto')
       return
     }
+    if (!validateArgentinaLocalDigits(telefonoLocal)) {
+      toast.error('El teléfono es demasiado corto')
+      return
+    }
+    const telefonoGuardado = telefonoE164 ?? telefonoDisplay
     if (attachmentFiles.length === 0) {
       toast.error('Agregá una foto de la mascota')
       return
@@ -136,7 +159,7 @@ export default function CreateAnimalesPage() {
         caso,
         ubicacion: ubicacion.trim(),
         fechaIso,
-        telefono: telefono.trim(),
+        telefono: telefonoGuardado,
         respondeNombre: respondeNombre.trim(),
       },
       { includePrefix: includeMarioPrefix }
@@ -157,7 +180,7 @@ export default function CreateAnimalesPage() {
         description,
         category: mascotasSlug,
         media,
-        whatsappNumber: config.whatsappEnabled ? telefono.trim() : undefined,
+        whatsappNumber: config.whatsappEnabled ? telefonoGuardado : undefined,
       })
       if (!result.ok) {
         toast.error(result.error ?? 'Error al enviar')
@@ -334,20 +357,21 @@ export default function CreateAnimalesPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tel" className="text-[#2C241C]">
-                Teléfono para que te llamen <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="tel"
-                type="tel"
-                inputMode="tel"
-                placeholder="Ej: 11 1234-5678"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                className="rounded-xl border-2 border-[#D8D2CC] h-12 text-lg"
-              />
-            </div>
+            <ArgentinaWhatsAppPhoneField
+              idPrefix="animales-tel"
+              prefix={telefonoPrefix}
+              onPrefixChange={setTelefonoPrefix}
+              localNumber={telefonoLocal}
+              onLocalNumberChange={setTelefonoLocal}
+              required
+              label={
+                <>
+                  Teléfono para que te llamen <span className="text-red-500">*</span>
+                </>
+              }
+              inputClassName="text-lg"
+              className="[&_select]:rounded-xl [&_select]:border-2 [&_select]:border-[#D8D2CC] [&>div:last-of-type]:rounded-xl [&>div:last-of-type]:border-2 [&>div:last-of-type]:border-[#D8D2CC]"
+            />
           </div>
 
           <div className="space-y-2">

@@ -25,6 +25,13 @@ import {
 import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
 import { canCreateAlerts } from '@/lib/post-admin-permissions'
 import { ALERT_REPORT_CHAT_PATH } from '@/lib/alert-report-chat'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+  buildArgentinaMobileE164,
+  DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+  normalizeArgentinaLocalDigits,
+  validateArgentinaLocalDigits,
+} from '@/lib/argentina-phone'
 
 const OBJETO_TIPOS = [
   { value: 'perdi', label: 'Perdí' },
@@ -88,7 +95,8 @@ function CreateOtroForm() {
   const [objetoCosa, setObjetoCosa] = useState('')
   const [objetoLugar, setObjetoLugar] = useState('')
   const [objetoDia, setObjetoDia] = useState('')
-  const [whatsappNumber, setWhatsappNumber] = useState('')
+  const [whatsappPrefix, setWhatsappPrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [whatsappLocal, setWhatsappLocal] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
   const [sending, setSending] = useState(false)
   const {
@@ -240,12 +248,13 @@ function CreateOtroForm() {
       }
     }
 
-    if (config.whatsappEnabled && whatsappNumber.trim()) {
-      const waDigits = whatsappNumber.replace(/\D/g, '')
-      if (waDigits.length > 0 && waDigits.length < 6) {
-        toast.error('El número de WhatsApp es demasiado corto')
-        return
-      }
+    const waE164 =
+      config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal)
+        ? buildArgentinaMobileE164(whatsappPrefix, whatsappLocal)
+        : null
+    if (config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal) && !validateArgentinaLocalDigits(whatsappLocal)) {
+      toast.error('El número de WhatsApp es demasiado corto')
+      return
     }
 
     const tipoLabel =
@@ -287,7 +296,7 @@ function CreateOtroForm() {
         proposedCategoryLabel:
           category === 'propuesta' ? proposedCategoryLabel.trim() : undefined,
         media,
-        whatsappNumber: whatsappNumber.trim() || undefined,
+        whatsappNumber: waE164 ?? undefined,
       })
       if (!result.ok) {
         toast.error(result.error ?? 'Error al enviar')
@@ -548,21 +557,15 @@ function CreateOtroForm() {
           )}
 
           {config.whatsappEnabled && (
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp">
-                WhatsApp <span className="font-normal text-slate-500">(opcional)</span>
-              </Label>
-              <Input
-                id="whatsapp"
-                type="tel"
-                placeholder="+54 9 11 1234-5678"
-                value={whatsappNumber}
-                onChange={(e) => setWhatsappNumber(e.target.value)}
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Si lo agregás, otros podrán contactarte por WhatsApp desde la publicación
-              </p>
-            </div>
+            <ArgentinaWhatsAppPhoneField
+              idPrefix="create-otro-whatsapp"
+              prefix={whatsappPrefix}
+              onPrefixChange={setWhatsappPrefix}
+              localNumber={whatsappLocal}
+              onLocalNumberChange={setWhatsappLocal}
+              optional
+              hint="Si lo agregás, otros podrán contactarte por WhatsApp desde la publicación."
+            />
           )}
 
           <div className="space-y-2">

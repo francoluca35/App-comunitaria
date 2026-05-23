@@ -14,11 +14,12 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
+import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
 import {
   instagramLocalFromStored,
   instagramStoredFromLocal,
-  phoneDigitsFromStored,
-  phoneStoredFromDigits,
+  phonePrefixAndLocalFromStored,
+  phoneStoredFromPrefixAndLocal,
 } from '@/lib/publicidad-contact-fields'
 
 const BUCKET = 'publicaciones'
@@ -85,7 +86,8 @@ export default function EditarPublicidadPage() {
   const [step, setStep] = useState<1 | 2>(1)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [phoneDigits, setPhoneDigits] = useState('')
+  const [phonePrefix, setPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [phoneLocal, setPhoneLocal] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
   const [categorySlug, setCategorySlug] = useState('otros')
   const [existingUrls, setExistingUrls] = useState<string[]>([])
@@ -177,7 +179,9 @@ export default function EditarPublicidadPage() {
         setRow(p)
         setTitle(p.title)
         setDescription(p.description)
-        setPhoneDigits(phoneDigitsFromStored(p.phone_number))
+        const { prefix, local } = phonePrefixAndLocalFromStored(p.phone_number)
+        setPhonePrefix(prefix)
+        setPhoneLocal(local)
         setInstagramHandle(instagramLocalFromStored(p.instagram))
         setCategorySlug(p.category || 'otros')
         setExistingUrls(Array.isArray(p.images) ? [...p.images] : [])
@@ -269,7 +273,7 @@ export default function EditarPublicidadPage() {
     if (!description.trim()) return 'Ingresá una descripción'
     const imgCount = existingUrls.length + newFiles.length
     if (imgCount < 1) return 'Tenés que tener al menos 1 imagen'
-    if (!phoneStoredFromDigits(phoneDigits) && !instagramStoredFromLocal(instagramHandle))
+    if (!phoneStoredFromPrefixAndLocal(phonePrefix, phoneLocal) && !instagramStoredFromLocal(instagramHandle))
       return 'Ingresá teléfono o Instagram'
     return null
   }
@@ -313,7 +317,7 @@ export default function EditarPublicidadPage() {
       const body: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim(),
-        phone_number: phoneStoredFromDigits(phoneDigits),
+        phone_number: phoneStoredFromPrefixAndLocal(phonePrefix, phoneLocal),
         instagram: instagramStoredFromLocal(instagramHandle),
         images,
         category: categorySlug,
@@ -460,8 +464,10 @@ export default function EditarPublicidadPage() {
                 </div>
 
                 <PublicidadPhoneInstagramFields
-                  phoneDigits={phoneDigits}
-                  onPhoneDigitsChange={setPhoneDigits}
+                  phonePrefix={phonePrefix}
+                  onPhonePrefixChange={setPhonePrefix}
+                  phoneLocal={phoneLocal}
+                  onPhoneLocalChange={setPhoneLocal}
                   instagramHandle={instagramHandle}
                   onInstagramHandleChange={setInstagramHandle}
                   phoneInputId="edit-pub-phone"

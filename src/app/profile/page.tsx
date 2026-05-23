@@ -40,6 +40,12 @@ import {
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { CST } from '@/lib/cst-theme'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+  buildArgentinaMobileE164,
+  DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+  parseArgentinaMobileStored,
+} from '@/lib/argentina-phone'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -79,7 +85,8 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
   const [editName, setEditName] = useState('')
-  const [editPhone, setEditPhone] = useState('')
+  const [editPhonePrefix, setEditPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [editPhoneLocal, setEditPhoneLocal] = useState('')
   const [editProvince, setEditProvince] = useState('')
   const [editLocality, setEditLocality] = useState('')
   const [selectedPostModal, setSelectedPostModal] = useState<Post | null>(null)
@@ -113,7 +120,14 @@ export default function ProfilePage() {
   useEffect(() => {
     if (currentUser) {
       setEditName(currentUser.name ?? '')
-      setEditPhone(currentUser.phone ?? '')
+      const parsed = parseArgentinaMobileStored(currentUser.phone)
+      if (parsed) {
+        setEditPhonePrefix(parsed.prefix)
+        setEditPhoneLocal(parsed.local)
+      } else {
+        setEditPhonePrefix(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+        setEditPhoneLocal('')
+      }
       setEditProvince(currentUser.province ?? '')
       setEditLocality(currentUser.locality ?? '')
     }
@@ -258,6 +272,7 @@ export default function ProfilePage() {
     }
     setSavingProfile(true)
     try {
+      const phoneStored = buildArgentinaMobileE164(editPhonePrefix, editPhoneLocal) ?? undefined
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: {
@@ -266,7 +281,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           name: editName.trim() || undefined,
-          phone: editPhone.trim() || undefined,
+          phone: phoneStored || undefined,
           province: editProvince.trim() || undefined,
           locality: editLocality.trim() || undefined,
         }),
@@ -412,17 +427,17 @@ export default function ProfilePage() {
               className="bg-white dark:bg-gray-800"
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor={`edit-phone-${formIdSuffix}`}>Teléfono</Label>
-            <Input
-              id={`edit-phone-${formIdSuffix}`}
-              type="tel"
-              value={editPhone}
-              onChange={(e) => setEditPhone(e.target.value)}
-              placeholder="Ej. +54 9 11 1234-5678"
-              className="bg-white dark:bg-gray-800"
-            />
-          </div>
+          <ArgentinaWhatsAppPhoneField
+            idPrefix={`edit-phone-${formIdSuffix}`}
+            prefix={editPhonePrefix}
+            onPrefixChange={setEditPhonePrefix}
+            localNumber={editPhoneLocal}
+            onLocalNumberChange={setEditPhoneLocal}
+            optional
+            label="Teléfono"
+            hint="Opcional. Por defecto Santa Fe (342); podés cambiar la zona si tu número es de otra provincia."
+            className="[&_select]:bg-white [&_select]:dark:bg-gray-800 [&>div:last-of-type]:bg-white [&>div:last-of-type]:dark:bg-gray-800"
+          />
           <div className="space-y-2">
             <Label htmlFor={`edit-province-${formIdSuffix}`}>Provincia</Label>
             <Input

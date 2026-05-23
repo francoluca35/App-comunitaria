@@ -23,38 +23,16 @@ import {
 	isDescriptionEmptyForSubmit,
 } from '@/lib/default-description-prefix'
 import { useMarioPrefixOption } from '@/hooks/useMarioPrefixOption'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+	buildArgentinaMobileE164,
+	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+	normalizeArgentinaLocalDigits,
+	validateArgentinaLocalDigits,
+} from '@/lib/argentina-phone'
 
 const EXTRAVIO_CATEGORY_SLUG = 'extravios'
 const criticalRed = '#991B1B'
-const ARGENTINA_COUNTRY_PREFIX = '+54'
-const DEFAULT_ARGENTINA_PROVINCE_PREFIX = '342' // Santa Fe (Santo Tomé)
-
-const ARGENTINA_PROVINCE_PREFIXES = [
-	{ province: 'CABA / AMBA', code: '11' },
-	{ province: 'Buenos Aires', code: '221' },
-	{ province: 'Catamarca', code: '383' },
-	{ province: 'Chaco', code: '362' },
-	{ province: 'Chubut', code: '280' },
-	{ province: 'Córdoba', code: '351' },
-	{ province: 'Corrientes', code: '379' },
-	{ province: 'Entre Ríos', code: '343' },
-	{ province: 'Formosa', code: '370' },
-	{ province: 'Jujuy', code: '388' },
-	{ province: 'La Pampa', code: '2954' },
-	{ province: 'La Rioja', code: '380' },
-	{ province: 'Mendoza', code: '261' },
-	{ province: 'Misiones', code: '376' },
-	{ province: 'Neuquén', code: '299' },
-	{ province: 'Río Negro', code: '2920' },
-	{ province: 'Salta', code: '387' },
-	{ province: 'San Juan', code: '264' },
-	{ province: 'San Luis', code: '266' },
-	{ province: 'Santa Cruz', code: '2966' },
-	{ province: 'Santa Fe', code: '342' },
-	{ province: 'Santiago del Estero', code: '385' },
-	{ province: 'Tierra del Fuego', code: '2901' },
-	{ province: 'Tucumán', code: '381' },
-] as const
 
 export default function CreateExtravioPage() {
 	const router = useRouter()
@@ -62,7 +40,7 @@ export default function CreateExtravioPage() {
 	const [title, setTitle] = useState('')
 	const [descriptionRest, setDescriptionRest] = useState('')
 	const [whatsappPrefix, setWhatsappPrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
-	const [whatsappNumber, setWhatsappNumber] = useState('')
+	const [whatsappLocal, setWhatsappLocal] = useState('')
 	const [attachments, setAttachments] = useState<LocalAttachment[]>([])
 	const [sending, setSending] = useState(false)
 	const {
@@ -149,12 +127,12 @@ export default function CreateExtravioPage() {
 			toast.error('Completá título y descripción')
 			return
 		}
-		const localWaDigits = whatsappNumber.replace(/\D/g, '').replace(/^0+/, '').replace(/^15/, '')
+		const localWaDigits = normalizeArgentinaLocalDigits(whatsappLocal)
 		if (config.whatsappEnabled && !localWaDigits) {
 			toast.error('Ingresá el número local de WhatsApp')
 			return
 		}
-		if (config.whatsappEnabled && localWaDigits.length < 6) {
+		if (config.whatsappEnabled && !validateArgentinaLocalDigits(whatsappLocal)) {
 			toast.error('El número de WhatsApp es demasiado corto')
 			return
 		}
@@ -181,7 +159,7 @@ export default function CreateExtravioPage() {
 				category: EXTRAVIO_CATEGORY_SLUG,
 				media,
 				whatsappNumber: config.whatsappEnabled
-					? `${ARGENTINA_COUNTRY_PREFIX}9${whatsappPrefix}${localWaDigits}`
+					? buildArgentinaMobileE164(whatsappPrefix, whatsappLocal) ?? undefined
 					: undefined,
 			})
 			if (!result.ok) {
@@ -311,53 +289,20 @@ export default function CreateExtravioPage() {
 					/>
 
 					{config.whatsappEnabled && (
-						<div className="space-y-2">
-							<Label htmlFor="extravio-whatsapp-local">
-								WhatsApp de contacto <span className="text-red-600">*</span>
-							</Label>
-							<div className="space-y-1.5">
-								<Label htmlFor="extravio-whatsapp-province" className="text-xs font-normal text-[#7A5C52]">
-									Zona / prefijo (por defecto Santa Fe — Santo Tomé)
-								</Label>
-								<select
-									id="extravio-whatsapp-province"
-									value={whatsappPrefix}
-									onChange={(e) => setWhatsappPrefix(e.target.value)}
-									className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-								>
-									{ARGENTINA_PROVINCE_PREFIXES.map((item) => (
-										<option key={item.province} value={item.code}>
-											{item.province} ({item.code})
-										</option>
-									))}
-								</select>
-							</div>
-							<div className="flex min-h-10 w-full overflow-hidden rounded-md border border-input bg-background shadow-sm ring-offset-background focus-within:ring-2 focus-within:ring-[#8B0015]/25 focus-within:ring-offset-2">
-								<span
-									className="flex shrink-0 items-center border-r border-input bg-muted/50 px-3 py-2 text-sm tabular-nums text-[#2B2B2B] select-none"
-									aria-hidden
-								>
-									{ARGENTINA_COUNTRY_PREFIX} 9 {whatsappPrefix}
-								</span>
-								<Input
-									id="extravio-whatsapp-local"
-									type="tel"
-									placeholder="solo tu número"
-									value={whatsappNumber}
-									onChange={(e) => setWhatsappNumber(e.target.value)}
-									required
-									inputMode="tel"
-									autoComplete="tel-national"
-									className="min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none h-10"
-									aria-describedby="extravio-whatsapp-hint"
-								/>
-							</div>
-							<p id="extravio-whatsapp-hint" className="text-xs text-[#7A5C52]">
-								El prefijo ya está fijo a la izquierda: solo completá tu número local (sin 0 ni 15 al inicio). Se
-								guarda como {ARGENTINA_COUNTRY_PREFIX} 9 {whatsappPrefix} + lo que escribas. Va a la publicación y al
-								mensaje de Mario.
-							</p>
-						</div>
+						<ArgentinaWhatsAppPhoneField
+							idPrefix="extravio-whatsapp"
+							prefix={whatsappPrefix}
+							onPrefixChange={setWhatsappPrefix}
+							localNumber={whatsappLocal}
+							onLocalNumberChange={setWhatsappLocal}
+							required
+							label={
+								<>
+									WhatsApp de contacto <span className="text-red-600">*</span>
+								</>
+							}
+							hint="Va a la publicación y al mensaje de Mario. Solo tu número local, sin 0 ni 15 al inicio."
+						/>
 					)}
 
 					<div className="space-y-2">

@@ -14,7 +14,8 @@ import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
-import { instagramStoredFromLocal, phoneStoredFromDigits } from '@/lib/publicidad-contact-fields'
+import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
+import { instagramStoredFromLocal, phoneStoredFromPrefixAndLocal } from '@/lib/publicidad-contact-fields'
 
 const BUCKET = 'publicaciones'
 const MAX_IMAGES = 5
@@ -56,7 +57,8 @@ export default function CrearPublicidadPage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [categorySlug, setCategorySlug] = useState('otros')
-  const [phoneDigits, setPhoneDigits] = useState('')
+  const [phonePrefix, setPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [phoneLocal, setPhoneLocal] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const today = useMemo(() => {
@@ -189,7 +191,7 @@ export default function CrearPublicidadPage() {
     if (!title.trim()) return 'Ingresá un título'
     if (!description.trim()) return 'Ingresá una descripción'
     if (!imageFiles.length) return 'Subí al menos 1 imagen'
-    if (!phoneStoredFromDigits(phoneDigits) && !instagramStoredFromLocal(instagramHandle))
+    if (!phoneStoredFromPrefixAndLocal(phonePrefix, phoneLocal) && !instagramStoredFromLocal(instagramHandle))
       return 'Ingresá teléfono o Instagram'
     return null
   }
@@ -247,7 +249,7 @@ export default function CrearPublicidadPage() {
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim(),
-          phone_number: phoneStoredFromDigits(phoneDigits),
+          phone_number: phoneStoredFromPrefixAndLocal(phonePrefix, phoneLocal),
           instagram: instagramStoredFromLocal(instagramHandle),
           images: imageUrls,
           days_active: selectedDays,
@@ -340,8 +342,10 @@ export default function CrearPublicidadPage() {
                 </div>
 
                 <PublicidadPhoneInstagramFields
-                  phoneDigits={phoneDigits}
-                  onPhoneDigitsChange={setPhoneDigits}
+                  phonePrefix={phonePrefix}
+                  onPhonePrefixChange={setPhonePrefix}
+                  phoneLocal={phoneLocal}
+                  onPhoneLocalChange={setPhoneLocal}
                   instagramHandle={instagramHandle}
                   onInstagramHandleChange={setInstagramHandle}
                   phoneInputId="pub-phone"
