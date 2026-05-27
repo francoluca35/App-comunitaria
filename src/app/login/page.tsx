@@ -26,7 +26,14 @@ import {
 } from '@/lib/argentina-phone'
 
 export default function LoginPage() {
-	const { login, register, loginWithGoogle, loginWithFacebook } = useAuth()
+	const { login, register, loginWithGoogle } = useAuth()
+
+	const FACEBOOK_AUTH_DISABLED_MESSAGE =
+		'El inicio de sesión con Facebook está momentáneamente deshabilitado.'
+	const facebookButtonClass =
+		'flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white/50 cursor-not-allowed opacity-60 os-light:border-[#E8E4E0] os-light:bg-[#F4EFEA] os-light:text-[#9a918a]'
+	const facebookButtonClassDesktop =
+		'flex h-10 items-center justify-center gap-2 rounded-md bg-[#ececef]/80 px-3 text-sm font-semibold text-slate-400 cursor-not-allowed opacity-60 sm:h-11 sm:text-base'
 	const { canOfferInstall, canOfferIosInstallHint, install } = usePwaInstallPrompt()
 	const [iosInstallDialogOpen, setIosInstallDialogOpen] = useState(false)
 	const [loading, setLoading] = useState(false)
@@ -46,15 +53,23 @@ export default function LoginPage() {
 	const [registerPassword, setRegisterPassword] = useState('')
 	const [registerPasswordConfirm, setRegisterPasswordConfirm] = useState('')
 
+	const handleFacebookAuth = () => {
+		toast.info(FACEBOOK_AUTH_DISABLED_MESSAGE)
+	}
+
 	const handleAuth = async (provider: 'google' | 'facebook') => {
+		if (provider === 'facebook') {
+			handleFacebookAuth()
+			return
+		}
 		setLoading(true)
 		try {
-			const ok = provider === 'google' ? await loginWithGoogle() : await loginWithFacebook()
+			const ok = await loginWithGoogle()
 			if (!ok) {
-				toast.error(`Error al iniciar con ${provider === 'google' ? 'Google' : 'Facebook'}`)
+				toast.error('Error al iniciar con Google')
 				return
 			}
-			toast.success(`Redirigiendo a ${provider === 'google' ? 'Google' : 'Facebook'}...`)
+			toast.success('Redirigiendo a Google...')
 		} finally {
 			setLoading(false)
 		}
@@ -287,14 +302,13 @@ export default function LoginPage() {
 									</button>
 									<button
 										type="button"
-										onClick={() => {
-											void handleAuth('facebook')
-										}}
-										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
-										aria-label="Facebook"
-										title="Facebook"
+										onClick={handleFacebookAuth}
+										className={facebookButtonClass}
+										aria-label="Facebook (deshabilitado)"
+										title={FACEBOOK_AUTH_DISABLED_MESSAGE}
+										aria-disabled="true"
 									>
-										<Facebook className="h-4 w-4 text-[#8B0015]" />
+										<Facebook className="h-4 w-4 text-[#8B0015]/50" />
 										<span>Facebook</span>
 									</button>
 								</div>
@@ -462,14 +476,13 @@ export default function LoginPage() {
 									</button>
 									<button
 										type="button"
-										onClick={() => {
-											void handleAuth('facebook')
-										}}
-										className="flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-white hover:bg-white/10 os-light:border-[#E8E4E0] os-light:bg-white os-light:text-[#2B2B2B] os-light:hover:bg-[#F4EFEA]"
-										aria-label="Facebook"
-										title="Facebook"
+										onClick={handleFacebookAuth}
+										className={facebookButtonClass}
+										aria-label="Facebook (deshabilitado)"
+										title={FACEBOOK_AUTH_DISABLED_MESSAGE}
+										aria-disabled="true"
 									>
-										<Facebook className="h-4 w-4 text-[#8B0015]" />
+										<Facebook className="h-4 w-4 text-[#8B0015]/50" />
 										<span>Facebook</span>
 									</button>
 								</div>
@@ -565,8 +578,8 @@ export default function LoginPage() {
 								</h1>
 								<p className="mt-2 text-[13px] leading-5 text-slate-500 sm:mt-3 sm:text-[15px] sm:leading-6">
 									{mode === 'signup'
-										? 'Continuá con Google o Facebook para crear tu cuenta en segundos.'
-										: 'Ingresá con Google o Facebook para continuar en la comunidad.'}
+										? 'Continuá con Google para crear tu cuenta en segundos (Facebook momentáneamente no disponible).'
+										: 'Ingresá con Google para continuar en la comunidad (Facebook momentáneamente no disponible).'}
 								</p>
 								{canOfferInstall || canOfferIosInstallHint ? (
 									<div className="mt-4 rounded-xl border border-[#8B0015]/30 bg-[#8B0015]/5 p-3">
@@ -787,14 +800,13 @@ export default function LoginPage() {
 								</button>
 								<button
 									type="button"
-									onClick={() => {
-										void handleAuth('facebook')
-									}}
-									className="flex h-10 items-center justify-center gap-2 rounded-md bg-[#ececef] px-3 text-sm font-semibold text-slate-700 sm:h-11 sm:text-base"
-									aria-label="Facebook"
-									title="Facebook"
+									onClick={handleFacebookAuth}
+									className={facebookButtonClassDesktop}
+									aria-label="Facebook (deshabilitado)"
+									title={FACEBOOK_AUTH_DISABLED_MESSAGE}
+									aria-disabled="true"
 								>
-									<Facebook className="h-4 w-4 text-[#8B0015] sm:h-5 sm:w-5" />
+									<Facebook className="h-4 w-4 text-[#8B0015]/50 sm:h-5 sm:w-5" />
 									<span>Facebook</span>
 								</button>
 							</div>

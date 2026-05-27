@@ -21,7 +21,7 @@ const noteClass: Record<Variant, string> = {
 export function LoginOAuthTrustNote({ variant }: { variant: Variant }) {
 	return (
 		<p className={noteClass[variant]}>
-			El inicio de sesión con Google o Facebook es seguro y solo solicita nombre, foto y correo
+			El inicio de sesión con Google es seguro y solo solicita nombre, foto y correo
 			electrónico para crear tu acceso en CST Comunidad. No tiene acceso a Gmail ni a información
 			personal fuera de lo necesario para tu cuenta.
 		</p>

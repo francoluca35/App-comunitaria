@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Camera, Flag, MessageCircle, Send, Share2, Smile, Trash2 } from 'lucide-react'
+import { Camera, Flag, MessageCircle, Reply, Send, Share2, Smile, ThumbsUp, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp, type Post } from '@/app/providers'
+import type { Comment } from '@/app/providers/types'
 import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
 import { Textarea } from '@/app/components/ui/textarea'
@@ -26,6 +27,153 @@ function authorInitials(name: string) {
 }
 
 const QUICK_EMOJIS = ['😀', '😂', '😍', '🥹', '👏', '🔥', '🙏', '❤️', '👍', '🎉']
+
+const commentActionBtn =
+	'inline-flex shrink-0 items-center justify-center gap-1 rounded-md text-[12px] font-semibold transition-colors max-[380px]:h-8 max-[380px]:w-8 max-[380px]:rounded-full max-[380px]:p-0'
+
+type CommentActionsRowProps = {
+	likedByMe: boolean
+	likeCount: number
+	onLike: () => void
+	onReply: () => void
+	onReport?: () => void
+	showReport: boolean
+	createdAt: Date
+}
+
+function CommentActionsRow({
+	likedByMe,
+	likeCount,
+	onLike,
+	onReply,
+	onReport,
+	showReport,
+	createdAt,
+}: CommentActionsRowProps) {
+	const likeLabel = `Me gusta${likeCount > 0 ? ` (${likeCount})` : ''}`
+
+	return (
+		<div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 pl-2 max-[380px]:gap-1 max-[380px]:pl-0">
+			<button
+				type="button"
+				onClick={onLike}
+				aria-label={likeLabel}
+				className={`${commentActionBtn} ${
+					likedByMe
+						? 'text-[#1b74e4] hover:text-[#1b74e4] dark:text-[#2D88FF] dark:hover:text-[#2D88FF]'
+						: 'text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]'
+				} max-[380px]:hover:bg-[#E4E6EB] max-[380px]:dark:hover:bg-white/10`}
+			>
+				<ThumbsUp className="hidden h-3.5 w-3.5 max-[380px]:block" aria-hidden />
+				<span className="max-[380px]:hidden">{likeLabel}</span>
+			</button>
+			<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8] max-[380px]:hidden" aria-hidden>
+				·
+			</span>
+			<button
+				type="button"
+				onClick={onReply}
+				aria-label="Responder"
+				className={`${commentActionBtn} text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF] max-[380px]:hover:bg-[#E4E6EB] max-[380px]:dark:hover:bg-white/10`}
+			>
+				<Reply className="hidden h-3.5 w-3.5 max-[380px]:block" aria-hidden />
+				<span className="max-[380px]:hidden">Responder</span>
+			</button>
+			{showReport && onReport ? (
+				<>
+					<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8] max-[380px]:hidden" aria-hidden>
+						·
+					</span>
+					<button
+						type="button"
+						onClick={onReport}
+						aria-label="Reportar"
+						className={`${commentActionBtn} text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8] max-[380px]:hover:bg-[#E4E6EB] max-[380px]:dark:hover:bg-white/10`}
+					>
+						<Flag className="h-3 w-3 shrink-0 max-[380px]:h-3.5 max-[380px]:w-3.5" aria-hidden />
+						<span className="max-[380px]:hidden">Reportar</span>
+					</button>
+				</>
+			) : null}
+			<span className="min-w-0 max-[380px]:w-full max-[380px]:basis-full max-[380px]:truncate max-[380px]:text-[11px] max-[380px]:leading-tight sm:whitespace-nowrap text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
+				{formatDistanceToNow(createdAt, { addSuffix: true, locale: es })}
+			</span>
+		</div>
+	)
+}
+
+type PostCommentItemProps = {
+	comment: Comment
+	compact?: boolean
+	canDelete: boolean
+	onDelete: () => void
+	onLike: () => void
+	onReply: () => void
+	onReport: () => void
+	showReport: boolean
+}
+
+function PostCommentItem({
+	comment,
+	compact = false,
+	canDelete,
+	onDelete,
+	onLike,
+	onReply,
+	onReport,
+	showReport,
+}: PostCommentItemProps) {
+	return (
+		<div className="flex w-full min-w-0 max-w-full items-start gap-2.5">
+			<Avatar className={`${compact ? 'h-8 w-8' : 'h-9 w-9'} shrink-0`}>
+				<AvatarImage src={comment.authorAvatar} />
+				<AvatarFallback className={`${compact ? 'text-[11px]' : 'text-xs'} font-semibold`}>
+					{comment.authorName[0]}
+				</AvatarFallback>
+			</Avatar>
+			<div className="min-w-0 flex-1 basis-0">
+				<div className="box-border w-full min-w-0 rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#242526]">
+					<p className="truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-[#E4E6EB]">
+						{comment.authorName}
+					</p>
+					<p className="mt-0.5 whitespace-pre-wrap text-[15px] leading-snug [overflow-wrap:anywhere] text-[#1C1E21] dark:text-[#E4E6EB]">
+						{comment.text}
+					</p>
+					{comment.imageUrl ? (
+						<div className="mt-2 overflow-hidden rounded-xl">
+							{/* eslint-disable-next-line @next/next/no-img-element */}
+							<img
+								src={comment.imageUrl}
+								alt="Imagen del comentario"
+								className={`w-auto max-w-full object-cover ${compact ? 'max-h-56' : 'max-h-60'}`}
+							/>
+						</div>
+					) : null}
+				</div>
+				<CommentActionsRow
+					likedByMe={comment.likedByMe}
+					likeCount={comment.likeCount}
+					onLike={onLike}
+					onReply={onReply}
+					onReport={onReport}
+					showReport={showReport}
+					createdAt={comment.createdAt}
+				/>
+			</div>
+			{canDelete ? (
+				<button
+					type="button"
+					onClick={onDelete}
+					aria-label="Eliminar comentario"
+					className="inline-flex shrink-0 items-center justify-center gap-1 self-start rounded-md p-1 text-[12px] font-semibold text-[#65676B] transition-colors hover:bg-[#E4E6EB] hover:text-[#8B0015] max-[380px]:h-8 max-[380px]:w-8 max-[380px]:rounded-full dark:text-[#B0B3B8] dark:hover:bg-white/10"
+				>
+					<Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+					<span className="max-[380px]:hidden">Eliminar</span>
+				</button>
+			) : null}
+		</div>
+	)
+}
 
 export type PostCommentsModalProps = {
 	post: Post | null
@@ -194,9 +342,9 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 
 	return (
 		<Dialog open={!!post} onOpenChange={(open) => !open && onClose()}>
-			<DialogContent className="fixed inset-x-0 bottom-0 top-auto w-screen max-w-none max-h-[92dvh] translate-x-0 translate-y-0 overflow-hidden rounded-t-2xl border-[#D8D2CC] p-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom-8 dark:border-white/10 sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:w-full sm:max-h-[90vh] sm:max-w-2xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:overflow-y-auto sm:rounded-lg sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95">
+			<DialogContent className="fixed inset-x-0 bottom-0 top-auto flex w-screen max-w-none max-h-[92dvh] translate-x-0 translate-y-0 flex-col overflow-hidden rounded-t-2xl border-[#D8D2CC] p-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom-8 dark:border-white/10 sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:block sm:w-full sm:max-h-[90vh] sm:max-w-2xl sm:translate-x-[-50%] sm:translate-y-[-50%] sm:overflow-y-auto sm:rounded-lg sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95">
 				{post ? (
-					<div className="bg-[#F0F2F5] dark:bg-[#18191A] sm:bg-white dark:sm:bg-[#18191A]">
+					<div className="flex min-h-0 min-w-0 flex-col bg-[#F0F2F5] dark:bg-[#18191A] sm:bg-white dark:sm:bg-[#18191A]">
 						<DialogTitle className="sr-only">Publicación de {post.authorName}</DialogTitle>
 						<div className="border-b border-[#CED0D4] px-4 pb-2 pt-2.5 dark:border-white/10 sm:hidden">
 							<div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[#B0B3B8] dark:bg-white/25" aria-hidden />
@@ -290,11 +438,11 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 						{config.commentsEnabled ? (
 							<>
 								<div
-									className="min-h-[calc(70dvh-8.5rem)] max-h-[calc(92dvh-8.75rem)] overflow-y-auto bg-[#F0F2F5] px-3 pb-28 pt-2 dark:bg-[#18191A] sm:min-h-0 sm:max-h-none sm:overflow-visible sm:border-t sm:border-[#D8D2CC] sm:bg-[#F8F6F3] sm:p-4 dark:sm:border-white/10 dark:sm:bg-[#111418]"
+									className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-[#F0F2F5] px-3 pb-[max(calc(env(safe-area-inset-bottom)+10.5rem),10.5rem)] pt-2 dark:bg-[#18191A] sm:min-h-0 sm:max-h-none sm:flex-none sm:overflow-visible sm:border-t sm:border-[#D8D2CC] sm:bg-[#F8F6F3] sm:p-4 sm:pb-4 dark:sm:border-white/10 dark:sm:bg-[#111418]"
 									id="post-modal-comments"
 								>
 									<div className="hidden sm:block">
-										<div className="space-y-3">
+										<div className="min-w-0 space-y-3">
 											{commentsLoading ? (
 												<p className="rounded-xl bg-[#E9EBEE] py-6 text-center text-sm text-[#65676B] dark:bg-[#242526] dark:text-[#B0B3B8]">
 													Cargando comentarios…
@@ -305,79 +453,16 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 												</p>
 											) : (
 												postComments.map((comment) => (
-													<div key={comment.id} className="flex items-start gap-2.5">
-														<Avatar className="h-9 w-9 shrink-0">
-															<AvatarImage src={comment.authorAvatar} />
-															<AvatarFallback className="text-xs font-semibold">
-																{comment.authorName[0]}
-															</AvatarFallback>
-														</Avatar>
-														<div className="min-w-0 flex-1">
-															<div className="inline-block max-w-full rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#242526]">
-																<div className="flex items-center justify-between gap-2">
-																	<p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-[#E4E6EB]">
-																		{comment.authorName}
-																	</p>
-																	{canDeleteComment(comment.authorId) ? (
-																		<button
-																			type="button"
-																			onClick={() => void handleDeleteComment(comment.id)}
-																			className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
-																		>
-																			<Trash2 className="h-3.5 w-3.5 shrink-0" />
-																			Eliminar
-																		</button>
-																	) : null}
-																</div>
-																<p className="mt-0.5 break-words text-[15px] leading-snug text-[#1C1E21] dark:text-[#E4E6EB]">
-																	{comment.text}
-																</p>
-																{comment.imageUrl ? (
-																	<div className="mt-2 overflow-hidden rounded-xl">
-																		{/* eslint-disable-next-line @next/next/no-img-element */}
-																		<img src={comment.imageUrl} alt="Imagen del comentario" className="max-h-60 w-auto max-w-full object-cover" />
-																	</div>
-																) : null}
-															</div>
-															<div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto pl-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-																<button
-																	type="button"
-																	onClick={() => void handleToggleLike(comment.id)}
-																	className={`shrink-0 whitespace-nowrap text-[12px] font-semibold transition-colors ${
-																		comment.likedByMe
-																			? 'text-[#1b74e4] dark:text-[#2D88FF]'
-																			: 'text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]'
-																	}`}
-																>
-																	Me gusta{comment.likeCount > 0 ? ` (${comment.likeCount})` : ''}
-																</button>
-																<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																<button
-																	type="button"
-																	onClick={() => handleReplyClick(comment.id, comment.authorName)}
-																	className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]"
-																>
-																	Responder
-																</button>
-																{currentUser ? (
-																	<>
-																		<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																		<button
-																			type="button"
-																			onClick={() => void handleReportComment(comment.id)}
-																			className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] transition-colors hover:text-[#8B0015] dark:text-[#B0B3B8]"
-																		>
-																			<Flag className="h-3 w-3 shrink-0" />
-																			Reportar
-																		</button>
-																	</>
-																) : null}
-																<span className="shrink-0 whitespace-nowrap text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
-																	{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
-																</span>
-															</div>
-														</div>
-													</div>
+													<PostCommentItem
+														key={comment.id}
+														comment={comment}
+														canDelete={canDeleteComment(comment.authorId)}
+														onDelete={() => void handleDeleteComment(comment.id)}
+														onLike={() => void handleToggleLike(comment.id)}
+														onReply={() => handleReplyClick(comment.id, comment.authorName)}
+														onReport={() => void handleReportComment(comment.id)}
+														showReport={Boolean(currentUser)}
+													/>
 												))
 											)}
 										</div>
@@ -467,7 +552,7 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 										)}
 									</div>
 
-									<div className="space-y-3 sm:hidden">
+									<div className="min-w-0 space-y-3 sm:hidden">
 										{commentsLoading ? (
 											<p className="py-6 text-center text-xs text-[#65676B] dark:text-[#B0B3B8]">Cargando comentarios…</p>
 										) : postComments.length === 0 ? (
@@ -476,79 +561,17 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 											</p>
 										) : (
 											postComments.map((comment) => (
-												<div key={comment.id} className="flex items-start gap-2.5">
-													<Avatar className="h-8 w-8 shrink-0">
-														<AvatarImage src={comment.authorAvatar} />
-														<AvatarFallback className="text-[11px] font-semibold">
-															{comment.authorName[0]}
-														</AvatarFallback>
-													</Avatar>
-													<div className="min-w-0 flex-1">
-														<div className="rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#242526]">
-															<div className="flex items-center justify-between gap-2">
-																<p className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-[#1C1E21] dark:text-white">
-																	{comment.authorName}
-																</p>
-																{canDeleteComment(comment.authorId) ? (
-																	<button
-																		type="button"
-																		onClick={() => void handleDeleteComment(comment.id)}
-																		className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
-																	>
-																		<Trash2 className="h-3.5 w-3.5 shrink-0" />
-																		Eliminar
-																	</button>
-																) : null}
-															</div>
-															<p className="mt-0.5 break-words text-[15px] leading-snug text-[#1C1E21] dark:text-[#E4E6EB]">
-																{comment.text}
-															</p>
-															{comment.imageUrl ? (
-																<div className="mt-2 overflow-hidden rounded-xl">
-																	{/* eslint-disable-next-line @next/next/no-img-element */}
-																	<img src={comment.imageUrl} alt="Imagen del comentario" className="max-h-56 w-auto max-w-full object-cover" />
-																</div>
-															) : null}
-														</div>
-														<div className="mt-1 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto pl-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-															<button
-																type="button"
-																onClick={() => void handleToggleLike(comment.id)}
-																className={`shrink-0 whitespace-nowrap text-[12px] font-semibold transition-colors ${
-																	comment.likedByMe
-																		? 'text-[#1b74e4] dark:text-[#2D88FF]'
-																		: 'text-[#65676B] hover:text-[#1b74e4] dark:text-[#B0B3B8] dark:hover:text-[#2D88FF]'
-																}`}
-															>
-																Me gusta{comment.likeCount > 0 ? ` (${comment.likeCount})` : ''}
-															</button>
-															<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-															<button
-																type="button"
-																onClick={() => handleReplyClick(comment.id, comment.authorName)}
-																className="shrink-0 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
-															>
-																Responder
-															</button>
-															{currentUser ? (
-																<>
-																	<span className="shrink-0 text-[12px] text-[#65676B] dark:text-[#B0B3B8]">·</span>
-																	<button
-																		type="button"
-																		onClick={() => void handleReportComment(comment.id)}
-																		className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-[#65676B] dark:text-[#B0B3B8]"
-																	>
-																		<Flag className="h-3 w-3 shrink-0" />
-																		Reportar
-																	</button>
-																</>
-															) : null}
-															<span className="shrink-0 whitespace-nowrap text-[12px] text-[#65676B] dark:text-[#B0B3B8]">
-																{formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
-															</span>
-														</div>
-													</div>
-												</div>
+												<PostCommentItem
+													key={comment.id}
+													comment={comment}
+													compact
+													canDelete={canDeleteComment(comment.authorId)}
+													onDelete={() => void handleDeleteComment(comment.id)}
+													onLike={() => void handleToggleLike(comment.id)}
+													onReply={() => handleReplyClick(comment.id, comment.authorName)}
+													onReport={() => void handleReportComment(comment.id)}
+													showReport={Boolean(currentUser)}
+												/>
 											))
 										)}
 									</div>
@@ -573,17 +596,20 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 												</button>
 											</div>
 										) : null}
-										<div className="flex items-center gap-2">
+										<div className="flex min-w-0 items-end gap-2">
 											<Avatar className="h-8 w-8 shrink-0">
 												<AvatarImage src={currentUser.avatar} />
 												<AvatarFallback className="text-[11px] font-semibold">{currentUser.name[0]}</AvatarFallback>
 											</Avatar>
-											<div className="relative flex-1">
+											<div className="min-w-0 flex-1 rounded-2xl bg-[#E4E6EB] px-3 py-2 dark:bg-[#3A3B3C]">
+												{!replyingToCommentId ? (
+													<p className="mb-1 truncate text-[11px] font-medium text-[#65676B] dark:text-[#B0B3B8]">
+														Comentar como {currentUser.name}
+													</p>
+												) : null}
 												<Textarea
 													placeholder={
-														replyingToCommentId
-															? 'Escribí tu respuesta…'
-															: `Comentar como ${currentUser.name}`
+														replyingToCommentId ? 'Escribí tu respuesta…' : 'Escribí un comentario…'
 													}
 													value={commentText}
 													onChange={(e) => {
@@ -591,16 +617,16 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 														setCommentText(e.target.value)
 													}}
 													rows={1}
-													className="max-h-24 min-h-[2.5rem] resize-none rounded-full border-transparent bg-[#E4E6EB] pb-2 pl-16 pr-10 pt-2 text-[14px] leading-tight text-[#1C1E21] placeholder:text-[#65676B] dark:bg-[#3A3B3C] dark:text-[#E4E6EB] dark:placeholder:text-[#B0B3B8]"
+													className="max-h-28 min-h-[1.5rem] resize-none border-0 bg-transparent px-0 py-0 text-[15px] leading-snug text-[#1C1E21] placeholder:text-[#65676B] shadow-none focus-visible:ring-0 dark:text-[#E4E6EB] dark:placeholder:text-[#B0B3B8]"
 												/>
-												<div className="absolute bottom-1 left-2 flex items-center gap-1 text-[#65676B] dark:text-[#B0B3B8]">
+												<div className="mt-1.5 flex items-center gap-1 text-[#65676B] dark:text-[#B0B3B8]">
 													<button
 														type="button"
 														onClick={() => setEmojiPickerOpen(true)}
 														className="inline-flex items-center justify-center rounded-full p-1 hover:bg-black/10 dark:hover:bg-white/10"
 														aria-label="Abrir selector de emojis"
 													>
-														<Smile className="h-3.5 w-3.5" />
+														<Smile className="h-4 w-4" />
 													</button>
 													<button
 														type="button"
@@ -608,18 +634,18 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 														className="inline-flex items-center justify-center rounded-full p-1 hover:bg-black/10 dark:hover:bg-white/10"
 														aria-label="Adjuntar una foto"
 													>
-														<Camera className="h-3.5 w-3.5" />
+														<Camera className="h-4 w-4" />
 													</button>
+													<Button
+														type="submit"
+														variant="ghost"
+														size="icon"
+														disabled={!canSubmitComment}
+														className="ml-auto h-8 w-8 shrink-0 rounded-full text-[#1b74e4] hover:bg-[#DCEBFF] hover:text-[#1b74e4] dark:text-[#2D88FF] dark:hover:bg-white/10 dark:hover:text-[#2D88FF]"
+													>
+														<Send className="h-4 w-4" />
+													</Button>
 												</div>
-												<Button
-													type="submit"
-													variant="ghost"
-													size="icon"
-													disabled={!canSubmitComment}
-													className="absolute right-1 top-1 h-8 w-8 rounded-full text-[#1b74e4] hover:bg-[#DCEBFF] hover:text-[#1b74e4] dark:text-[#2D88FF] dark:hover:bg-white/10 dark:hover:text-[#2D88FF]"
-												>
-													<Send className="h-4 w-4" />
-												</Button>
 											</div>
 										</div>
 										{commentImagePreviewUrl && !commentText.trim() ? (
