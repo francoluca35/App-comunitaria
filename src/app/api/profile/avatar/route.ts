@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 
-const MAX_SIZE_MB = 2
+const MAX_SIZE_BYTES = MEDIA_UPLOAD_LIMITS.maxStoredBytes
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 function getExt(mime: string): string {
@@ -52,9 +53,9 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     )
   }
-  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+  if (file.size > MAX_SIZE_BYTES) {
     return NextResponse.json(
-      { error: `El archivo no puede superar ${MAX_SIZE_MB} MB` },
+      { error: `El archivo no puede superar ${MEDIA_UPLOAD_LIMITS.maxStoredMbLabel}` },
       { status: 400 }
     )
   }

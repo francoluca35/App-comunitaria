@@ -87,7 +87,7 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 			if (!session?.access_token) return
 
 			const load = async (token: string) =>
-				fetch('/api/notifications', {
+				fetch('/api/notifications?type=message&limit=40', {
 					headers: { Authorization: `Bearer ${token}` },
 				})
 

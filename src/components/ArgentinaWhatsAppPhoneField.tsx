@@ -7,6 +7,8 @@ import {
 	ARGENTINA_COUNTRY_PREFIX,
 	ARGENTINA_PROVINCE_PREFIXES,
 	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+	MAX_ARGENTINA_LOCAL_DIGITS,
+	normalizeArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
 type Props = {
@@ -55,7 +57,7 @@ export function ArgentinaWhatsAppPhoneField({
 			</>
 		)
 
-	const defaultHint = `El prefijo ya está fijo a la izquierda: solo completá tu número local (sin 0 ni 15 al inicio). Se guarda como ${ARGENTINA_COUNTRY_PREFIX} 9 ${prefix || DEFAULT_ARGENTINA_PROVINCE_PREFIX} + lo que escribas.`
+	const defaultHint = `El prefijo ya está fijo a la izquierda: solo completá tu número local (sin 0 ni 15 al inicio, máximo ${MAX_ARGENTINA_LOCAL_DIGITS} dígitos). Se guarda como ${ARGENTINA_COUNTRY_PREFIX} 9 ${prefix || DEFAULT_ARGENTINA_PROVINCE_PREFIX} + lo que escribas.`
 
 	return (
 		<div className={`space-y-2 ${className}`.trim()}>
@@ -89,10 +91,11 @@ export function ArgentinaWhatsAppPhoneField({
 					type="tel"
 					placeholder="solo tu número"
 					value={localNumber}
-					onChange={(e) => onLocalNumberChange(e.target.value)}
+					onChange={(e) => onLocalNumberChange(normalizeArgentinaLocalDigits(e.target.value).slice(0, MAX_ARGENTINA_LOCAL_DIGITS))}
 					required={required}
 					inputMode="tel"
 					autoComplete="tel-national"
+					maxLength={MAX_ARGENTINA_LOCAL_DIGITS}
 					className={`min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none h-10 ${inputClassName}`.trim()}
 					aria-describedby={hintId}
 				/>

@@ -8,6 +8,13 @@ export type PublicidadCategorySlug = string
 
 export type PostStatus = 'pending' | 'approved' | 'rejected'
 
+export type PostReactionType = 'like' | 'love'
+
+export type PostReactionSummary = {
+	like: number
+	love: number
+}
+
 /** Preferencia de notificaciones del usuario */
 export type NotificationPreference = 'all' | 'custom' | 'messages_only'
 
@@ -58,6 +65,10 @@ export interface Post {
   description: string
   category: Category
   proposedCategoryLabel?: string | null
+  /** Subcategoría libre (p. ej. venta: "Electrónica", "Ropa"). */
+  saleSubcategory?: string | null
+  /** Precio en texto (p. ej. "$ 15.000", "Consultar"). */
+  salePrice?: string | null
   media: PostMediaItem[]
   authorId: string
   authorName: string
@@ -147,14 +158,17 @@ export interface CommunityContextType {
   postsLoading: boolean
   postsHasMore: boolean
   postsLoadingMore: boolean
+  postReactionSummaryByPostId: Record<string, PostReactionSummary>
+  myReactionByPostId: Record<string, PostReactionType | undefined>
   loadMorePosts: () => Promise<void>
   hydratePostFromServer: (postId: string) => Promise<boolean>
   refreshPosts: () => Promise<void>
   addPost: (
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
   ) => Promise<{ ok: boolean; error?: string }>
-  updatePostStatus: (postId: string, status: PostStatus, rejectedImages?: number[]) => void
+  updatePostStatus: (postId: string, status: PostStatus, rejectedImages?: number[]) => Promise<{ ok: boolean; error?: string }>
   deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
+  setPostReaction: (postId: string, reaction: PostReactionType | null) => Promise<{ ok: boolean; error?: string }>
 
   comments: Comment[]
   commentCountByPostId: Record<string, number>

@@ -20,6 +20,11 @@ export async function GET(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json(data)
+  const mapped = (data ?? []).map((row: any) => ({
+    ...row,
+    images: Array.isArray(row.images) ? row.images.slice(0, 1) : [],
+  }))
+
+  return NextResponse.json(mapped)
 }
 

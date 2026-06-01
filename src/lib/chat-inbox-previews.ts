@@ -32,7 +32,7 @@ export function previewsFromMessagesDesc(rows: ChatPreviewRow[], myId: string): 
 export async function loadChatInboxPreviews(
 	supabase: SupabaseClient,
 	myId: string,
-	limit = 2500
+	limit = 500
 ): Promise<Record<string, PeerPreview>> {
 	const { data, error } = await supabase
 		.from('chat_messages')

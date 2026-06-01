@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -39,6 +40,11 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser(token)
   if (userError || !user?.id) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
 
+  const cleanup = await cleanupExpiredPublicidades()
+  if (!cleanup.ok) {
+    console.warn('GET /api/publicidad/mis cleanup expired:', cleanup.error)
+  }
+
   const { data, error } = await supabase
     .from('publicidad_requests')
     .select(
@@ -67,7 +73,7 @@ export async function GET(request: NextRequest) {
       title: String(r.title ?? ''),
       description: String(r.description ?? ''),
       category: String(r.category ?? 'otros'),
-      images: Array.isArray(r.images) ? r.images.map((x: any) => String(x)) : [],
+      images: Array.isArray(r.images) ? r.images.slice(0, 1).map((x: any) => String(x)) : [],
       status,
       created_at: String(r.created_at ?? ''),
       start_at: r.start_at ? String(r.start_at) : null,
@@ -80,6 +86,6 @@ export async function GET(request: NextRequest) {
     else inactive.push(item)
   }
 
-  return NextResponse.json({ active, inactive })
+  return NextResponse.json({ active, inactive: inactive.slice(0, 20) })
 }
 

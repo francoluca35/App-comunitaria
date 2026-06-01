@@ -291,7 +291,7 @@ export default function CreateAlertaPage() {
             </Label>
             <p className="text-xs text-[#7A5C52]">
               Hasta {maxImagesAlertas} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta {maxVideosAlertas}{' '}
-              videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u); las fotos se optimizan al enviar.
+              videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u); al enviar todo queda en {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
             </p>
             {attachments.length > 0 && (
               <div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5">

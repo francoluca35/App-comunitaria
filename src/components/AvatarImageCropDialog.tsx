@@ -10,6 +10,9 @@ import {
 	DialogTitle,
 } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
+import { compressAvatarForUpload } from '@/lib/compress-upload-image'
+import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
+import { toast } from 'sonner'
 
 const VIEWPORT_PX = 280
 const OUTPUT_PX = 512
@@ -74,12 +77,17 @@ export function AvatarImageCropDialog({
 			setNaturalH(0)
 			return
 		}
+		if (file.size > MEDIA_UPLOAD_LIMITS.maxImageInputBytes) {
+			toast.error(`La imagen supera ${MEDIA_UPLOAD_LIMITS.maxImageInputMbLabel}`)
+			onOpenChange(false)
+			return
+		}
 		const url = URL.createObjectURL(file)
 		setObjectUrl(url)
 		return () => {
 			URL.revokeObjectURL(url)
 		}
-	}, [open, file])
+	}, [open, file, onOpenChange])
 
 	const handleImgLoad = useCallback(() => {
 		const el = imgRef.current
@@ -169,10 +177,11 @@ export function AvatarImageCropDialog({
 		if (!out) return
 		setSaving(true)
 		try {
-			await onConfirm(out)
+			const prepared = await compressAvatarForUpload(out)
+			await onConfirm(prepared)
 			onOpenChange(false)
-		} catch {
-			// El padre muestra toasts / errores; el diálogo permanece abierto.
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'No se pudo optimizar la imagen')
 		} finally {
 			setSaving(false)
 		}

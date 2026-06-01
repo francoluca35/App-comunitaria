@@ -31,6 +31,9 @@ export default function PostDetailPage() {
     hydratePostFromServer,
     loadCommentsForPost,
     commentCountByPostId,
+    postReactionSummaryByPostId,
+    myReactionByPostId,
+    setPostReaction,
   } = useApp()
 
   const [commentText, setCommentText] = useState('')
@@ -154,6 +157,17 @@ export default function PostDetailPage() {
           <h2 className="mb-1 text-lg font-bold leading-snug text-[#2B2B2B]">
             {post.title}
           </h2>
+          {post.category === 'venta' && (post.saleSubcategory?.trim() || post.salePrice?.trim()) ? (
+            <p className="mb-1 text-sm font-semibold text-[#5A000E] dark:text-[#F3C9D0]">
+              {post.saleSubcategory?.trim() ? post.saleSubcategory.trim() : null}
+              {post.salePrice?.trim() ? (
+                <span>
+                  {post.saleSubcategory?.trim() ? ' · ' : ''}
+                  {post.salePrice.trim()}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
           <p className="whitespace-pre-wrap text-sm leading-snug text-[#2B2B2B]">
             {post.description}
           </p>
@@ -185,6 +199,9 @@ export default function PostDetailPage() {
                   : postComments.length
                 : undefined
             }
+            reactionSummary={postReactionSummaryByPostId[post.id]}
+            myReaction={myReactionByPostId[post.id]}
+            onReactionChange={(reaction) => setPostReaction(post.id, reaction)}
             compact
           />
         </div>

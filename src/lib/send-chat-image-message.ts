@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import imageCompression from 'browser-image-compression'
+import { compressImageForCommunityUpload } from '@/lib/compress-upload-image'
 import { encodeChatImageMessage } from '@/lib/chat-message-payload'
 import { notifyReceiverPushAfterSend } from '@/lib/dispatch-message-push'
 import { uploadChatImage } from '@/lib/upload-chat-image'
@@ -19,13 +19,10 @@ export async function sendChatImageMessage(
 	try {
 		const asFile =
 			file instanceof File ? file : new File([file], 'photo.jpg', { type: mime || 'image/jpeg' })
-		blob = await imageCompression(asFile, {
-			maxSizeMB: 1,
-			maxWidthOrHeight: 1920,
-			useWebWorker: true,
-		})
-	} catch {
-		/* usar archivo sin comprimir */
+		const compressed = await compressImageForCommunityUpload(asFile)
+		blob = compressed
+	} catch (err) {
+		if (err instanceof Error) return { error: err.message }
 	}
 
 	const up = await uploadChatImage(supabase, myId, blob, mime)

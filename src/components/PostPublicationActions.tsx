@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { MessageCircle, Share2 } from 'lucide-react'
+import { Heart, MessageCircle, Share2, ThumbsUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/app/components/ui/button'
 import { cn } from '@/app/components/ui/utils'
 import { postPermalink } from '@/lib/app-public-url'
+import type { PostReactionSummary, PostReactionType } from '@/app/providers/types'
 
 function WhatsAppMark({ className }: { className?: string }) {
   return (
@@ -36,6 +38,11 @@ const shareBtn =
 const shareBtnCompact =
   '!h-auto min-h-8 min-w-0 flex-1 basis-0 justify-center gap-1 rounded-none border-0 bg-transparent px-1.5 py-1.5 text-[12px] font-semibold leading-tight text-[#65676B] shadow-none transition-colors hover:bg-[#F2F3F5] hover:text-[#1b74e4] focus-visible:ring-[3px] focus-visible:ring-[#1b74e4]/35 focus-visible:ring-offset-0 sm:min-h-9 sm:gap-1.5 sm:px-2 sm:py-2 sm:text-[13px]'
 
+const reactionOptions: { type: PostReactionType; label: string }[] = [
+	{ type: 'like', label: 'Me gusta' },
+	{ type: 'love', label: 'Me encanta' },
+]
+
 export type PostPublicationActionsProps = {
   postId: string
   whatsappNumber?: string | null | undefined
@@ -52,6 +59,123 @@ export type PostPublicationActionsProps = {
   showShare?: boolean
   /** Fila de acciones más baja y junta (p. ej. detalle del post) */
   compact?: boolean
+  reactionSummary?: PostReactionSummary
+  myReaction?: PostReactionType
+  onReactionChange?: (reaction: PostReactionType | null) => Promise<{ ok: boolean; error?: string }>
+}
+
+function PostReactionButton({
+	summary,
+	myReaction,
+	onReactionChange,
+	compact,
+}: {
+	summary?: PostReactionSummary
+	myReaction?: PostReactionType
+	onReactionChange?: (reaction: PostReactionType | null) => Promise<{ ok: boolean; error?: string }>
+	compact: boolean
+}) {
+	const [open, setOpen] = useState(false)
+	const longPressFiredRef = useRef(false)
+	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const total = (summary?.like ?? 0) + (summary?.love ?? 0)
+	const activeLabel = myReaction === 'love' ? 'Me encanta' : 'Me gusta'
+	const btnClass = compact ? commentBtnCompact : commentBtn
+	const iconClass = compact ? 'h-4 w-4 sm:h-5 sm:w-5' : 'h-[18px] w-[18px] sm:h-7 sm:w-7'
+
+	useEffect(() => {
+		const close = () => setOpen(false)
+		if (!open) return
+		window.addEventListener('click', close)
+		return () => window.removeEventListener('click', close)
+	}, [open])
+
+	const clearTimer = () => {
+		if (timerRef.current) clearTimeout(timerRef.current)
+		timerRef.current = null
+	}
+
+	const applyReaction = async (reaction: PostReactionType | null) => {
+		if (!onReactionChange) return
+		const result = await onReactionChange(reaction)
+		if (!result.ok) toast.error(result.error ?? 'No se pudo actualizar la reacción')
+	}
+
+	const handlePointerDown = () => {
+		longPressFiredRef.current = false
+		clearTimer()
+		if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+		timerRef.current = setTimeout(() => {
+			longPressFiredRef.current = true
+			setOpen(true)
+		}, 450)
+	}
+
+	const handlePointerUp = () => {
+		clearTimer()
+		if (longPressFiredRef.current) return
+		void applyReaction(myReaction === 'like' ? null : 'like')
+	}
+
+	return (
+		<div className="relative flex min-w-0 flex-1 basis-0">
+			{open ? (
+				<div
+					className="absolute bottom-full left-2 z-30 mb-2 flex rounded-full border border-[#D8D2CC] bg-white p-1 shadow-xl"
+					onClick={(e) => e.stopPropagation()}
+				>
+					{reactionOptions.map((option) => (
+						<button
+							key={option.type}
+							type="button"
+							className={cn(
+								'flex items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold transition hover:bg-[#F2F3F5]',
+								myReaction === option.type && 'bg-[#E7F3FF] text-[#1b74e4]'
+							)}
+							onClick={() => {
+								setOpen(false)
+								void applyReaction(option.type)
+							}}
+						>
+							{option.type === 'love' ? (
+								<Heart className="h-4 w-4 fill-red-500 text-red-500" />
+							) : (
+								<ThumbsUp className="h-4 w-4 fill-[#1b74e4] text-[#1b74e4]" />
+							)}
+							{option.label}
+						</button>
+					))}
+				</div>
+			) : null}
+			<Button
+				type="button"
+				variant="ghost"
+				className={cn(btnClass, myReaction && 'text-[#1b74e4]')}
+				onPointerDown={handlePointerDown}
+				onPointerUp={handlePointerUp}
+				onPointerCancel={clearTimer}
+				onPointerLeave={clearTimer}
+				onClick={(e) => e.stopPropagation()}
+				onContextMenu={(e) => {
+					e.preventDefault()
+					e.stopPropagation()
+					void applyReaction(myReaction === 'love' ? null : 'love')
+				}}
+				aria-label={`${activeLabel}${total > 0 ? ` (${total})` : ''}`}
+			>
+				<span className="inline-flex items-center justify-center gap-2 sm:gap-3">
+					{myReaction === 'love' ? (
+						<Heart className={cn('shrink-0 fill-red-500 text-red-500', iconClass)} strokeWidth={2.25} aria-hidden />
+					) : (
+						<ThumbsUp className={cn('shrink-0', myReaction ? 'fill-[#1b74e4]' : '', iconClass)} strokeWidth={2.25} aria-hidden />
+					)}
+					<span className="max-w-[9rem] truncate text-center">
+						{activeLabel}{total > 0 ? ` (${total})` : ''}
+					</span>
+				</span>
+			</Button>
+		</div>
+	)
 }
 
 export function PostPublicationActions({
@@ -65,6 +189,9 @@ export function PostPublicationActions({
   commentCount,
   showShare = true,
   compact = false,
+  reactionSummary,
+  myReaction,
+  onReactionChange,
 }: PostPublicationActionsProps) {
   const wa = whatsappNumber?.replace(/\D/g, '') ?? ''
   const hasWa = wa.length > 0
@@ -117,6 +244,12 @@ export function PostPublicationActions({
       aria-label="Acciones de la publicación"
       className={cn(touchRow, className)}
     >
+      <PostReactionButton
+        summary={reactionSummary}
+        myReaction={myReaction}
+        onReactionChange={onReactionChange}
+        compact={compact}
+      />
       {showComments ? (
 			onCommentsClick ? (
 				<Button type="button" variant="ghost" className={cBtn} onClick={onCommentsClick}>

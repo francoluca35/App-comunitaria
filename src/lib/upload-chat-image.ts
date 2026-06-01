@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 
 export const CHAT_IMAGE_BUCKET = 'chat-images'
 
@@ -20,6 +21,11 @@ export async function uploadChatImage(
 	blob: Blob,
 	mimeHint?: string
 ): Promise<{ publicUrl: string; path: string } | { error: string }> {
+	try {
+		assertStoredMediaLimit(blob, 'La imagen')
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : 'La imagen es demasiado pesada' }
+	}
 	const mime = blob.type || mimeHint || 'image/jpeg'
 	const ext = extForMime(mime)
 	const path = `${userId}/${crypto.randomUUID()}.${ext}`

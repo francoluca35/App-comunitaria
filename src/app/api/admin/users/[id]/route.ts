@@ -1,6 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 
+const USER_STORAGE_BUCKETS = ['publicaciones', 'chat-images', 'chat-audio', 'avatars'] as const
+
+function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
+  const msg = (error?.message ?? '').toLowerCase()
+  return error?.code === '42P01' || error?.code === 'PGRST205' || msg.includes('does not exist') || msg.includes('schema cache')
+}
+
+async function deleteFromTable(
+  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  table: string,
+  column: string,
+  value: string
+): Promise<string | null> {
+  const { error } = await client.from(table).delete().eq(column, value)
+  if (!error || isMissingRelationError(error)) return null
+  return `${table}.${column}: ${error.message}`
+}
+
+async function listStoragePaths(
+  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  bucket: string,
+  prefix: string
+): Promise<string[]> {
+  const out: string[] = []
+  const walk = async (path: string) => {
+    const { data, error } = await client.storage.from(bucket).list(path, { limit: 1000 })
+    if (error || !data) return
+    for (const item of data) {
+      const childPath = `${path}/${item.name}`
+      if (item.id === null) {
+        await walk(childPath)
+      } else {
+        out.push(childPath)
+      }
+    }
+  }
+  await walk(prefix)
+  return out
+}
+
+async function removeUserStorageObjects(
+  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  userId: string
+): Promise<string[]> {
+  const warnings: string[] = []
+  for (const bucket of USER_STORAGE_BUCKETS) {
+    const paths = await listStoragePaths(client, bucket, userId)
+    if (paths.length === 0) continue
+    const { error } = await client.storage.from(bucket).remove(paths)
+    if (error) warnings.push(`${bucket}: ${error.message}`)
+  }
+  return warnings
+}
+
+async function cleanupOwnedPublicidadComments(
+  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await client.from('publicidad_requests').select('id').eq('owner_id', userId)
+  if (error) return isMissingRelationError(error) ? null : `publicidad_requests.select: ${error.message}`
+  const ids = (data ?? []).map((row: { id: string }) => row.id).filter(Boolean)
+  if (ids.length === 0) return null
+  const { error: deleteError } = await client.from('publicidad_comments').delete().in('publicidad_id', ids)
+  if (!deleteError || isMissingRelationError(deleteError)) return null
+  return `publicidad_comments.publicidad_id: ${deleteError.message}`
+}
+
 /** PATCH: actualizar role, status o suspended_until (solo admin). Usa cliente con token + RLS. */
 export async function PATCH(
   request: NextRequest,
@@ -79,7 +146,38 @@ export async function DELETE(
   }
   const { id } = await params
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  const storageWarnings = await removeUserStorageObjects(serviceClient, id)
+  const cleanupErrors = (
+    await Promise.all([
+      cleanupOwnedPublicidadComments(serviceClient, id),
+      deleteFromTable(serviceClient, 'notifications', 'user_id', id),
+      deleteFromTable(serviceClient, 'notifications', 'related_id', id),
+      deleteFromTable(serviceClient, 'chat_messages', 'sender_id', id),
+      deleteFromTable(serviceClient, 'chat_messages', 'receiver_id', id),
+      deleteFromTable(serviceClient, 'publicidad_comments', 'author_id', id),
+      deleteFromTable(serviceClient, 'publicidad_requests', 'owner_id', id),
+      deleteFromTable(serviceClient, 'comment_reports', 'reporter_id', id),
+      deleteFromTable(serviceClient, 'comment_likes', 'user_id', id),
+      deleteFromTable(serviceClient, 'post_reactions', 'user_id', id),
+      deleteFromTable(serviceClient, 'comments', 'author_id', id),
+      deleteFromTable(serviceClient, 'posts', 'author_id', id),
+      deleteFromTable(serviceClient, 'push_subscriptions', 'user_id', id),
+    ])
+  ).filter((msg): msg is string => Boolean(msg))
+
+  if (cleanupErrors.length > 0) {
+    return NextResponse.json({ error: cleanupErrors.join(' | ') }, { status: 500 })
+  }
+
   const { error } = await serviceClient.auth.admin.deleteUser(id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  if (error) {
+    const message = (error.message ?? '').toLowerCase()
+    if (!message.includes('not found') && !message.includes('does not exist')) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    const profileCleanup = await deleteFromTable(serviceClient, 'profiles', 'id', id)
+    if (profileCleanup) return NextResponse.json({ error: profileCleanup }, { status: 500 })
+  }
+  return NextResponse.json({ ok: true, storageWarnings })
 }

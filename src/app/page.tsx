@@ -52,6 +52,7 @@ import {
 import { CST } from '@/lib/cst-theme'
 import { useReferentPublicProfile } from '@/hooks/useReferentPublicProfile'
 import { isMarioAccountEmail } from '@/lib/mario-account'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 const FEED_FILTER_ALL = 'all'
 const FEED_FILTER_SOLO_PUBLICIDADES = 'publicidades_only'
@@ -306,7 +307,13 @@ function ZonaPublicitariaCarousel() {
                   <div className="aspect-[4/3] overflow-hidden bg-[#D8D2CC]/30">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
+                      <img
+                        src={optimizedStorageImageUrl(p.imageUrl, { width: 360, height: 270, quality: 72, resize: 'cover' })}
+                        alt={p.title}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <Megaphone className="h-8 w-8 text-[#7A5C52]/50" />

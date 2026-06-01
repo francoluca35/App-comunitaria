@@ -17,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, CheckCircle, XCircle, Trash2, ChevronLeft, ChevronRight, ImageOff, MessageCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -25,10 +26,21 @@ import {
   canPermanentlyDeletePosts,
   canViewAllPostsForModeration,
 } from '@/lib/post-admin-permissions'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 export default function AdminModerationPage() {
   const router = useRouter()
-  const { currentUser, posts, updatePostStatus, deletePost, refreshPosts, refreshPostCategories } = useApp()
+  const {
+    currentUser,
+    posts,
+    postsHasMore,
+    postsLoadingMore,
+    loadMorePosts,
+    updatePostStatus,
+    deletePost,
+    refreshPosts,
+    refreshPostCategories,
+  } = useApp()
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [rejectedImageIndices, setRejectedImageIndices] = useState<number[]>([])
@@ -105,18 +117,36 @@ export default function AdminModerationPage() {
       return
     }
 
-    updatePostStatus(post.id, 'approved')
-    toast.success('Publicación aprobada')
-    setSelectedPost(null)
+    setApproveBusy(true)
+    try {
+      const result = await updatePostStatus(
+        post.id,
+        'approved',
+        rejectedImageIndices.length > 0 ? rejectedImageIndices : undefined
+      )
+      if (!result.ok) {
+        toast.error(result.error ?? 'No se pudo aprobar')
+        return
+      }
+      toast.success(
+        rejectedImageIndices.length > 0
+          ? 'Publicación aprobada sin los archivos marcados'
+          : 'Publicación aprobada'
+      )
+      setSelectedPost(null)
+      setRejectedImageIndices([])
+    } finally {
+      setApproveBusy(false)
+    }
   }
 
-  const handleRejectPost = (post: Post) => {
-    updatePostStatus(post.id, 'rejected', rejectedImageIndices.length > 0 ? rejectedImageIndices : undefined)
-    toast.success(
-      rejectedImageIndices.length > 0
-        ? 'Publicación aprobada con imágenes rechazadas eliminadas'
-        : 'Publicación rechazada'
-    )
+  const handleRejectPost = async (post: Post) => {
+    const result = await updatePostStatus(post.id, 'rejected')
+    if (!result.ok) {
+      toast.error(result.error ?? 'No se pudo rechazar')
+      return
+    }
+    toast.success('Publicación rechazada')
     setSelectedPost(null)
     setRejectedImageIndices([])
   }
@@ -156,7 +186,13 @@ export default function AdminModerationPage() {
             {post.media[0].type === 'video' ? (
               <video src={post.media[0].url} muted playsInline className="w-full h-full object-cover" />
             ) : (
-              <img src={post.media[0].url} alt={post.title} className="w-full h-full object-cover" />
+              <img
+                src={optimizedStorageImageUrl(post.media[0].url, { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                alt={post.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
             )}
           </div>
         )}
@@ -169,6 +205,12 @@ export default function AdminModerationPage() {
           {post.category === 'propuesta' && post.proposedCategoryLabel?.trim() ? (
             <p className="text-xs font-semibold text-violet-800 dark:text-violet-300 mb-1">
               Categoría pedida: {post.proposedCategoryLabel.trim()}
+            </p>
+          ) : null}
+          {post.category === 'venta' ? (
+            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+              {post.saleSubcategory?.trim() ? `${post.saleSubcategory.trim()}` : 'Venta'}
+              {post.salePrice?.trim() ? ` · ${post.salePrice.trim()}` : ''}
             </p>
           ) : null}
 
@@ -240,6 +282,17 @@ export default function AdminModerationPage() {
             ))}
           </TabsContent>
         </Tabs>
+        {postsHasMore ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            disabled={postsLoadingMore}
+            onClick={() => void loadMorePosts()}
+          >
+            {postsLoadingMore ? 'Cargando…' : 'Cargar más publicaciones'}
+          </Button>
+        ) : null}
       </div>
 
       <Dialog
@@ -286,6 +339,41 @@ export default function AdminModerationPage() {
                     <p className="mt-1 text-xs font-normal opacity-90">
                       Al aprobar se crea esta categoría en el listado y la publicación queda en ella.
                     </p>
+                  </div>
+                ) : null}
+                {selectedPost.category === 'venta' ? (
+                  <div className="mt-3 space-y-2">
+                    {(selectedPost.saleSubcategory?.trim() || selectedPost.salePrice?.trim()) ? (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                        {selectedPost.saleSubcategory?.trim() ? (
+                          <p>
+                            <span className="font-semibold">Subcategoría: </span>
+                            {selectedPost.saleSubcategory.trim()}
+                          </p>
+                        ) : null}
+                        {selectedPost.salePrice?.trim() ? (
+                          <p className={selectedPost.saleSubcategory?.trim() ? 'mt-1' : ''}>
+                            <span className="font-semibold">Precio: </span>
+                            {selectedPost.salePrice.trim()}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {selectedPost.status === 'pending' ? (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                        <p className="font-semibold">Moderación de ventas</p>
+                        <p className="mt-1 text-xs font-normal leading-relaxed">
+                          Pedile al vecino por mensaje privado que te envíe más fotos o detalles del producto que ofrece.
+                          Cuando tengas lo necesario, aprobá la publicación.
+                        </p>
+                        <Button variant="outline" size="sm" className="mt-2 w-full" asChild>
+                          <Link href={`/admin/messages/chat/${selectedPost.authorId}`}>
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            Escribir a {selectedPost.authorName}
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </DialogHeader>
@@ -405,7 +493,12 @@ export default function AdminModerationPage() {
                             ? 'Aprobar (sin imágenes rechazadas)'
                             : 'Aprobar publicación'}
                     </Button>
-                    <Button variant="destructive" className="w-full" onClick={() => handleRejectPost(selectedPost)}>
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      disabled={approveBusy}
+                      onClick={() => void handleRejectPost(selectedPost)}
+                    >
                       <XCircle className="w-4 h-4 mr-2" />
                       Rechazar Publicación
                     </Button>

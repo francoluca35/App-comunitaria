@@ -13,13 +13,14 @@ import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { assertStoredMediaLimit, MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
 import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
 import { instagramStoredFromLocal, phoneStoredFromPrefixAndLocal } from '@/lib/publicidad-contact-fields'
 
 const BUCKET = 'publicaciones'
 const MAX_IMAGES = 5
-const MAX_FILE_MB = 5
+const MAX_FILE_MB = MEDIA_UPLOAD_LIMITS.maxImageInputBytes / (1024 * 1024)
 
 function toInputDateValue(date: Date): string {
   const yyyy = date.getFullYear()
@@ -174,6 +175,7 @@ export default function CrearPublicidadPage() {
     for (let i = 0; i < prepared.length; i++) {
       const file = prepared[i]
       const label = imageFiles[i]?.name ?? file.name
+      assertStoredMediaLimit(file, label)
       const ext = storageExtensionFromFile(file)
       const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
@@ -399,7 +401,7 @@ export default function CrearPublicidadPage() {
                     />
                     <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                     <p className="text-sm text-slate-600 dark:text-gray-400">
-                      Hasta {MAX_FILE_MB} MB c/u; se optimizan antes de subir.
+                      Hasta {MAX_FILE_MB} MB c/u; se optimizan a {MEDIA_UPLOAD_LIMITS.maxStoredMbLabel} o menos.
                     </p>
                   </label>
                 </div>

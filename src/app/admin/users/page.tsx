@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { Badge } from '@/app/components/ui/badge'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import {
   Dialog,
@@ -39,17 +40,10 @@ export default function AdminUsersPage() {
   const [suspendDays, setSuspendDays] = useState<string>('7')
   const [acting, setActing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'viewer' | 'moderator' | 'admin' | 'admin_master'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked' | 'suspended'>('all')
+  const [createdOrder, setCreatedOrder] = useState<'newest' | 'oldest'>('newest')
   const hasRequestedLoad = useRef(false)
-
-  const filteredProfiles = adminProfiles.filter((p) => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return true
-    const name = (p.name ?? '').toLowerCase()
-    const email = (p.email ?? '').toLowerCase()
-    const phone = (p.phone ?? '').replace(/\s/g, '')
-    const qNorm = q.replace(/\s/g, '')
-    return name.includes(q) || email.includes(q) || phone.includes(qNorm)
-  })
 
   useEffect(() => {
     if (!currentUser?.isAdmin || hasRequestedLoad.current) return
@@ -140,6 +134,28 @@ export default function AdminUsersPage() {
 
   const isSuspended = (p: AdminProfile) => p.suspended_until && new Date(p.suspended_until) > new Date()
 
+  const filteredProfiles = adminProfiles
+    .filter((p) => {
+      const q = searchQuery.trim().toLowerCase()
+      if (!q) return true
+      const name = (p.name ?? '').toLowerCase()
+      const email = (p.email ?? '').toLowerCase()
+      const phone = (p.phone ?? '').replace(/\s/g, '')
+      const qNorm = q.replace(/\s/g, '')
+      return name.includes(q) || email.includes(q) || phone.includes(qNorm)
+    })
+    .filter((p) => (roleFilter === 'all' ? true : p.role === roleFilter))
+    .filter((p) => {
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'suspended') return Boolean(isSuspended(p))
+      return p.status === statusFilter
+    })
+    .sort((a, b) => {
+      const at = new Date(a.created_at).getTime()
+      const bt = new Date(b.created_at).getTime()
+      return createdOrder === 'newest' ? bt - at : at - bt
+    })
+
   return (
     <DashboardLayout>
       <div className="w-full max-w-2xl mx-auto">
@@ -150,15 +166,70 @@ export default function AdminUsersPage() {
           <h1 className="text-xl font-semibold text-slate-900 dark:text-white">Todos los usuarios</h1>
         </div>
 
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input
-            type="search"
-            placeholder="Buscar por nombre, email o teléfono"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="mb-4 space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-gray-800 dark:bg-gray-900/70">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              type="search"
+              placeholder="Buscar por nombre, email o teléfono"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as typeof roleFilter)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Rol" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los roles</SelectItem>
+                <SelectItem value="viewer">Vecinos</SelectItem>
+                <SelectItem value="moderator">Moderadores</SelectItem>
+                <SelectItem value="admin">Admins</SelectItem>
+                <SelectItem value="admin_master">Admin master</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los estados</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="blocked">Bloqueados</SelectItem>
+                <SelectItem value="suspended">Suspendidos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={createdOrder} onValueChange={(value) => setCreatedOrder(value as typeof createdOrder)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Orden" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Nuevo a antiguo</SelectItem>
+                <SelectItem value="oldest">Antiguo a nuevo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              Mostrando {filteredProfiles.length} de {adminProfiles.length} usuarios
+            </span>
+            {(searchQuery || roleFilter !== 'all' || statusFilter !== 'all' || createdOrder !== 'newest') && (
+              <button
+                type="button"
+                className="font-semibold text-[#8B0015] hover:underline"
+                onClick={() => {
+                  setSearchQuery('')
+                  setRoleFilter('all')
+                  setStatusFilter('all')
+                  setCreatedOrder('newest')
+                }}
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         </div>
 
         {adminProfilesLoading ? (

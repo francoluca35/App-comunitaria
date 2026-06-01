@@ -17,6 +17,7 @@ import {
 } from '@/app/components/ui/dropdown-menu'
 import { cn } from '@/app/components/ui/utils'
 import { publicidadPermalink } from '@/lib/app-public-url'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type Props = {
   publicidad: PublicidadDisplay
@@ -41,6 +42,8 @@ export function PublicidadFeedCard({
 	const captionRef = useRef<HTMLParagraphElement | null>(null)
 	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
 	const mainImage = pubImages[0]
+	const avatarImage = mainImage ? optimizedStorageImageUrl(mainImage, { width: 96, height: 96, quality: 70, resize: 'cover' }) : ''
+	const coverImage = mainImage ? optimizedStorageImageUrl(mainImage, { width: 900, height: 900, quality: 78, resize: 'cover' }) : ''
 	const hasWa = Boolean(pub.whatsappUrl)
 	const hasIg = Boolean(pub.instagramUrl)
 	const captionText = pub.description.trim()
@@ -107,7 +110,7 @@ export function PublicidadFeedCard({
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#000000] ring-1 ring-white/10">
           {mainImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={mainImage} alt="" className="h-full w-full object-cover" loading={imagePriority ? 'eager' : 'lazy'} />
+            <img src={avatarImage} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
             <div
               className="flex h-full w-full items-center justify-center text-black"
@@ -186,7 +189,7 @@ export function PublicidadFeedCard({
         <div className="aspect-square w-full">
           {mainImage ? (
             <CoverImageWithSkeleton
-              src={mainImage}
+              src={coverImage}
               alt={pub.title}
               className="h-full min-h-0"
               loading={imagePriority ? 'eager' : 'lazy'}

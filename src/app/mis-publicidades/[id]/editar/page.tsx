@@ -13,6 +13,7 @@ import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { assertStoredMediaLimit, MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
 import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
 import {
@@ -21,10 +22,11 @@ import {
   phonePrefixAndLocalFromStored,
   phoneStoredFromPrefixAndLocal,
 } from '@/lib/publicidad-contact-fields'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 const BUCKET = 'publicaciones'
 const MAX_IMAGES = 5
-const MAX_FILE_MB = 5
+const MAX_FILE_MB = MEDIA_UPLOAD_LIMITS.maxImageInputBytes / (1024 * 1024)
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -255,6 +257,7 @@ export default function EditarPublicidadPage() {
     for (let i = 0; i < prepared.length; i++) {
       const file = prepared[i]
       const label = newFiles[i]?.name ?? file.name
+      assertStoredMediaLimit(file, label)
       const ext = storageExtensionFromFile(file)
       const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
@@ -497,7 +500,11 @@ export default function EditarPublicidadPage() {
                       {previewItems.map((item, index) => (
                         <div key={item.key} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={item.kind === 'existing' ? optimizedStorageImageUrl(item.url, { width: 180, height: 180, quality: 70, resize: 'cover' }) : item.url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
                           <button
                             type="button"
                             onClick={() => removeImageAt(index)}
@@ -521,7 +528,7 @@ export default function EditarPublicidadPage() {
                     />
                     <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                     <p className="text-sm text-slate-600 dark:text-gray-400">
-                      Hasta {MAX_FILE_MB} MB c/u; se optimizan antes de subir.
+                      Hasta {MAX_FILE_MB} MB c/u; se optimizan a {MEDIA_UPLOAD_LIMITS.maxStoredMbLabel} o menos.
                     </p>
                   </label>
                 </div>

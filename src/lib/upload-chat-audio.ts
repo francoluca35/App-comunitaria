@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertChatAudioUploadLimit } from '@/lib/compress-upload-audio'
 
 export const CHAT_AUDIO_BUCKET = 'chat-audio'
 
@@ -18,6 +19,11 @@ export async function uploadChatAudio(
 	userId: string,
 	blob: Blob
 ): Promise<{ publicUrl: string; path: string } | { error: string }> {
+	try {
+		assertChatAudioUploadLimit(blob)
+	} catch (error) {
+		return { error: error instanceof Error ? error.message : 'El audio es demasiado pesado' }
+	}
 	const ext = extForMime(blob.type || 'audio/webm')
 	const path = `${userId}/${crypto.randomUUID()}.${ext}`
 

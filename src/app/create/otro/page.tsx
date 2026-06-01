@@ -87,9 +87,8 @@ function CreateOtroForm() {
 
   const [title, setTitle] = useState('')
   const [descriptionRest, setDescriptionRest] = useState('')
-  const [proposedCategoryLabel, setProposedCategoryLabel] = useState('')
   const [category, setCategory] = useState<Category>(() =>
-    wantsLockedCategory ? (presetFromUrl as Category) : 'propuesta'
+    wantsLockedCategory ? (presetFromUrl as Category) : 'avisos'
   )
   const [objetoTipo, setObjetoTipo] = useState<ObjetoTipo | ''>('')
   const [objetoCosa, setObjetoCosa] = useState('')
@@ -106,16 +105,17 @@ function CreateOtroForm() {
   } = useMarioPrefixOption(currentUser)
 
   useEffect(() => {
-    if (categoryLocked) {
-      if (postCategories.length === 0) {
-        setCategory(presetFromUrl as Category)
-        return
-      }
-      if (presetIsValidSlug) setCategory(presetFromUrl as Category)
+    if (!wantsLockedCategory) {
+      router.replace('/create')
       return
     }
-    setCategory('propuesta')
-  }, [categoryLocked, postCategories.length, presetFromUrl, presetIsValidSlug])
+    if (postCategories.length === 0) {
+      setCategory(presetFromUrl as Category)
+      return
+    }
+    if (presetIsValidSlug) setCategory(presetFromUrl as Category)
+    else router.replace('/create')
+  }, [wantsLockedCategory, postCategories.length, presetFromUrl, presetIsValidSlug, router])
 
   const categoryLabel =
     postCategories.find((c) => c.slug === category)?.label ??
@@ -123,7 +123,6 @@ function CreateOtroForm() {
   const isObjetos = category === 'objetos'
   const isAvisoONoticia = category === 'avisos' || category === 'noticias'
   const isNoticias = category === 'noticias'
-  const isProposedCategoryFlow = !categoryLocked
 
   const maxImagesMedia = isNoticias ? POST_MEDIA_LIMITS.maxImagesNoticias : POST_MEDIA_LIMITS.maxImagesPerPost
   const maxVideosMedia = isNoticias ? POST_MEDIA_LIMITS.maxVideosNoticias : POST_MEDIA_LIMITS.maxVideosPerPost
@@ -212,17 +211,7 @@ function CreateOtroForm() {
       router.push(ALERT_REPORT_CHAT_PATH)
       return
     }
-    if (category === 'propuesta') {
-      const label = proposedCategoryLabel.trim()
-      if (label.length < 2) {
-        toast.error('Escribí el nombre de la categoría que te gustaría (al menos 2 letras)')
-        return
-      }
-      if (!postCategories.some((c) => c.slug === 'propuesta')) {
-        toast.error('Esta función aún no está disponible: ejecutá la migración SQL en Supabase (propuesta + proposed_category_label).')
-        return
-      }
-    } else if (!postCategories.some((c) => c.slug === category)) {
+    if (!postCategories.some((c) => c.slug === category)) {
       toast.error('Categoría no válida')
       return
     }
@@ -253,7 +242,7 @@ function CreateOtroForm() {
         ? buildArgentinaMobileE164(whatsappPrefix, whatsappLocal)
         : null
     if (config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal) && !validateArgentinaLocalDigits(whatsappLocal)) {
-      toast.error('El número de WhatsApp es demasiado corto')
+      toast.error('El WhatsApp debe tener entre 6 y 13 dígitos, sin contar el código de área')
       return
     }
 
@@ -293,8 +282,6 @@ function CreateOtroForm() {
         title: titleToSend,
         description: descriptionToSend,
         category,
-        proposedCategoryLabel:
-          category === 'propuesta' ? proposedCategoryLabel.trim() : undefined,
         media,
         whatsappNumber: waE164 ?? undefined,
       })
@@ -305,16 +292,22 @@ function CreateOtroForm() {
       const isStaffPublisher =
         currentUser.isAdmin || currentUser.isAdminMaster
       toast.success(
-        category === 'propuesta'
-          ? 'Enviado. Si un moderador aprueba, se creará la categoría que pediste y tu publicación quedará ahí.'
-          : category === 'avisos' && isStaffPublisher
-            ? 'Aviso publicado. Toda la comunidad recibirá notificación y un mensaje de Mario con el enlace.'
-            : 'Publicación enviada. Será revisada por un administrador.'
+        category === 'avisos' && isStaffPublisher
+          ? 'Aviso publicado. Toda la comunidad recibirá notificación y un mensaje de Mario con el enlace.'
+          : 'Publicación enviada. Será revisada por un administrador.'
       )
       router.push('/')
     } finally {
       setSending(false)
     }
+  }
+
+  if (!wantsLockedCategory || (postCategories.length > 0 && !presetIsValidSlug)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
+        <p className="text-slate-600 dark:text-slate-400">Redirigiendo…</p>
+      </div>
+    )
   }
 
   if (!currentUser) {
@@ -340,7 +333,7 @@ function CreateOtroForm() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-            {categoryLocked ? categoryLabel : 'Nueva categoría y publicación'}
+            {categoryLabel}
           </h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-6 lg:space-y-7">
@@ -349,43 +342,19 @@ function CreateOtroForm() {
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-[#8B0015] dark:text-[#F3C9D0] flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-[#5A000E] dark:text-[#F3C9D0]">
-                  <p className="mb-1">
-                    {isProposedCategoryFlow
-                      ? 'Escribí cómo te gustaría que se llame la categoría y el contenido. Si un moderador aprueba, se crea esa categoría en la comunidad y tu aviso queda publicado ahí.'
-                      : 'Tu publicación será revisada por un administrador antes de hacerse pública.'}
-                  </p>
+                  <p className="mb-1">Tu publicación será revisada por un administrador antes de hacerse pública.</p>
                   <p className="text-xs text-[#8B0015] dark:text-[#F3C9D0]">{config.termsOfService}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {categoryLocked ? (
-            <div className="space-y-2">
-              <Label>Categoría</Label>
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
-                {categoryLabel}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label htmlFor="proposed-category">
-                ¿Cómo te gustaría que se llame la categoría? <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="proposed-category"
-                value={proposedCategoryLabel}
-                onChange={(e) => setProposedCategoryLabel(e.target.value)}
-                placeholder="Ej.: Feria americana, Trueque, Eventos del barrio…"
-                maxLength={80}
-                autoComplete="off"
-              />
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                No elijas de una lista: proponé un nombre. Si la moderación lo acepta, queda como categoría nueva para
-                todos.
-              </p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Categoría</Label>
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
+              {categoryLabel}
+            </p>
+          </div>
 
           {isObjetos && (
             <div className="space-y-4">
@@ -645,8 +614,8 @@ function CreateOtroForm() {
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-gray-400">
                   {imageAttachmentCount}/{maxImagesMedia} fotos · {videoAttachmentCount}/{maxVideosMedia} videos · fotos hasta{' '}
-                  {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u (se optimizan al subir). Videos hasta{' '}
-                  {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB.
+                  {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u y videos hasta {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u;
+                  al subir se optimizan a {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
                 </p>
               </label>
             )}

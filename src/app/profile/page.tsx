@@ -44,8 +44,11 @@ import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhone
 import {
   buildArgentinaMobileE164,
   DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+  normalizeArgentinaLocalDigits,
   parseArgentinaMobileStored,
+  validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -270,6 +273,10 @@ export default function ProfilePage() {
       toast.error('Sesión expirada. Volvé a iniciar sesión.')
       return
     }
+    if (normalizeArgentinaLocalDigits(editPhoneLocal) && !validateArgentinaLocalDigits(editPhoneLocal)) {
+      toast.error('El teléfono debe tener entre 6 y 13 dígitos, sin contar el código de área')
+      return
+    }
     setSavingProfile(true)
     try {
       const phoneStored = buildArgentinaMobileE164(editPhonePrefix, editPhoneLocal) ?? undefined
@@ -375,7 +382,13 @@ export default function ProfilePage() {
                   <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-[#E8E4E0] dark:bg-gray-700">
                     {p.images?.[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.images[0]} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={optimizedStorageImageUrl(p.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <Megaphone className="h-6 w-6 text-[#7A5C52]" />
@@ -497,7 +510,11 @@ export default function ProfilePage() {
           <div className="flex flex-col items-center gap-6">
             <div className="flex h-48 w-48 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-[#D8D2CC] dark:bg-gray-700 dark:ring-gray-600">
               {currentUser.avatar ? (
-                <img src={currentUser.avatar} alt={currentUser.name ?? ''} className="h-full w-full object-cover" />
+                <img
+                  src={optimizedStorageImageUrl(currentUser.avatar, { width: 192, height: 192, quality: 75, resize: 'cover' })}
+                  alt={currentUser.name ?? ''}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-5xl font-semibold text-slate-500 dark:text-gray-400">
                   {currentUser.name?.[0]?.toUpperCase() ?? '?'}

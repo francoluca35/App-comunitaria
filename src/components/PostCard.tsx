@@ -23,7 +23,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
-	const { config, currentUser, commentCountByPostId } = useApp()
+	const { config, currentUser, commentCountByPostId, postReactionSummaryByPostId, myReactionByPostId, setPostReaction } = useApp()
 	const [descriptionExpanded, setDescriptionExpanded] = useState(false)
 	const [descriptionOverflowsCollapsed, setDescriptionOverflowsCollapsed] = useState(false)
 	const descriptionRef = useRef<HTMLParagraphElement | null>(null)
@@ -106,6 +106,19 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 						{post.title}
 					</h3>
 				</Link>
+				{post.category === 'venta' && (post.saleSubcategory?.trim() || post.salePrice?.trim()) ? (
+					<p className="mt-0.5 text-sm font-medium text-[#5A000E] dark:text-[#F3C9D0]">
+						{post.saleSubcategory?.trim() ? (
+							<span>{post.saleSubcategory.trim()}</span>
+						) : null}
+						{post.salePrice?.trim() ? (
+							<span>
+								{post.saleSubcategory?.trim() ? ' · ' : ''}
+								{post.salePrice.trim()}
+							</span>
+						) : null}
+					</p>
+				) : null}
 				{post.description ? (
 					<div className="mt-0.5">
 						<p
@@ -145,6 +158,9 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 					showComments={config.commentsEnabled}
 					onCommentsClick={onOpenComments ? () => onOpenComments(post) : undefined}
 					commentCount={commentCount}
+					reactionSummary={postReactionSummaryByPostId[post.id]}
+					myReaction={myReactionByPostId[post.id]}
+					onReactionChange={(reaction) => setPostReaction(post.id, reaction)}
 				/>
 			</CardFooter>
 		</Card>

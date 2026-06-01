@@ -25,12 +25,15 @@ import { commentCountsFromRpcRows } from '@/app/providers/comment-counts'
 import { useAuth } from '@/app/providers/auth-context'
 import { useAppConfig } from '@/app/providers/app-config-context'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
 import type {
   AdminProfile,
   Comment,
   CommunityContextType,
   Post,
+  PostReactionSummary,
+  PostReactionType,
   PostStatus,
   User,
 } from '@/app/providers/types'
@@ -71,8 +74,12 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
   const [comments, setComments] = useState<Comment[]>([])
   const [commentCountByPostId, setCommentCountByPostId] = useState<Record<string, number>>({})
+  const [postReactionSummaryByPostId, setPostReactionSummaryByPostId] = useState<Record<string, PostReactionSummary>>({})
+  const [myReactionByPostId, setMyReactionByPostId] = useState<Record<string, PostReactionType | undefined>>({})
   const fetchedCommentCountIdsRef = useRef<Set<string>>(new Set())
+  const fetchedReactionPostIdsRef = useRef<Set<string>>(new Set())
   const commentCountsRpcUnavailableRef = useRef(false)
+  const reactionUserIdRef = useRef<string | null>(null)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
@@ -83,6 +90,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       if (!baseUrl) throw new Error('Configuración de Storage no disponible')
       const [compressed] = await compressImagesForCommunityUpload([file])
       if (!compressed) throw new Error('No se pudo procesar la imagen')
+      assertStoredMediaLimit(compressed, file.name)
       const ext = storageExtensionFromFile(compressed)
       const path = `${userId}/comments/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from('publicaciones').upload(path, compressed, {
@@ -107,6 +115,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             .from('posts')
             .select(POSTS_SELECT)
             .order('created_at', { ascending: false })
+            .range(0, POSTS_FEED_PAGE_SIZE - 1)
           if (bail()) return
           if (error) {
             console.error('fetchPosts (staff):', error.message)
@@ -120,7 +129,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           if (bail()) return
           setPosts(dedupePostsById(mapped))
           feedNextOffsetRef.current = mapped.length
-          setPostsHasMore(false)
+          setPostsHasMore(mapped.length === POSTS_FEED_PAGE_SIZE)
           return
         }
 
@@ -149,7 +158,9 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             .from('posts')
             .select(POSTS_SELECT)
             .eq('author_id', u.id)
+            .in('status', ['pending', 'rejected'])
             .order('created_at', { ascending: false })
+            .limit(20)
           if (bail()) return
           if (!mineErr && mine?.length) {
             const mineMapped = mine.map((row) => mapSupabasePostRow(row as SupabasePostRow))
@@ -173,8 +184,6 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   )
 
   const loadMorePosts = useCallback(async () => {
-    const u = currentUserRef.current
-    if (canViewAllPostsForModeration(u)) return
     if (loadMoreInFlightRef.current || !postsHasMoreRef.current) return
     loadMoreInFlightRef.current = true
     setPostsLoadingMore(true)
@@ -305,15 +314,20 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           }
 
           if (usedFallback) {
-            const { data, error } = await supabase.from('comments').select('post_id').in('post_id', chunk)
-            if (error) {
-              console.warn('refreshCommentCountsForPostIds (fallback):', error.message)
-              continue
-            }
-            for (const row of data ?? []) {
-              const pid = String((row as { post_id: string }).post_id)
-              merged[pid] = (merged[pid] ?? 0) + 1
-            }
+            const counts = await Promise.all(
+              chunk.map(async (postId) => {
+                const { count, error } = await supabase
+                  .from('comments')
+                  .select('id', { count: 'exact', head: true })
+                  .eq('post_id', postId)
+                if (error) {
+                  console.warn('refreshCommentCountsForPostIds (fallback):', error.message)
+                  return [postId, 0] as const
+                }
+                return [postId, count ?? 0] as const
+              })
+            )
+            for (const [pid, count] of counts) merged[pid] = count
           }
         }
         setCommentCountByPostId((prev) => {
@@ -335,7 +349,47 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     [posts]
   )
 
+  const refreshPostReactionsForPostIds = useCallback(
+    async (postIds: string[]) => {
+      const unique = filterUuids([...new Set(postIds)])
+      if (unique.length === 0) return
+      const { data, error } = await supabase
+        .from('post_reactions')
+        .select('post_id, user_id, reaction_type')
+        .in('post_id', unique)
+      if (error) {
+        const msg = (error.message ?? '').toLowerCase()
+        if (!msg.includes('does not exist') && !msg.includes('schema cache')) {
+          console.warn('refreshPostReactionsForPostIds:', error.message)
+        }
+        return
+      }
+
+      const summary: Record<string, PostReactionSummary> = {}
+      const mine: Record<string, PostReactionType | undefined> = {}
+      const myId = currentUserRef.current?.id
+      for (const id of unique) summary[id] = { like: 0, love: 0 }
+      for (const row of (data ?? []) as { post_id: string; user_id: string; reaction_type: string }[]) {
+        if (row.reaction_type !== 'like' && row.reaction_type !== 'love') continue
+        const current = summary[row.post_id] ?? { like: 0, love: 0 }
+        current[row.reaction_type] += 1
+        summary[row.post_id] = current
+        if (myId && row.user_id === myId) mine[row.post_id] = row.reaction_type
+      }
+
+      setPostReactionSummaryByPostId((prev) => ({ ...prev, ...summary }))
+      setMyReactionByPostId((prev) => ({ ...prev, ...mine }))
+    },
+    [supabase]
+  )
+
   useEffect(() => {
+    const currentUserId = currentUser?.id ?? null
+    if (reactionUserIdRef.current !== currentUserId) {
+      reactionUserIdRef.current = currentUserId
+      fetchedReactionPostIdsRef.current.clear()
+      setMyReactionByPostId({})
+    }
     const ids = postIdsKey ? postIdsKey.split(',').filter(Boolean) : []
     const allow = new Set(ids)
 
@@ -356,6 +410,31 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     if (newIds.length > 0) void refreshCommentCountsForPostIds(newIds)
   }, [postIdsKey, refreshCommentCountsForPostIds])
 
+  useEffect(() => {
+    const ids = postIdsKey ? postIdsKey.split(',').filter(Boolean) : []
+    const allow = new Set(ids)
+    for (const id of [...fetchedReactionPostIdsRef.current]) {
+      if (!allow.has(id)) fetchedReactionPostIdsRef.current.delete(id)
+    }
+    setPostReactionSummaryByPostId((prev) => {
+      const next: Record<string, PostReactionSummary> = {}
+      for (const id of ids) {
+        if (Object.prototype.hasOwnProperty.call(prev, id)) next[id] = prev[id]!
+      }
+      return next
+    })
+    setMyReactionByPostId((prev) => {
+      const next: Record<string, PostReactionType | undefined> = {}
+      for (const id of ids) {
+        if (Object.prototype.hasOwnProperty.call(prev, id)) next[id] = prev[id]
+      }
+      return next
+    })
+    const newIds = ids.filter((id) => !fetchedReactionPostIdsRef.current.has(id))
+    for (const id of newIds) fetchedReactionPostIdsRef.current.add(id)
+    if (newIds.length > 0) void refreshPostReactionsForPostIds(newIds)
+  }, [postIdsKey, currentUser?.id, refreshPostReactionsForPostIds])
+
   const loadCommentsForPost = useCallback(
     async (postId: string) => {
       try {
@@ -366,14 +445,16 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           .from('comments')
           .select('id, post_id, author_id, text, image_url, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
           .eq('post_id', postId)
-          .order('created_at', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(30)
 
         if (withImage.error) {
           const fallback = await supabase
             .from('comments')
             .select('id, post_id, author_id, text, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
             .eq('post_id', postId)
-            .order('created_at', { ascending: true })
+            .order('created_at', { ascending: false })
+            .limit(30)
           data = fallback.data as unknown[] | null
           error = fallback.error as { message?: string } | null
         } else {
@@ -385,7 +466,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           console.warn('loadCommentsForPost:', error.message)
           return
         }
-        const mapped: Comment[] = (data ?? []).map((row: unknown) => {
+        const mapped: Comment[] = [...(data ?? [])].reverse().map((row: unknown) => {
           const r = row as {
             id: string
             post_id: string
@@ -434,7 +515,6 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           const rest = prev.filter((c) => c.postId !== postId)
           return [...rest, ...mapped].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         })
-        setCommentCountByPostId((prev) => ({ ...prev, [postId]: mapped.length }))
       } catch (e) {
         console.warn('loadCommentsForPost', e)
       }
@@ -608,7 +688,9 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       }
 
       const isProposedCategory = post.category === 'propuesta' && Boolean(post.proposedCategoryLabel?.trim())
-      const status: PostStatus = isProposedCategory ? 'pending' : u.isAdmin ? 'approved' : 'pending'
+      const isVenta = post.category === 'venta'
+      const status: PostStatus =
+        isProposedCategory || isVenta ? 'pending' : u.isAdmin ? 'approved' : 'pending'
 
       try {
         const { data, error } = await supabase
@@ -621,6 +703,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             status,
             whatsapp_number: post.whatsappNumber?.trim() || null,
             proposed_category_label: post.proposedCategoryLabel?.trim() || null,
+            sale_subcategory: post.saleSubcategory?.trim() || null,
+            sale_price: post.salePrice?.trim() || null,
           })
           .select('id, created_at')
           .single()
@@ -658,6 +742,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           createdAt: new Date(data.created_at),
           media: mediaItems,
           proposedCategoryLabel: post.proposedCategoryLabel?.trim() || undefined,
+          saleSubcategory: post.saleSubcategory?.trim() || undefined,
+          salePrice: post.salePrice?.trim() || undefined,
         }
         setPosts((prev) => (prev.some((p) => p.id === newPost.id) ? prev : [newPost, ...prev]))
         return { ok: true }
@@ -669,17 +755,47 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   )
 
   const updatePostStatus = useCallback(
-    async (postId: string, status: PostStatus, _rejectedImages?: number[]) => {
-      await supabase.from('posts').update({ status, updated_at: new Date().toISOString() }).eq('id', postId)
-      setPosts((prev) => prev.map((post) => (post.id === postId ? { ...post, status } : post)))
+    async (postId: string, status: PostStatus, rejectedImages?: number[]): Promise<{ ok: boolean; error?: string }> => {
+      const headers = await getAuthHeaders()
+      if (!headers.Authorization) return { ok: false, error: 'Sesión expirada' }
+
+      const res = await fetch('/api/moderation/post-status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ postId, status, rejectedImages }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        return { ok: false, error: data.error ?? 'No se pudo actualizar la publicación' }
+      }
+
+      setPosts((prev) =>
+        prev.map((post) => {
+          if (post.id !== postId) return post
+          const nextMedia =
+            status === 'approved' && rejectedImages?.length
+              ? post.media.filter((_, index) => !rejectedImages.includes(index))
+              : post.media
+          return { ...post, status, media: nextMedia }
+        })
+      )
+      return { ok: true }
     },
-    [supabase]
+    [getAuthHeaders]
   )
 
   const deletePost = useCallback(
     async (postId: string) => {
-      const { error } = await supabase.from('posts').delete().eq('id', postId)
-      if (error) return { ok: false, error: error.message }
+      const headers = await getAuthHeaders()
+      if (!headers.Authorization) return { ok: false, error: 'Sesión expirada' }
+
+      const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+        method: 'DELETE',
+        headers,
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo eliminar la publicación' }
+
       setPosts((prev) => prev.filter((p) => p.id !== postId))
       setComments((prev) => prev.filter((c) => c.postId !== postId))
       fetchedCommentCountIdsRef.current.delete(postId)
@@ -690,7 +806,42 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       })
       return { ok: true }
     },
-    [supabase]
+    [getAuthHeaders]
+  )
+
+  const setPostReaction = useCallback(
+    async (postId: string, reaction: PostReactionType | null): Promise<{ ok: boolean; error?: string }> => {
+      const u = currentUserRef.current
+      if (!u) return { ok: false, error: 'Debés iniciar sesión para reaccionar' }
+      const previous = myReactionByPostId[postId]
+
+      if (reaction === null) {
+        const { error } = await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', u.id)
+        if (error) return { ok: false, error: error.message ?? 'No se pudo quitar la reacción' }
+      } else {
+        const { error } = await supabase.from('post_reactions').upsert(
+          {
+            post_id: postId,
+            user_id: u.id,
+            reaction_type: reaction,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'post_id,user_id' }
+        )
+        if (error) return { ok: false, error: error.message ?? 'No se pudo guardar la reacción' }
+      }
+
+      setMyReactionByPostId((prev) => ({ ...prev, [postId]: reaction ?? undefined }))
+      setPostReactionSummaryByPostId((prev) => {
+        const current = prev[postId] ?? { like: 0, love: 0 }
+        const next = { ...current }
+        if (previous) next[previous] = Math.max(0, next[previous] - 1)
+        if (reaction) next[reaction] += 1
+        return { ...prev, [postId]: next }
+      })
+      return { ok: true }
+    },
+    [myReactionByPostId, supabase]
   )
 
   const addComment = useCallback(
@@ -859,12 +1010,15 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       postsLoading,
       postsHasMore,
       postsLoadingMore,
+      postReactionSummaryByPostId,
+      myReactionByPostId,
       loadMorePosts,
       hydratePostFromServer,
       refreshPosts,
       addPost,
       updatePostStatus,
       deletePost,
+      setPostReaction,
       comments,
       commentCountByPostId,
       loadCommentsForPost,
@@ -888,12 +1042,15 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       postsLoading,
       postsHasMore,
       postsLoadingMore,
+      postReactionSummaryByPostId,
+      myReactionByPostId,
       loadMorePosts,
       hydratePostFromServer,
       refreshPosts,
       addPost,
       updatePostStatus,
       deletePost,
+      setPostReaction,
       comments,
       commentCountByPostId,
       loadCommentsForPost,

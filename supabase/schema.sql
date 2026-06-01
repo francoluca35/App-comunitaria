@@ -54,6 +54,8 @@ create table if not exists public.posts (
   description text not null,
   category text not null,
   proposed_category_label text,
+  sale_subcategory text,
+  sale_price text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   whatsapp_number text,
   created_at timestamptz not null default now(),
@@ -108,6 +110,7 @@ insert into public.post_categories (slug, label, sort_order) values
   ('avisos', 'Avisos', 3),
   ('objetos', 'Objetos', 4),
   ('noticias', 'Noticias', 5),
+  ('venta', 'Venta', 6),
   ('propuesta', 'Nueva categoría (pendiente)', 99)
 on conflict (slug) do nothing;
 

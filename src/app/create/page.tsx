@@ -6,7 +6,7 @@ import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { ArrowLeft, LayoutGrid, PenLine } from 'lucide-react'
+import { ArrowLeft, ShoppingBag } from 'lucide-react'
 import { CST } from '@/lib/cst-theme'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
 import { canCreateAlerts } from '@/lib/post-admin-permissions'
@@ -586,6 +586,7 @@ export default function CreateHubPage() {
 	const hasAvisos = postCategories.some((c) => c.slug === 'avisos')
 	const hasObjetos = postCategories.some((c) => c.slug === 'objetos')
 	const hasNoticias = postCategories.some((c) => c.slug === 'noticias')
+	const hasVenta = postCategories.some((c) => c.slug === 'venta')
 
 	const primaryCards: PrimaryCard[] = [
 		...(hasExtravios
@@ -741,13 +742,13 @@ export default function CreateHubPage() {
 				}
 				.card-sm-title { font-size: 13px; font-weight: 700; color: #2b2b2b; margin: 0 0 4px; font-family: 'Sora', sans-serif; }
 				.card-sm-desc { font-size: 10.5px; color: #7a5c52; line-height: 1.4; margin: 0; }
-				.free-card {
-					margin-top: 12px; border-radius: 16px; border: 0; background: #ffffff;
-					padding: 14px 12px; cursor: pointer; transition: border-color .2s, background .2s;
+				.venta-card {
+					margin-top: 12px; border-radius: 16px; border: 0; background: linear-gradient(135deg,#1a4d3a 0%,#2d6a4f 100%);
+					padding: 14px 12px; cursor: pointer; transition: transform 0.2s; user-select: none;
 				}
-				.free-card.selected { border-color: rgba(139,0,21,0.55); background: #fff7f8; }
-				.free-title { color: #2b2b2b; font-size: 13px; font-weight: 700; font-family: 'Sora', sans-serif; margin: 0; }
-				.free-desc { color: #7a5c52; font-size: 10.5px; margin-top: 4px; line-height: 1.4; }
+				.venta-card:active { transform: scale(0.97); }
+				.venta-title { color: #fff; font-size: 14px; font-weight: 700; font-family: 'Sora', sans-serif; margin: 0; }
+				.venta-desc { color: rgba(255,255,255,0.75); font-size: 10.5px; margin-top: 4px; line-height: 1.4; }
 				.cta-wrap { margin-top: 18px; text-align: center; }
 				.cta-btn {
 					background: linear-gradient(90deg, #c0192d, #8b0018); border: 1px solid rgba(255,100,100,0.3); color: #fff; font-size: 14px;
@@ -818,18 +819,17 @@ export default function CreateHubPage() {
 						</>
 					) : null}
 
-					<div className="free-card" onClick={() => router.push('/create/otro')}>
-						<p className="free-title flex items-center gap-2">
-							<span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10">
-								<LayoutGrid className="h-4 w-4" />
-							</span>
-							<span className="inline-flex items-center gap-2">
-								<PenLine className="h-4 w-4 text-[#ff8a9a]" />
-								Otra categoría / texto libre
-							</span>
-						</p>
-						<p className="free-desc">Proponé el nombre de la categoría y el contenido; si la aprueban, se crea en la comunidad.</p>
-					</div>
+					{hasVenta ? (
+						<div className="venta-card" onClick={() => router.push('/create/venta')}>
+							<p className="venta-title flex items-center gap-2">
+								<ShoppingBag className="h-5 w-5" />
+								Venta
+							</p>
+							<p className="venta-desc">
+								Ofrecé algo con título, precio, subcategoría y foto. Un moderador puede pedirte más detalles por mensaje privado.
+							</p>
+						</div>
+					) : null}
 
 				</div>
 			</div>

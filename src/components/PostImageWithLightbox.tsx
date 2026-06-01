@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/button'
 import { cn } from '@/app/components/ui/utils'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import type { PostMediaItem } from '@/app/providers'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type Variant = 'feed' | 'detail'
 
@@ -49,6 +50,7 @@ function CollageCell({
 }: CollageCellProps) {
   const [loaded, setLoaded] = useState(false)
   const isVideo = item.type === 'video'
+  const previewUrl = isVideo ? item.url : optimizedStorageImageUrl(item.url, { width: 720, height: 540, quality: 76, resize: 'cover' })
 
   useEffect(() => {
     setLoaded(false)
@@ -101,7 +103,7 @@ function CollageCell({
           {isVideo ? (
             <video
               key={item.url}
-              src={item.url}
+              src={previewUrl}
               muted
               playsInline
               preload="metadata"
@@ -115,7 +117,7 @@ function CollageCell({
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={item.url}
+              src={previewUrl}
               alt=""
               width={800}
               height={600}
@@ -154,6 +156,10 @@ export function PostImageWithLightbox({
   const lbIdx = normIndex(lightboxIndex, n)
   const lbItem = n > 0 ? media[lbIdx] : null
   const lbSrc = lbItem?.url ?? ''
+  const lbDisplaySrc =
+    lbItem && lbItem.type !== 'video'
+      ? optimizedStorageImageUrl(lbSrc, { width: 1600, quality: 82, resize: 'contain' })
+      : lbSrc
   const lbIsVideo = lbItem?.type === 'video'
 
   const goLightbox = useCallback(
@@ -324,7 +330,7 @@ export function PostImageWithLightbox({
                   <video
                     ref={lightboxVideoRef}
                     key={lbSrc}
-                    src={lbSrc}
+                    src={lbDisplaySrc}
                     controls
                     playsInline
                     autoPlay
@@ -390,6 +396,14 @@ function SingleMediaPreview({
   const [previewLoaded, setPreviewLoaded] = useState(false)
   const previewSrc = item.url
   const previewIsVideo = item.type === 'video'
+  const previewDisplaySrc =
+    previewIsVideo
+      ? previewSrc
+      : optimizedStorageImageUrl(previewSrc, {
+          width: variant === 'detail' ? 900 : 900,
+          quality: 78,
+          resize: 'contain',
+        })
 
   useEffect(() => {
     setPreviewLoaded(false)
@@ -438,13 +452,13 @@ function SingleMediaPreview({
       {previewIsVideo ? (
         <video
           key={previewSrc}
-          src={previewSrc}
+          src={previewDisplaySrc}
           muted
           playsInline
           controls
           preload="metadata"
           className={cn(
-            'relative z-[1] block h-auto w-full max-w-full select-none transition-opacity duration-300',
+            'relative z-[1] mx-auto block h-auto w-full max-w-full select-none object-contain transition-opacity duration-300 sm:w-auto',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
@@ -465,7 +479,7 @@ function SingleMediaPreview({
           onLoad={() => setPreviewLoaded(true)}
           onError={onFail}
           className={cn(
-            'relative z-[1] block h-auto w-full max-w-full select-none transition-opacity duration-300',
+            'relative z-[1] mx-auto block h-auto w-full max-w-full select-none object-contain transition-opacity duration-300 sm:w-auto',
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}

@@ -6,6 +6,8 @@ import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import { useVisualViewportKeyboardOverlap } from '@/hooks/useVisualViewportKeyboardOverlap'
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
+import { assertChatAudioUploadLimit } from '@/lib/compress-upload-audio'
+import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 
 const QUICK_EMOJIS = ['😀', '😂', '❤️', '👍', '🔥', '😊', '🙏', '👏', '😮', '😢', '🎉', '✨', '👋', '💬', '📷']
 const WAVE_BARS = 28
@@ -249,6 +251,12 @@ export function WhatsAppComposer({
 			toast.message('Grabá al menos medio segundo de audio')
 			return
 		}
+		try {
+			assertChatAudioUploadLimit(blob)
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : `El audio debe pesar ${MEDIA_UPLOAD_LIMITS.maxStoredMbLabel} o menos`)
+			return
+		}
 
 		try {
 			await onSendVoice(blob, durationSec)
@@ -283,7 +291,11 @@ export function WhatsAppComposer({
 			}
 
 			const mime = pickRecorderMime()
-			const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream)
+			const recorderOptions = {
+				...(mime ? { mimeType: mime } : {}),
+				audioBitsPerSecond: 24_000,
+			}
+			const rec = new MediaRecorder(stream, recorderOptions)
 			mimeRef.current = rec.mimeType || 'audio/webm'
 			chunksRef.current = []
 			rec.ondataavailable = (e) => {
@@ -299,7 +311,12 @@ export function WhatsAppComposer({
 			setRecordPhase('recording')
 
 			tickRef.current = setInterval(() => {
-				setRecordMs(getElapsedMs())
+				const elapsed = getElapsedMs()
+				setRecordMs(elapsed)
+				if (elapsed >= MEDIA_UPLOAD_LIMITS.maxAudioDurationMs) {
+					toast.message(`Máximo ${Math.floor(MEDIA_UPLOAD_LIMITS.maxAudioDurationMs / 60000)} min de audio`)
+					void sendRecording()
+				}
 			}, 200)
 
 			startWaveLoop()
@@ -307,7 +324,7 @@ export function WhatsAppComposer({
 			toast.error('No se pudo acceder al micrófono')
 			cancelRecording()
 		}
-	}, [cancelRecording, disabled, getElapsedMs, sending, startWaveLoop, value])
+	}, [cancelRecording, disabled, getElapsedMs, sendRecording, sending, startWaveLoop, value])
 
 	useEffect(() => () => cancelRecording(), [cancelRecording])
 

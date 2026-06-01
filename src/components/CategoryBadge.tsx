@@ -6,6 +6,7 @@ import {
 	Package,
 	Newspaper,
 	Sparkles,
+	ShoppingBag,
 	Tag,
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
@@ -19,6 +20,7 @@ const ICON_BY_SLUG: Record<string, React.ReactNode> = {
   objetos: <Package className="h-3 w-3" />,
   noticias: <Newspaper className="h-3 w-3" />,
   propuesta: <Sparkles className="h-3 w-3" />,
+  venta: <ShoppingBag className="h-3 w-3" />,
 }
 
 interface CategoryBadgeProps {

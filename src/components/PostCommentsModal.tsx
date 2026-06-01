@@ -16,6 +16,7 @@ import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRo
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 import { postPermalink } from '@/lib/app-public-url'
 import { CST } from '@/lib/cst-theme'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 function authorInitials(name: string) {
 	return name
@@ -143,8 +144,10 @@ function PostCommentItem({
 						<div className="mt-2 overflow-hidden rounded-xl">
 							{/* eslint-disable-next-line @next/next/no-img-element */}
 							<img
-								src={comment.imageUrl}
+								src={optimizedStorageImageUrl(comment.imageUrl, { width: compact ? 480 : 640, quality: 76, resize: 'contain' })}
 								alt="Imagen del comentario"
+								loading="lazy"
+								decoding="async"
 								className={`w-auto max-w-full object-cover ${compact ? 'max-h-56' : 'max-h-60'}`}
 							/>
 						</div>

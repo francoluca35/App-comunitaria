@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 type ParamsCtx = { params: Promise<{ id: string }> }
 
 /** GET /api/publicidad/[id]/comments - comentarios de una publicidad activa. */
-export async function GET(_request: NextRequest, context: ParamsCtx) {
+export async function GET(request: NextRequest, context: ParamsCtx) {
 	const { id } = await context.params
 	const publicidadId = id?.trim()
 	if (!publicidadId) {
@@ -12,17 +12,19 @@ export async function GET(_request: NextRequest, context: ParamsCtx) {
 	}
 
 	const supabase = createClient()
+	const limit = Math.min(Number(request.nextUrl.searchParams.get('limit')) || 30, 50)
 	const { data, error } = await supabase
 		.from('publicidad_comments')
 		.select('id, publicidad_id, author_id, text, created_at, profiles!publicidad_comments_author_id_fkey(name, avatar_url)')
 		.eq('publicidad_id', publicidadId)
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
+		.limit(limit)
 
 	if (error) {
 		return NextResponse.json({ error: error.message ?? 'No se pudieron cargar los comentarios' }, { status: 500 })
 	}
 
-	const mapped = (data ?? []).map((row: any) => {
+	const mapped = [...(data ?? [])].reverse().map((row: any) => {
 		const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
 		return {
 			id: String(row.id),

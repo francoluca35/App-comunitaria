@@ -29,6 +29,7 @@ import {
 } from '@/lib/chat-route-utils'
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -469,7 +470,13 @@ export function DashboardLayout({
                       <div className="aspect-[4/3] overflow-hidden bg-[#D8D2CC]/35 dark:bg-[#3a3b3c]">
                         {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
+                          <img
+                            src={optimizedStorageImageUrl(p.imageUrl, { width: 360, height: 270, quality: 72, resize: 'cover' })}
+                            alt={p.title}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
                             <Megaphone className="h-10 w-10 text-[#7A5C52]/50 dark:text-[#b0b3b8]/60" />

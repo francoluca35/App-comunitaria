@@ -19,6 +19,7 @@ import { Megaphone, X } from 'lucide-react'
 import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { useApp } from '@/app/providers'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type Props = {
   open: boolean
@@ -30,8 +31,45 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
   const { publicidadCategories } = useApp()
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
   const [slideIndex, setSlideIndex] = useState(0)
+  const [detailPublicidad, setDetailPublicidad] = useState<PublicidadDisplay | null>(null)
 
-  const imageUrls = useMemo(() => (publicidad ? getPublicidadImageUrls(publicidad) : []), [publicidad])
+  const displayPublicidad = detailPublicidad ?? publicidad
+  const imageUrls = useMemo(() => (displayPublicidad ? getPublicidadImageUrls(displayPublicidad) : []), [displayPublicidad])
+
+  useEffect(() => {
+    if (!open || !publicidad?.id) {
+      setDetailPublicidad(null)
+      return
+    }
+
+    let cancelled = false
+    const loadDetail = async () => {
+      try {
+        const res = await fetch(`/api/publicidad/activo/${encodeURIComponent(publicidad.id)}`)
+        if (!res.ok) return
+        const data = await res.json().catch(() => null)
+        if (!data || cancelled) return
+        setDetailPublicidad({
+          id: String(data.id),
+          title: String(data.title ?? publicidad.title),
+          description: String(data.description ?? publicidad.description),
+          category: String(data.category ?? publicidad.category),
+          createdAt: data.createdAt ? new Date(data.createdAt) : publicidad.createdAt,
+          imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : publicidad.imageUrl,
+          images: Array.isArray(data.images) ? data.images.filter((x: unknown): x is string => typeof x === 'string') : publicidad.images,
+          whatsappUrl: typeof data.whatsappUrl === 'string' ? data.whatsappUrl : publicidad.whatsappUrl,
+          instagramUrl: typeof data.instagramUrl === 'string' ? data.instagramUrl : publicidad.instagramUrl,
+        })
+      } catch {
+        /* La tarjeta liviana sigue funcionando con su imagen principal. */
+      }
+    }
+    void loadDetail()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, publicidad])
 
   useEffect(() => {
     if (!carouselApi) return
@@ -50,10 +88,10 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
     }
   }, [open, publicidad?.id, carouselApi])
 
-  if (!publicidad) return null
+  if (!displayPublicidad) return null
 
   const categoryLabel =
-    publicidadCategories.find((c) => c.slug === publicidad.category)?.label ?? publicidad.category
+    publicidadCategories.find((c) => c.slug === displayPublicidad.category)?.label ?? displayPublicidad.category
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,7 +100,7 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
         overlayClassName="backdrop-blur-[3px] bg-slate-950/55"
         className="flex w-[calc(100vw-1.25rem)] max-w-xl flex-col gap-0 overflow-hidden border border-slate-200/80 bg-white p-0 shadow-2xl dark:border-gray-700/80 dark:bg-gray-950 sm:rounded-[1.35rem]"
       >
-        <DialogTitle className="sr-only">{publicidad.title}</DialogTitle>
+        <DialogTitle className="sr-only">{displayPublicidad.title}</DialogTitle>
 
         <div className="flex min-h-0 max-h-[min(100dvh-1rem,880px)] flex-1 flex-col overflow-hidden">
           {/* Hero imagen */}
@@ -77,19 +115,21 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
 
             {imageUrls.length > 0 ? (
               <Carousel
-                key={publicidad.id}
+                key={displayPublicidad.id}
                 setApi={setCarouselApi}
                 opts={{ loop: imageUrls.length > 1, align: 'start' }}
                 className="w-full"
               >
                 <CarouselContent className="-ml-0">
                   {imageUrls.map((url, i) => (
-                    <CarouselItem key={`${publicidad.id}-img-${i}`} className="basis-full pl-0">
+                    <CarouselItem key={`${displayPublicidad.id}-img-${i}`} className="basis-full pl-0">
                       <div className="flex min-h-[220px] max-h-[min(48vh,440px)] items-center justify-center px-0 py-0 sm:max-h-[min(50vh,480px)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={url}
-                          alt={`${publicidad.title} — imagen ${i + 1}`}
+                          src={optimizedStorageImageUrl(url, { width: 1200, quality: 82, resize: 'contain' })}
+                          alt={`${displayPublicidad.title} — imagen ${i + 1}`}
+                          loading={i === slideIndex ? 'eager' : 'lazy'}
+                          decoding="async"
                           className="h-full max-h-[min(48vh,440px)] w-full object-contain sm:max-h-[min(50vh,480px)]"
                         />
                       </div>
@@ -136,22 +176,22 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
               {categoryLabel}
             </div>
             <h3 className="text-xl font-semibold leading-snug tracking-tight text-slate-900 dark:text-white">
-              {publicidad.title}
+              {displayPublicidad.title}
             </h3>
-            {publicidad.description?.trim() ? (
+            {displayPublicidad.description?.trim() ? (
               <p className="mt-2.5 text-[15px] leading-relaxed text-slate-600 dark:text-gray-300">
-                {publicidad.description.trim()}
+                {displayPublicidad.description.trim()}
               </p>
             ) : null}
 
-            {publicidad.whatsappUrl || publicidad.instagramUrl ? (
+            {displayPublicidad.whatsappUrl || displayPublicidad.instagramUrl ? (
               <div className="mt-2 border-t border-slate-100 pt-5 dark:border-gray-800/80">
                 <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-slate-400 dark:text-gray-500">
                   Contacto
                 </p>
                 <PublicidadContactLinks
-                  whatsappUrl={publicidad.whatsappUrl}
-                  instagramUrl={publicidad.instagramUrl}
+                  whatsappUrl={displayPublicidad.whatsappUrl}
+                  instagramUrl={displayPublicidad.instagramUrl}
                   size="modal"
                 />
               </div>

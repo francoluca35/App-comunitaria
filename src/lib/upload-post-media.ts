@@ -1,6 +1,8 @@
 import type { PostMediaItem } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { compressVideoForCommunityUpload } from '@/lib/compress-upload-video'
+import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 
 export type LocalAttachment = { file: File; kind: 'image' | 'video' }
 
@@ -49,7 +51,7 @@ export function isAllowedPostVideoFile(file: File): boolean {
 }
 
 /**
- * Sube fotos (comprimidas) y videos (sin re-encoding) en orden, mismo bucket que las publicaciones.
+ * Sube fotos y videos optimizados en orden, mismo bucket que las publicaciones.
  */
 export async function uploadLocalPostMedia(
   userId: string,
@@ -72,6 +74,7 @@ export async function uploadLocalPostMedia(
     if (att.kind === 'image') {
       const file = compressedImages[imgIdx++]
       if (!file) continue
+      assertStoredMediaLimit(file, att.file.name)
       const ext = storageExtensionFromFile(file)
       const path = `${userId}/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from(bucket).upload(path, file, {
@@ -84,7 +87,8 @@ export async function uploadLocalPostMedia(
         type: 'image',
       })
     } else {
-      const file = att.file
+      const file = await compressVideoForCommunityUpload(att.file)
+      assertStoredMediaLimit(file, att.file.name)
       const ext = storageExtensionFromVideoFile(file)
       const path = `${userId}/${crypto.randomUUID()}.${ext}`
       const { error } = await supabase.storage.from(bucket).upload(path, file, {

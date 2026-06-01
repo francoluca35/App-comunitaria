@@ -72,14 +72,16 @@ export function areChatReceiptsEnabled(): boolean {
 export async function fetchChatMessagesBetween(
 	supabase: SupabaseClient,
 	myId: string,
-	otherId: string
+	otherId: string,
+	limit = 100
 ): Promise<{ data: ChatMessageWithReceipts[] | null; error: PostgrestError | null }> {
 	await resolveChatReceiptsSupport(supabase)
 	const first = await supabase
 		.from('chat_messages')
 		.select(chatMessageSelect())
 		.or(conversationOrFilter(myId, otherId))
-		.order('created_at', { ascending: true })
+		.order('created_at', { ascending: false })
+		.limit(limit)
 
 	if (first.error && isMissingReceiptSchemaError(first.error)) {
 		receiptsSupported = false
@@ -87,9 +89,10 @@ export async function fetchChatMessagesBetween(
 			.from('chat_messages')
 			.select(CHAT_MESSAGE_SELECT_BASE)
 			.or(conversationOrFilter(myId, otherId))
-			.order('created_at', { ascending: true })
+			.order('created_at', { ascending: false })
+			.limit(limit)
 		return {
-			data: (fallback.data ?? null) as ChatMessageWithReceipts[] | null,
+			data: fallback.data ? ([...fallback.data].reverse() as ChatMessageWithReceipts[]) : null,
 			error: fallback.error,
 		}
 	}
@@ -99,7 +102,7 @@ export async function fetchChatMessagesBetween(
 	}
 
 	return {
-		data: (first.data ?? null) as ChatMessageWithReceipts[] | null,
+		data: first.data ? ([...first.data].reverse() as ChatMessageWithReceipts[]) : null,
 		error: first.error,
 	}
 }

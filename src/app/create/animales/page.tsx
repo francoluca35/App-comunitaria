@@ -144,7 +144,7 @@ export default function CreateAnimalesPage() {
       return
     }
     if (!validateArgentinaLocalDigits(telefonoLocal)) {
-      toast.error('El teléfono es demasiado corto')
+      toast.error('El teléfono debe tener entre 6 y 13 dígitos, sin contar el código de área')
       return
     }
     const telefonoGuardado = telefonoE164 ?? telefonoDisplay

@@ -7,6 +7,7 @@ import { getActivePublicidadDisplayById } from '@/lib/server/active-publicidad-b
 import { createClient } from '@/lib/supabase/server'
 import { getPublicidadImageUrls } from '@/lib/publicidad-display'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 async function getPublicidadCategoryLabel(slug: string): Promise<string> {
   const supabase = createClient()
@@ -82,7 +83,11 @@ export default async function PublicidadPermalinkPage({ params }: PageProps) {
           <div className="aspect-video overflow-hidden bg-slate-200 dark:bg-gray-700">
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={cover} alt={p.title} className="h-full w-full object-cover" />
+              <img
+                src={optimizedStorageImageUrl(cover, { width: 1200, height: 675, quality: 80, resize: 'cover' })}
+                alt={p.title}
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
                 <Megaphone className="h-14 w-14 text-slate-400" aria-hidden />

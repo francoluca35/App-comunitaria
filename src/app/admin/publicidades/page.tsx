@@ -9,6 +9,7 @@ import { Button } from '@/app/components/ui/button'
 import { ArrowLeft, Banknote, Loader2, Megaphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type AdminRequest = {
   id: string
@@ -139,7 +140,13 @@ export default function AdminPublicidadesPage() {
                     <div className="w-20 h-20 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0 flex items-center justify-center">
                       {req.images?.[0] ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={req.images[0]} alt={req.title} className="w-full h-full object-cover" />
+                        <img
+                          src={optimizedStorageImageUrl(req.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                          alt={req.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       ) : (
                         <Megaphone className="w-7 h-7 text-slate-400" />
                       )}

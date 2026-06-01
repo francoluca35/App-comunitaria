@@ -2,6 +2,7 @@
 
 export const ARGENTINA_COUNTRY_PREFIX = '+54'
 export const DEFAULT_ARGENTINA_PROVINCE_PREFIX = '342' // Santa Fe (Santo Tomé)
+export const MAX_ARGENTINA_LOCAL_DIGITS = 13
 
 export const ARGENTINA_PROVINCE_PREFIXES = [
 	{ province: 'CABA / AMBA', code: '11' },
@@ -41,7 +42,7 @@ export function normalizeArgentinaLocalDigits(raw: string): string {
 
 export function validateArgentinaLocalDigits(localDigits: string): boolean {
 	const d = normalizeArgentinaLocalDigits(localDigits)
-	return d.length >= 6
+	return d.length >= 6 && d.length <= MAX_ARGENTINA_LOCAL_DIGITS
 }
 
 /** E.164 móvil Argentina: +549 + código de área + número local. */
@@ -51,6 +52,7 @@ export function buildArgentinaMobileE164(
 ): string | null {
 	const local = normalizeArgentinaLocalDigits(localRaw)
 	if (!local) return null
+	if (local.length > MAX_ARGENTINA_LOCAL_DIGITS) return null
 	const code = provincePrefix.replace(/\D/g, '')
 	if (!code) return null
 	return `${ARGENTINA_COUNTRY_PREFIX}9${code}${local}`

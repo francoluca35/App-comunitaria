@@ -133,7 +133,7 @@ export default function CreateExtravioPage() {
 			return
 		}
 		if (config.whatsappEnabled && !validateArgentinaLocalDigits(whatsappLocal)) {
-			toast.error('El número de WhatsApp es demasiado corto')
+			toast.error('El WhatsApp debe tener entre 6 y 13 dígitos, sin contar el código de área')
 			return
 		}
 		if (attachments.length === 0) {
@@ -311,7 +311,7 @@ export default function CreateExtravioPage() {
 						</Label>
 						<p className="text-xs text-[#7A5C52]">
 							Hasta {maxImagesAlertas} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta {maxVideosAlertas}{' '}
-							videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u).
+							videos ({POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u); al enviar se optimizan a {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
 						</p>
 						{attachments.length > 0 && (
 							<div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-5">

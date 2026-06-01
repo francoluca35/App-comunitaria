@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireReferentAvatarManager } from '@/lib/referent-avatar-auth'
 import { fetchCanonicalMarioProfile } from '@/lib/mario-account'
+import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 
-const MAX_SIZE_MB = 2
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 function getExt(mime: string): string {
@@ -63,8 +63,11 @@ export async function POST(request: NextRequest) {
 	if (!ALLOWED_TYPES.includes(file.type)) {
 		return NextResponse.json({ error: 'Formato no permitido. Usá JPG, PNG o WebP.' }, { status: 400 })
 	}
-	if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-		return NextResponse.json({ error: `El archivo no puede superar ${MAX_SIZE_MB} MB` }, { status: 400 })
+	if (file.size > MEDIA_UPLOAD_LIMITS.maxStoredBytes) {
+		return NextResponse.json(
+			{ error: `El archivo no puede superar ${MEDIA_UPLOAD_LIMITS.maxStoredMbLabel}` },
+			{ status: 400 }
+		)
 	}
 
 	if (mario.avatar_url) {

@@ -131,7 +131,7 @@ export function NotificationBell({
         }
 
         const load = async (token: string) =>
-          fetch('/api/notifications', {
+          fetch('/api/notifications?type=non-message&limit=30', {
             headers: { Authorization: `Bearer ${token}` },
           })
 
@@ -429,15 +429,15 @@ export function NotificationBell({
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="z-[120] w-[360px] ml-2 p-0 max-sm:w-[calc(100vw-1rem)] max-sm:max-w-none max-sm:rounded-2xl"
+        className="z-[120] ml-2 w-[min(94vw,430px)] max-w-[calc(100vw-0.75rem)] p-0 max-sm:ml-0 max-sm:rounded-2xl"
         align="end"
         sideOffset={8}
       >
-        <div className="border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 dark:border-gray-800 sm:px-4">
           <h3 className="font-semibold text-slate-900 dark:text-white shrink-0">Notificaciones</h3>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-0.5">
             {totalUnreadBadge > 0 ? (
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => void markAllAsRead()}>
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs sm:px-3" onClick={() => void markAllAsRead()}>
                 Marcar leídas
               </Button>
             ) : null}
@@ -445,7 +445,7 @@ export function NotificationBell({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs text-slate-600 hover:text-red-700 dark:text-gray-400 dark:hover:text-red-400"
+                className="h-8 px-2 text-xs text-slate-600 hover:text-red-700 dark:text-gray-400 dark:hover:text-red-400 sm:px-3"
                 disabled={deleting}
                 onClick={() => void clearAllNotifications()}
               >
@@ -454,7 +454,7 @@ export function NotificationBell({
             ) : null}
           </div>
         </div>
-        <ScrollArea className="h-[320px] max-sm:h-[min(70dvh,34rem)]">
+        <ScrollArea className="h-[min(70dvh,420px)]">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -474,7 +474,7 @@ export function NotificationBell({
           ) : (
             <ul className="py-1">
               {messageThreadsUnread.length > 0 ? (
-                <li className="border-b border-slate-200 bg-[#8B0015]/[0.06] dark:border-gray-800 dark:bg-[#8B0015]/15">
+                <li className="border-b border-[#8B0015]/25 bg-[#8B0015]/[0.11] dark:border-[#8B0015]/40 dark:bg-[#8B0015]/25">
                   <p className="px-4 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-[#8B0015] dark:text-[#F5D0D6]">
                     Mensajes
                   </p>
@@ -489,9 +489,9 @@ export function NotificationBell({
                           <button
                             type="button"
                             onClick={() => onOpenMessageThread(t)}
-                            className="flex min-w-0 flex-1 gap-3 px-4 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-gray-800/80"
+                            className="flex min-w-0 flex-1 gap-3 px-3 py-2.5 text-left transition-colors hover:bg-[#8B0015]/10 dark:hover:bg-[#8B0015]/20 sm:px-4"
                           >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-gray-700 dark:text-gray-300">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8B0015]/15 text-[#8B0015] ring-1 ring-[#8B0015]/20 dark:bg-[#8B0015]/35 dark:text-[#F5D0D6]">
                               <MessageCircle className="h-4 w-4" />
                             </span>
                             <div className="min-w-0 flex-1">
@@ -510,7 +510,7 @@ export function NotificationBell({
                           <button
                             type="button"
                             onClick={() => void deleteNotifications(t.items.map((x) => x.id))}
-                            className="shrink-0 px-3 text-slate-400 transition-colors hover:bg-slate-100 hover:text-red-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                            className="shrink-0 px-2 text-[#8B0015]/65 transition-colors hover:bg-[#8B0015]/10 hover:text-red-700 dark:text-[#F5D0D6]/70 dark:hover:bg-[#8B0015]/20 dark:hover:text-red-300 sm:px-3"
                             aria-label="Eliminar mensajes de este chat"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -530,29 +530,36 @@ export function NotificationBell({
                     {isNewProfile ? (
                       <div
                         className={cn(
-                          'relative w-full flex gap-3 px-4 py-3 pr-10 text-left border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20'
+                          'relative flex w-full gap-3 border-b border-slate-100 px-3 py-3 pr-9 text-left last:border-0 dark:border-gray-800/50 sm:px-4 sm:pr-10',
+                          !n.read_at && 'border-l-4 border-l-[#8B0015] bg-[#8B0015]/15 shadow-[inset_0_0_0_1px_rgba(139,0,21,0.08)] dark:bg-[#8B0015]/28'
                         )}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200 dark:bg-gray-700 text-slate-600 dark:text-gray-300">
+                        <span
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-600 dark:text-gray-300',
+                            !n.read_at
+                              ? 'bg-[#8B0015]/15 text-[#8B0015] ring-1 ring-[#8B0015]/20 dark:bg-[#8B0015]/35 dark:text-[#F5D0D6]'
+                              : 'bg-slate-200 dark:bg-gray-700'
+                          )}
+                        >
                           <Icon className="w-4 h-4" />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-slate-900 dark:text-white text-sm">{n.title}</p>
+                          <p className={cn('text-sm text-slate-900 dark:text-white', !n.read_at ? 'font-bold' : 'font-medium')}>{n.title}</p>
                           {n.body && (
-                            <pre className="text-xs text-slate-600 dark:text-gray-400 mt-1 whitespace-pre-wrap font-sans line-clamp-4">
+                            <pre className="mt-1 line-clamp-5 whitespace-pre-wrap font-sans text-xs text-slate-600 [overflow-wrap:anywhere] dark:text-gray-400">
                               {n.body}
                             </pre>
                           )}
                           <p className="text-[10px] text-slate-400 dark:text-gray-500 mt-1">
                             {formatNotificationTime(n.created_at)}
                           </p>
-                          <div className="flex flex-wrap gap-2 mt-2">
+                          <div className="mt-2 grid grid-cols-1 gap-2 min-[380px]:grid-cols-[auto_minmax(0,1fr)]">
                             {n.link_url && (
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="text-xs h-7"
+                                className="h-8 justify-center text-xs"
                                 onClick={() => {
                                   setOpen(false)
                                   router.push(n.link_url!)
@@ -563,7 +570,7 @@ export function NotificationBell({
                             )}
                             <Button
                               size="sm"
-                              className="text-xs h-7 bg-[#8B0015] hover:bg-[#5A000E]"
+                              className="h-8 min-w-0 justify-center bg-[#8B0015] px-2 text-xs hover:bg-[#5A000E]"
                               disabled={sendingWelcomeId === n.id}
                               onClick={() => sendWelcomeMessage(n)}
                             >
@@ -572,7 +579,7 @@ export function NotificationBell({
                               ) : (
                                 <>
                                   <Send className="w-3 h-3 mr-1" />
-                                  Enviar mensaje de bienvenida
+                                  <span className="truncate">Enviar mensaje de bienvenida</span>
                                 </>
                               )}
                             </Button>
@@ -591,17 +598,17 @@ export function NotificationBell({
                       <div
                         className={cn(
                           'relative flex w-full border-b border-slate-100 dark:border-gray-800/50 last:border-0',
-                          !n.read_at && 'bg-[#8B0015]/10 dark:bg-[#8B0015]/20',
-                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500',
-                          n.type === 'community_alert_critical' && !n.read_at && 'border-l-4 border-l-red-600',
-                          n.type === 'community_notice' && !n.read_at && 'border-l-4 border-l-sky-500'
+                          !n.read_at && 'bg-[#8B0015]/15 shadow-[inset_0_0_0_1px_rgba(139,0,21,0.08)] dark:bg-[#8B0015]/28',
+                          n.type === 'community_alert' && !n.read_at && 'border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/35',
+                          n.type === 'community_alert_critical' && !n.read_at && 'border-l-4 border-l-red-600 bg-red-50 dark:bg-red-950/35',
+                          n.type === 'community_notice' && !n.read_at && 'border-l-4 border-l-sky-500 bg-sky-50 dark:bg-sky-950/35'
                         )}
                       >
                       <button
                         type="button"
                         onClick={() => handleNotificationClick(n)}
                         className={cn(
-                          'min-w-0 flex-1 flex gap-3 px-4 py-3 pr-10 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors',
+                          'min-w-0 flex-1 flex gap-3 px-3 py-3 pr-9 text-left hover:bg-slate-50 dark:hover:bg-gray-800/80 transition-colors sm:px-4 sm:pr-10',
                         )}
                       >
                         <span
@@ -619,7 +626,7 @@ export function NotificationBell({
                           <Icon className="w-4 h-4" />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium text-slate-900 dark:text-white text-sm">{n.title}</p>
+                          <p className={cn('text-sm text-slate-900 dark:text-white', !n.read_at ? 'font-bold' : 'font-medium')}>{n.title}</p>
                           {n.body && (
                             <p className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 mt-0.5">{n.body}</p>
                           )}

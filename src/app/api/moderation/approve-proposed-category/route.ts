@@ -18,6 +18,7 @@ function migration503() {
 export async function POST(request: NextRequest) {
   const auth = await requireStaff(request)
   if (!auth.ok) return auth.response
+  const db = auth.serviceClient ?? auth.supabase
 
   let body: { postId?: string }
   try {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
   const postId = typeof body.postId === 'string' ? body.postId.trim() : ''
   if (!postId) return NextResponse.json({ error: 'Falta postId' }, { status: 400 })
 
-  const { data: post, error: fetchError } = await auth.supabase
+  const { data: post, error: fetchError } = await db
     .from('posts')
     .select('id, category, proposed_category_label, status')
     .eq('id', postId)
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   let slug: string
   try {
-    slug = await uniqueCategorySlug(auth.supabase, 'post_categories', base, {
+    slug = await uniqueCategorySlug(db, 'post_categories', base, {
       distinctFromTable: 'publicidad_categories',
     })
   } catch (e) {
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
   }
 
   const sort_order = 99
-  const { error: insError } = await auth.supabase.from('post_categories').insert({ slug, label, sort_order })
+  const { error: insError } = await db.from('post_categories').insert({ slug, label, sort_order })
   if (insError) {
     if (isMissingCategoriesTable(insError)) return migration503()
     if (insError.code === '23505') {
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insError.message }, { status: 500 })
   }
 
-  const { error: updError } = await auth.supabase
+  const { error: updError } = await db
     .from('posts')
     .update({
       category: slug,
@@ -91,8 +92,7 @@ export async function POST(request: NextRequest) {
     .eq('id', postId)
 
   if (updError) {
-    const rollback = auth.serviceClient ?? auth.supabase
-    await rollback.from('post_categories').delete().eq('slug', slug)
+    await db.from('post_categories').delete().eq('slug', slug)
     return NextResponse.json({ error: updError.message }, { status: 500 })
   }
 

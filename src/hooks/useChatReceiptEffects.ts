@@ -6,12 +6,10 @@ import {
 	applyOutgoingReceiptUpdates,
 	areChatReceiptsEnabled,
 	chatMessageSelect,
-	fetchChatMessagesBetween,
 	markChatConversationRead,
 	markChatMessageDelivered,
 	mergeChatMessageUpdate,
 	resolveChatReceiptsSupport,
-	syncMessagesWithServerReceipts,
 	type ChatMessageWithReceipts,
 } from '@/lib/chat-read-receipts'
 
@@ -75,10 +73,8 @@ export function useChatReceiptEffects(
 
 	const pollReceipts = useCallback(async () => {
 		if (!myId || !otherId) return
-		const { data } = await fetchChatMessagesBetween(supabase, myId, otherId)
-		if (!data) return
-		setMessages((prev) => syncMessagesWithServerReceipts(prev, data))
-	}, [supabase, myId, otherId, setMessages])
+		await resolveChatReceiptsSupport(supabase)
+	}, [supabase, myId, otherId])
 
 	return {
 		onConversationOpen,

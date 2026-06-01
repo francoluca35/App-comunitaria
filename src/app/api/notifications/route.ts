@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
   }
 
   const limit = Math.min(Number(request.nextUrl.searchParams.get('limit')) || 50, 100)
+  const typeFilter = request.nextUrl.searchParams.get('type')
 
   const hiddenTypes = [...NOTIFICATION_TYPES_HIDDEN_IN_BELL]
   let query = supabase
@@ -55,6 +56,11 @@ export async function GET(request: NextRequest) {
   if (hiddenTypes.length) {
     const inList = `(${hiddenTypes.map((t) => `"${t}"`).join(',')})`
     query = query.not('type', 'in', inList)
+  }
+  if (typeFilter === 'message') {
+    query = query.eq('type', 'message')
+  } else if (typeFilter === 'non-message') {
+    query = query.neq('type', 'message')
   }
   const { data, error } = await query.order('created_at', { ascending: false }).limit(limit)
 

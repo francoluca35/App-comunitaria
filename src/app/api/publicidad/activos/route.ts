@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildInstagramUrl, buildWhatsAppUrl } from '@/lib/server/publicidad'
+import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
 
 /**
  * GET /api/publicidad/activos — todas las publicidades activas (vigentes)
@@ -8,6 +9,11 @@ import { buildInstagramUrl, buildWhatsAppUrl } from '@/lib/server/publicidad'
  */
 export async function GET(request: NextRequest) {
   try {
+    const cleanup = await cleanupExpiredPublicidades()
+    if (!cleanup.ok) {
+      console.warn('GET /api/publicidad/activos cleanup expired:', cleanup.error)
+    }
+
     const lateralOnly =
       request.nextUrl.searchParams.get('lateral') === '1' ||
       request.nextUrl.searchParams.get('lateral') === 'true'
@@ -17,6 +23,7 @@ export async function GET(request: NextRequest) {
       .from('publicidad_requests')
       .select('id,title,description,category,images,phone_number,instagram,created_at')
       .eq('status', 'active')
+      .gt('end_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(lateralOnly ? 24 : 50)
 
@@ -47,13 +54,16 @@ export async function GET(request: NextRequest) {
         category: r.category,
         createdAt: r.created_at,
         imageUrl: imageUrl ?? undefined,
-        images: imgs.length ? imgs : undefined,
         whatsappUrl: whatsappUrl ?? undefined,
         instagramUrl: instagramUrl ?? undefined,
       }
     })
 
-    return NextResponse.json(mapped)
+    return NextResponse.json(mapped, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    })
   } catch (e) {
     console.error('GET /api/publicidad/activos exception:', e)
     return NextResponse.json([])

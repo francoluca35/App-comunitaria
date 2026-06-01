@@ -27,7 +27,7 @@ export function dedupePostsById(posts: Post[]): Post[] {
 export const POSTS_FEED_PAGE_SIZE = 20
 
 export const POSTS_SELECT =
-  'id, title, description, category, proposed_category_label, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
+  'id, title, description, category, proposed_category_label, sale_subcategory, sale_price, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
 
 export type SupabasePostRow = {
   id: string
@@ -35,6 +35,8 @@ export type SupabasePostRow = {
   description: string
   category: string
   proposed_category_label: string | null
+  sale_subcategory: string | null
+  sale_price: string | null
   status: string
   whatsapp_number: string | null
   created_at: string
@@ -52,6 +54,8 @@ export function mapSupabasePostRow(row: SupabasePostRow): Post {
     description: row.description,
     category: row.category,
     proposedCategoryLabel: row.proposed_category_label ?? undefined,
+    saleSubcategory: row.sale_subcategory ?? undefined,
+    salePrice: row.sale_price ?? undefined,
     media,
     authorId: row.author_id,
     authorName: profile?.name ?? row.author_id.slice(0, 8),

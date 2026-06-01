@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useApp } from '@/app/providers'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
-import { Megaphone, ArrowRight, Loader2, Download, Pencil } from 'lucide-react'
+import { Megaphone, ArrowRight, Loader2, Download, Pencil, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
+import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -41,6 +42,8 @@ export default function MisPublicidadesPage() {
   const [active, setActive] = useState<MisPublicidad[]>([])
   const [inactive, setInactive] = useState<MisPublicidad[]>([])
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [extensionBusyId, setExtensionBusyId] = useState<string | null>(null)
+  const extensionAlertShownRef = useRef(false)
 
   useEffect(() => {
     if (!currentUser) {
@@ -80,6 +83,16 @@ export default function MisPublicidadesPage() {
     void load()
   }, [])
 
+  useEffect(() => {
+    if (extensionAlertShownRef.current) return
+    const expiring = active.find((p) => p.days_left > 0 && p.days_left <= 2)
+    if (!expiring) return
+    extensionAlertShownRef.current = true
+    toast.info('Seguir promocionando', {
+      description: `A "${expiring.title}" le quedan ${expiring.days_left} día${expiring.days_left === 1 ? '' : 's'}. Podés avisarle a Mario para extenderla.`,
+    })
+  }, [active])
+
   const downloadComprobante = async (id: string) => {
     try {
       setDownloadingId(id)
@@ -111,6 +124,40 @@ export default function MisPublicidadesPage() {
       toast.error('Error de conexión')
     } finally {
       setDownloadingId(null)
+    }
+  }
+
+  const requestExtension = async (publicidad: MisPublicidad) => {
+    const wantsExtension = window.confirm(
+      `Quedan ${publicidad.days_left} día${publicidad.days_left === 1 ? '' : 's'} de publicidad. ¿Querés seguir promocionando? Si aceptás, le avisamos a Mario para coordinar la extensión.`
+    )
+    if (!wantsExtension) return
+
+    try {
+      setExtensionBusyId(publicidad.id)
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) {
+        toast.error('Sesión expirada')
+        return
+      }
+
+      const res = await fetch(`/api/publicidad/${publicidad.id}/extend`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? 'No se pudo avisar a Mario')
+        return
+      }
+
+      toast.success('Listo, le avisamos a Mario que querés seguir promocionando.')
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setExtensionBusyId(null)
     }
   }
 
@@ -157,7 +204,13 @@ export default function MisPublicidadesPage() {
                         <div className="w-20 h-20 rounded-xl bg-slate-100 dark:bg-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
                           {p.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                            <img
+                              src={optimizedStorageImageUrl(p.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                              alt={p.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
                           ) : (
                             <Megaphone className="w-7 h-7 text-slate-400" />
                           )}
@@ -193,6 +246,27 @@ export default function MisPublicidadesPage() {
                             </div>
                           </div>
                           <p className="text-sm text-slate-600 dark:text-gray-300 mt-2 line-clamp-2">{p.description}</p>
+                          {p.days_left <= 2 ? (
+                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100">
+                              <p className="font-semibold">Seguir promocionando</p>
+                              <p className="mt-1 text-xs">
+                                Tu publicidad está por finalizar. Podés avisarle a Mario para extenderla.
+                              </p>
+                              <Button
+                                size="sm"
+                                className="mt-2 bg-amber-600 text-white hover:bg-amber-700"
+                                disabled={extensionBusyId === p.id}
+                                onClick={() => void requestExtension(p)}
+                              >
+                                {extensionBusyId === p.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Repeat className="mr-2 h-4 w-4" />
+                                )}
+                                Seguir promocionando
+                              </Button>
+                            </div>
+                          ) : null}
                         </div>
                       </CardContent>
                     </Card>
@@ -215,7 +289,13 @@ export default function MisPublicidadesPage() {
                         <div className="w-20 h-20 rounded-xl bg-slate-100 dark:bg-gray-700 overflow-hidden shrink-0 flex items-center justify-center">
                           {p.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.images[0]} alt={p.title} className="w-full h-full object-cover" />
+                            <img
+                              src={optimizedStorageImageUrl(p.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                              alt={p.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
                           ) : (
                             <Megaphone className="w-7 h-7 text-slate-400" />
                           )}
