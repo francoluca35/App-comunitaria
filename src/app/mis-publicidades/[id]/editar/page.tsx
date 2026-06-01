@@ -396,9 +396,11 @@ export default function EditarPublicidadPage() {
     )
   }
 
-  const previewItems: { key: string; url: string }[] = [
-    ...existingUrls.map((url, i) => ({ key: `e-${i}`, url })),
-    ...newPreviewUrls.map((url, i) => ({ key: `n-${i}`, url })),
+  type PreviewItem = { key: string; url: string; kind: 'existing' | 'new' }
+
+  const previewItems: PreviewItem[] = [
+    ...existingUrls.map((url, i) => ({ key: `e-${i}`, url, kind: 'existing' as const })),
+    ...newPreviewUrls.map((url, i) => ({ key: `n-${i}`, url, kind: 'new' as const })),
   ]
 
   return (
