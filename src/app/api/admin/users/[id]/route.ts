@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 
+type AdminServiceClient = NonNullable<Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>['serviceClient']>
+
 const USER_STORAGE_BUCKETS = ['publicaciones', 'chat-images', 'chat-audio', 'avatars'] as const
 
 function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
@@ -9,7 +11,7 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
 }
 
 async function deleteFromTable(
-  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  client: AdminServiceClient,
   table: string,
   column: string,
   value: string
@@ -20,7 +22,7 @@ async function deleteFromTable(
 }
 
 async function listStoragePaths(
-  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  client: AdminServiceClient,
   bucket: string,
   prefix: string
 ): Promise<string[]> {
@@ -42,7 +44,7 @@ async function listStoragePaths(
 }
 
 async function removeUserStorageObjects(
-  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  client: AdminServiceClient,
   userId: string
 ): Promise<string[]> {
   const warnings: string[] = []
@@ -56,7 +58,7 @@ async function removeUserStorageObjects(
 }
 
 async function cleanupOwnedPublicidadComments(
-  client: NonNullable<Awaited<ReturnType<typeof requireAdmin>> extends { ok: true; serviceClient: infer T } ? T : never>,
+  client: AdminServiceClient,
   userId: string
 ): Promise<string | null> {
   const { data, error } = await client.from('publicidad_requests').select('id').eq('owner_id', userId)
