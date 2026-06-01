@@ -91,8 +91,9 @@ export async function fetchChatMessagesBetween(
 			.or(conversationOrFilter(myId, otherId))
 			.order('created_at', { ascending: false })
 			.limit(limit)
+		const rows = fallback.data ? (fallback.data as unknown as ChatMessageWithReceipts[]) : null
 		return {
-			data: fallback.data ? ([...fallback.data].reverse() as ChatMessageWithReceipts[]) : null,
+			data: rows ? [...rows].reverse() : null,
 			error: fallback.error,
 		}
 	}
@@ -101,8 +102,9 @@ export async function fetchChatMessagesBetween(
 		receiptsSupported = true
 	}
 
+	const rows = first.data ? (first.data as unknown as ChatMessageWithReceipts[]) : null
 	return {
-		data: first.data ? ([...first.data].reverse() as ChatMessageWithReceipts[]) : null,
+		data: rows ? [...rows].reverse() : null,
 		error: first.error,
 	}
 }
@@ -121,8 +123,9 @@ export async function insertChatMessage(
 			.insert(row)
 			.select(CHAT_MESSAGE_SELECT_BASE)
 			.single()
+		const fallbackData = (fallback.data ?? null) as unknown as ChatMessageWithReceipts | null
 		return {
-			data: (fallback.data ?? null) as ChatMessageWithReceipts | null,
+			data: fallbackData,
 			error: fallback.error,
 		}
 	}
@@ -131,8 +134,9 @@ export async function insertChatMessage(
 		receiptsSupported = true
 	}
 
+	const firstData = (first.data ?? null) as unknown as ChatMessageWithReceipts | null
 	return {
-		data: (first.data ?? null) as ChatMessageWithReceipts | null,
+		data: firstData,
 		error: first.error,
 	}
 }
@@ -280,10 +284,10 @@ export function applyOutgoingReceiptUpdates(
 	return prev.map((m) =>
 		m.id === updated.id
 			? {
-					...m,
-					delivered_at: updated.delivered_at ?? m.delivered_at ?? null,
-					read_at: updated.read_at ?? m.read_at ?? null,
-				}
+				...m,
+				delivered_at: updated.delivered_at ?? m.delivered_at ?? null,
+				read_at: updated.read_at ?? m.read_at ?? null,
+			}
 			: m
 	)
 }
