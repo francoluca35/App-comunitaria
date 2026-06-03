@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
 import { Textarea } from '@/app/components/ui/textarea'
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
+import { PostAuthorAvatarChatLink } from '@/components/PostAuthorAvatarChatLink'
 import { Badge } from '@/app/components/ui/badge'
 import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Card, CardContent } from '@/app/components/ui/card'
@@ -16,6 +16,7 @@ import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { DashboardLayout } from '@/components/DashboardLayout'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
+import { EditOwnPostButton } from '@/components/EditOwnPostButton'
 import { PostPublicationActions } from '@/components/PostPublicationActions'
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
 
@@ -131,15 +132,21 @@ export default function PostDetailPage() {
           <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-[#2B2B2B]">
             Detalle
           </h1>
-          <DeleteOwnPostButton postId={post.id} authorId={post.authorId} redirectTo="/" size="icon" />
+          <div className="flex items-center gap-0.5">
+            <EditOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
+            <DeleteOwnPostButton postId={post.id} authorId={post.authorId} redirectTo="/" size="icon" />
+          </div>
         </div>
 
         {/* Arriba: autor y texto */}
         <div className="mb-2 flex items-start gap-2.5">
-          <Avatar className="h-10 w-10 shrink-0 rounded-lg ring-1 ring-slate-200 dark:ring-gray-700">
-            <AvatarImage src={post.authorAvatar} />
-            <AvatarFallback className="rounded-lg text-sm">{post.authorName[0]}</AvatarFallback>
-          </Avatar>
+          <PostAuthorAvatarChatLink
+            authorId={post.authorId}
+            authorName={post.authorName}
+            authorAvatar={post.authorAvatar}
+            className="h-10 w-10 shrink-0 rounded-lg ring-1 ring-slate-200 dark:ring-gray-700"
+            fallbackClassName="rounded-lg text-sm"
+          />
           <div className="min-w-0 flex-1">
             <PostAuthorNameCategoryRow
               authorName={post.authorName}

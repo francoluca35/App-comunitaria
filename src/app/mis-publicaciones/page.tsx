@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { PostCard } from '@/components/PostCard'
 import { Button } from '@/app/components/ui/button'
-import { FileText } from 'lucide-react'
+import { FileText, Pencil } from 'lucide-react'
 import { DashboardLayout } from '@/components/DashboardLayout'
 
 export default function MisPublicacionesPage() {
@@ -44,7 +44,17 @@ export default function MisPublicacionesPage() {
         ) : (
           <div className="space-y-4">
             {myPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <div key={post.id} className="relative">
+                <PostCard post={post} />
+                <div className="mt-2 flex justify-end">
+                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                    <Link href={`/mis-publicaciones/${post.id}/editar`}>
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         )}

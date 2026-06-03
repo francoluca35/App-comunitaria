@@ -167,6 +167,16 @@ export interface CommunityContextType {
     post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
   ) => Promise<{ ok: boolean; error?: string }>
   updatePostStatus: (postId: string, status: PostStatus, rejectedImages?: number[]) => Promise<{ ok: boolean; error?: string }>
+  updatePost: (
+    postId: string,
+    patch: {
+      title: string
+      description: string
+      whatsappNumber?: string | null
+      saleSubcategory?: string | null
+      salePrice?: string | null
+    }
+  ) => Promise<{ ok: boolean; error?: string }>
   deletePost: (postId: string) => Promise<{ ok: boolean; error?: string }>
   setPostReaction: (postId: string, reaction: PostReactionType | null) => Promise<{ ok: boolean; error?: string }>
 

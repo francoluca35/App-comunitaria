@@ -152,6 +152,21 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               Ver perfil
               <ChevronRight className="h-4 w-4" />
             </Link>
+            {currentUser.isAdmin ? (
+              <Link
+                href="/admin"
+                onClick={onNavigate}
+                className={`mt-1.5 inline-flex items-center gap-1 text-sm font-semibold hover:underline ${
+                  isActivePath('/admin')
+                    ? 'text-[#5A000E] dark:text-[#c45a6a]'
+                    : 'text-[#8B0015] dark:text-[#8B0015]'
+                }`}
+              >
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                Acceso admin
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 text-center">
@@ -341,21 +356,6 @@ export function DashboardSidebar({ onNavigate }: { onNavigate?: () => void }) {
               Foto del referente
             </Link>
           )}
-          {currentUser?.isAdmin && (
-          <Link
-            href="/admin"
-            onClick={onNavigate}
-            className={`mx-0 mt-1 flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors ${
-              isActivePath('/admin') ? `${navActive}` : navInactive
-            }`}
-            style={isActivePath('/admin') ? { backgroundColor: CST.bordo } : undefined}
-          >
-            <LayoutDashboard
-              className={`h-5 w-5 shrink-0 ${isActivePath('/admin') ? iconActive : iconMuted}`}
-            />
-            Acceso admin
-          </Link>
-        )}
           {currentUser && (
             <button
               type="button"

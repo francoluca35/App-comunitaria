@@ -762,6 +762,67 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     [getAuthHeaders, supabase]
   )
 
+  const updatePost = useCallback(
+    async (
+      postId: string,
+      patch: {
+        title: string
+        description: string
+        whatsappNumber?: string | null
+        saleSubcategory?: string | null
+        salePrice?: string | null
+      }
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const headers = await getAuthHeaders()
+      if (!headers.Authorization) return { ok: false, error: 'Sesión expirada' }
+
+      const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: patch.title,
+          description: patch.description,
+          whatsappNumber: patch.whatsappNumber,
+          saleSubcategory: patch.saleSubcategory,
+          salePrice: patch.salePrice,
+        }),
+      })
+      const j = (await res.json().catch(() => ({}))) as {
+        ok?: boolean
+        error?: string
+        post?: {
+          title?: string
+          description?: string
+          whatsappNumber?: string
+          saleSubcategory?: string
+          salePrice?: string
+        }
+      }
+      if (!res.ok) return { ok: false, error: j.error ?? res.statusText }
+
+      const updated = j.post
+      if (updated) {
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === postId
+              ? {
+                  ...p,
+                  title: updated.title ?? p.title,
+                  description: updated.description ?? p.description,
+                  whatsappNumber: updated.whatsappNumber ?? p.whatsappNumber,
+                  saleSubcategory:
+                    updated.saleSubcategory !== undefined ? updated.saleSubcategory : p.saleSubcategory,
+                  salePrice: updated.salePrice !== undefined ? updated.salePrice : p.salePrice,
+                }
+              : p
+          )
+        )
+      }
+      return { ok: true }
+    },
+    [getAuthHeaders]
+  )
+
   const updatePostStatus = useCallback(
     async (postId: string, status: PostStatus, rejectedImages?: number[]): Promise<{ ok: boolean; error?: string }> => {
       const headers = await getAuthHeaders()
@@ -1033,6 +1094,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       hydratePostFromServer,
       refreshPosts,
       addPost,
+      updatePost,
       updatePostStatus,
       deletePost,
       setPostReaction,
@@ -1065,6 +1127,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       hydratePostFromServer,
       refreshPosts,
       addPost,
+      updatePost,
       updatePostStatus,
       deletePost,
       setPostReaction,

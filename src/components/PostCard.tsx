@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
+import { EditOwnPostButton } from '@/components/EditOwnPostButton'
 import { Post, useApp } from '@/app/providers'
 import { canPermanentlyDeletePosts } from '@/lib/post-admin-permissions'
 import { Card, CardContent, CardFooter } from '@/app/components/ui/card'
 import { PostPublicationActions } from '@/components/PostPublicationActions'
 import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
+import { PostAuthorAvatarChatLink } from '@/components/PostAuthorAvatarChatLink'
 import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
 import { Badge } from '@/app/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
@@ -29,6 +30,7 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 	const descriptionRef = useRef<HTMLParagraphElement | null>(null)
 	const isMine = currentUser?.id === post.authorId
 	const showDelete = isMine || canPermanentlyDeletePosts(currentUser)
+	const showOwnerActions = isMine
 	const commentCount =
 		config.commentsEnabled && Object.prototype.hasOwnProperty.call(commentCountByPostId, post.id)
 			? commentCountByPostId[post.id]
@@ -78,19 +80,22 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 
 	return (
 		<Card className="relative gap-0 overflow-hidden rounded-none border-x-0 border-b border-[#CED0D4] border-t-0 bg-white sm:rounded-none sm:border sm:border-[#D8D2CC]">
-			{showDelete ? (
-				<div className="absolute right-2 top-3 z-10 sm:right-3">
-					<DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
+			{showOwnerActions || showDelete ? (
+				<div className="absolute right-2 top-3 z-10 flex items-center gap-0.5 sm:right-3">
+					{showOwnerActions ? <EditOwnPostButton postId={post.id} authorId={post.authorId} size="icon" /> : null}
+					{showDelete ? (
+						<DeleteOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
+					) : null}
 				</div>
 			) : null}
-			<CardContent className={`p-4 ${showDelete ? 'pr-14' : ''}`}>
+			<CardContent className={`p-4 ${showOwnerActions || showDelete ? 'pr-[4.5rem] sm:pr-20' : ''}`}>
 				<div className="mb-2 flex items-start gap-2.5">
-					<Avatar className="h-10 w-10 shrink-0">
-						<AvatarImage src={post.authorAvatar} />
-						<AvatarFallback className="bg-[#E8E4E0] text-sm font-semibold text-[#2B2B2B]">
-							{post.authorName[0]?.toUpperCase() ?? '?'}
-						</AvatarFallback>
-					</Avatar>
+					<PostAuthorAvatarChatLink
+						authorId={post.authorId}
+						authorName={post.authorName}
+						authorAvatar={post.authorAvatar}
+						className="h-10 w-10 shrink-0"
+					/>
 					<div className="min-w-0 flex-1">
 						<PostAuthorNameCategoryRow
 							authorName={post.authorName}
@@ -151,8 +156,9 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 				/>
 			) : null}
 
-			<CardFooter className="border-0 bg-white px-0 py-0">
+			<CardFooter className="w-full flex-col items-stretch border-0 bg-white px-0 py-0">
 				<PostPublicationActions
+					className="w-full"
 					postId={post.id}
 					whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
 					showComments={config.commentsEnabled}

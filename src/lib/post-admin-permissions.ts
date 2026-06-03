@@ -18,3 +18,13 @@ export function canViewAllPostsForModeration(
 ): boolean {
 	return Boolean(user?.isAdmin || user?.isAdminMaster || user?.isModerator)
 }
+
+/** Admin / moderador: abrir chat con el autor desde la foto del post en el feed. */
+export function canOpenAuthorChatFromPost(
+	viewer: { id?: string; isAdmin?: boolean; isAdminMaster?: boolean; isModerator?: boolean } | null | undefined,
+	authorId: string | undefined
+): boolean {
+	if (!authorId?.trim() || !viewer?.id) return false
+	if (viewer.id === authorId) return false
+	return canViewAllPostsForModeration(viewer)
+}

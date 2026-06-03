@@ -232,7 +232,7 @@ export function PostPublicationActions({
 			role="group"
 			aria-label="Acciones de la publicación"
 			className={cn(
-				'flex items-center justify-between border-t border-[#CED0D4] bg-white',
+				'flex w-full items-center justify-between border-t border-[#CED0D4] bg-white',
 				compact ? 'px-2 py-1' : 'px-2 py-1.5 sm:px-3',
 				className
 			)}

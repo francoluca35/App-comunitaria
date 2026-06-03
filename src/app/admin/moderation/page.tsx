@@ -27,6 +27,7 @@ import {
   canViewAllPostsForModeration,
 } from '@/lib/post-admin-permissions'
 import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { PostAuthorAvatarChatLink } from '@/components/PostAuthorAvatarChatLink'
 
 export default function AdminModerationPage() {
   const router = useRouter()
@@ -217,10 +218,13 @@ export default function AdminModerationPage() {
           <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1 mb-2">{post.description}</p>
 
           <div className="flex items-center gap-2">
-            <Avatar className="w-5 h-5">
-              <AvatarImage src={post.authorAvatar} />
-              <AvatarFallback className="text-xs">{post.authorName[0]}</AvatarFallback>
-            </Avatar>
+            <PostAuthorAvatarChatLink
+              authorId={post.authorId}
+              authorName={post.authorName}
+              authorAvatar={post.authorAvatar}
+              className="h-5 w-5"
+              fallbackClassName="text-xs"
+            />
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {post.authorName} · {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })}
             </p>
@@ -324,10 +328,13 @@ export default function AdminModerationPage() {
                   )}
                 </DialogTitle>
                 <div className="text-muted-foreground text-sm flex items-center gap-2 mt-2">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={selectedPost.authorAvatar} />
-                    <AvatarFallback className="text-xs">{selectedPost.authorName[0]}</AvatarFallback>
-                  </Avatar>
+                  <PostAuthorAvatarChatLink
+                    authorId={selectedPost.authorId}
+                    authorName={selectedPost.authorName}
+                    authorAvatar={selectedPost.authorAvatar}
+                    className="h-6 w-6"
+                    fallbackClassName="text-xs"
+                  />
                   <span>{selectedPost.authorName}</span>
                   <span>·</span>
                   <CategoryBadge category={selectedPost.category} />
