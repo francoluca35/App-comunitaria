@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
 import { VALOR_PUBLICITARIO_CONFIG_KEY, VALOR_PUBLICITARIO_LATERAL_CONFIG_KEY, parseValorPublicitarioJsonb } from '@/lib/server/valor-publicitario'
 import { buildPaymentLink, generatePaymentToken } from '@/lib/server/publicidad'
+import { deletePublicidadById } from '@/lib/server/publicidad-expiration'
 
 export async function PATCH(
   request: NextRequest,
@@ -90,5 +91,25 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({ ok: true, payment_link_url })
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireAdmin(request)
+  if (!auth.ok) return auth.response
+
+  const db = auth.serviceClient ?? auth.supabase
+  const { id } = await params
+  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  const deleted = await deletePublicidadById(db, id)
+  if (!deleted.ok) {
+    const status = deleted.error === 'No encontrado' ? 404 : 500
+    return NextResponse.json({ error: deleted.error ?? 'No se pudo eliminar' }, { status })
+  }
+
+  return NextResponse.json({ ok: true })
 }
 

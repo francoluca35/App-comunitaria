@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/admin-auth'
-import { publicStoragePathsFromUrls } from '@/lib/server/storage-path'
-
-const POST_MEDIA_BUCKET = 'publicaciones'
+import { removeStorageObjectsByUrls } from '@/lib/server/storage-cleanup'
+import { POST_MEDIA_BUCKET } from '@/lib/server/delete-post-with-storage'
 
 type PostStatus = 'pending' | 'approved' | 'rejected'
 
@@ -70,9 +69,8 @@ export async function PATCH(request: NextRequest) {
 				return NextResponse.json({ error: mediaDeleteError.message }, { status: 500 })
 			}
 
-			const storagePaths = publicStoragePathsFromUrls(urlsToDelete, POST_MEDIA_BUCKET)
-			if (storagePaths.length > 0 && auth.serviceClient) {
-				await auth.serviceClient.storage.from(POST_MEDIA_BUCKET).remove(storagePaths)
+			if (urlsToDelete.length > 0 && auth.serviceClient) {
+				await removeStorageObjectsByUrls(auth.serviceClient, POST_MEDIA_BUCKET, urlsToDelete)
 			}
 		}
 	}

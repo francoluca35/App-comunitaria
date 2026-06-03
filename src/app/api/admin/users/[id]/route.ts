@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
+import { deletePublicidadById } from '@/lib/server/publicidad-expiration'
 
 type AdminServiceClient = NonNullable<Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>['serviceClient']>
 
@@ -55,19 +56,6 @@ async function removeUserStorageObjects(
     if (error) warnings.push(`${bucket}: ${error.message}`)
   }
   return warnings
-}
-
-async function cleanupOwnedPublicidadComments(
-  client: AdminServiceClient,
-  userId: string
-): Promise<string | null> {
-  const { data, error } = await client.from('publicidad_requests').select('id').eq('owner_id', userId)
-  if (error) return isMissingRelationError(error) ? null : `publicidad_requests.select: ${error.message}`
-  const ids = (data ?? []).map((row: { id: string }) => row.id).filter(Boolean)
-  if (ids.length === 0) return null
-  const { error: deleteError } = await client.from('publicidad_comments').delete().in('publicidad_id', ids)
-  if (!deleteError || isMissingRelationError(deleteError)) return null
-  return `publicidad_comments.publicidad_id: ${deleteError.message}`
 }
 
 /** PATCH: actualizar role, status o suspended_until (solo admin). Usa cliente con token + RLS. */
@@ -150,15 +138,29 @@ export async function DELETE(
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
   const storageWarnings = await removeUserStorageObjects(serviceClient, id)
+
+  const { data: ownedPublicidades, error: ownedPubError } = await serviceClient
+    .from('publicidad_requests')
+    .select('id')
+    .eq('owner_id', id)
+  if (ownedPubError && !isMissingRelationError(ownedPubError)) {
+    return NextResponse.json({ error: ownedPubError.message }, { status: 500 })
+  }
+  for (const row of ownedPublicidades ?? []) {
+    if (!row?.id) continue
+    const removed = await deletePublicidadById(serviceClient, row.id)
+    if (!removed.ok) {
+      return NextResponse.json({ error: removed.error ?? 'No se pudieron eliminar las publicidades del usuario' }, { status: 500 })
+    }
+  }
+
   const cleanupErrors = (
     await Promise.all([
-      cleanupOwnedPublicidadComments(serviceClient, id),
       deleteFromTable(serviceClient, 'notifications', 'user_id', id),
       deleteFromTable(serviceClient, 'notifications', 'related_id', id),
       deleteFromTable(serviceClient, 'chat_messages', 'sender_id', id),
       deleteFromTable(serviceClient, 'chat_messages', 'receiver_id', id),
       deleteFromTable(serviceClient, 'publicidad_comments', 'author_id', id),
-      deleteFromTable(serviceClient, 'publicidad_requests', 'owner_id', id),
       deleteFromTable(serviceClient, 'comment_reports', 'reporter_id', id),
       deleteFromTable(serviceClient, 'comment_likes', 'user_id', id),
       deleteFromTable(serviceClient, 'post_reactions', 'user_id', id),

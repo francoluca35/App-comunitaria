@@ -3,6 +3,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { VALOR_PUBLICITARIO_CONFIG_KEY, parseValorPublicitarioJsonb } from '@/lib/server/valor-publicitario'
 import { buildPaymentLink, generatePaymentToken } from '@/lib/server/publicidad'
 import { resolvePublicidadCategorySlug } from '@/lib/server/publicidad-category'
+import { deletePublicidadById } from '@/lib/server/publicidad-expiration'
 
 const MAX_IMAGES = 5
 const MAX_DAYS = 365
@@ -171,4 +172,44 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   return NextResponse.json({ error: 'No se puede editar en este estado' }, { status: 400 })
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authHeader = request.headers.get('authorization')
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null
+  if (!token) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+
+  const supabase = createClient(token)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(token)
+  if (userError || !user?.id) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
+
+  const serviceClient = createServiceRoleClient()
+  if (!serviceClient) {
+    return NextResponse.json(
+      { error: 'Falta SUPABASE_SERVICE_ROLE_KEY en el servidor.' },
+      { status: 503 }
+    )
+  }
+
+  const { id } = await params
+  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+
+  const { data: row, error: fetchError } = await serviceClient
+    .from('publicidad_requests')
+    .select('id, owner_id')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (fetchError) return NextResponse.json({ error: fetchError.message }, { status: 500 })
+  if (!row || row.owner_id !== user.id) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  const deleted = await deletePublicidadById(serviceClient, id)
+  if (!deleted.ok) {
+    return NextResponse.json({ error: deleted.error ?? 'No se pudo eliminar' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
 }

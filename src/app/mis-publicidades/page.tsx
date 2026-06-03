@@ -10,6 +10,7 @@ import { Button } from '@/app/components/ui/button'
 import { Megaphone, ArrowRight, Loader2, Download, Pencil, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { DeletePublicidadButton } from '@/components/DeletePublicidadButton'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -58,29 +59,30 @@ export default function MisPublicidadesPage() {
     return map
   }, [publicidadCategories])
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const supabase = (await import('@/lib/supabase/client')).createClient()
-        const { data: sessionData } = await supabase.auth.getSession()
-        const token = sessionData.session?.access_token
-        if (!token) return
+  const reloadList = async (showSpinner = false) => {
+    if (showSpinner) setLoading(true)
+    try {
+      const supabase = (await import('@/lib/supabase/client')).createClient()
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (!token) return
 
-        const res = await fetch('/api/publicidad/mis', {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) throw new Error('No se pudo cargar')
-        const data = await res.json().catch(() => ({})) as { active?: MisPublicidad[]; inactive?: MisPublicidad[] }
-        setActive(Array.isArray(data.active) ? data.active : [])
-        setInactive(Array.isArray(data.inactive) ? data.inactive : [])
-      } catch {
-        toast.error('No se pudieron cargar tus publicidades')
-      } finally {
-        setLoading(false)
-      }
+      const res = await fetch('/api/publicidad/mis', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error('No se pudo cargar')
+      const data = await res.json().catch(() => ({})) as { active?: MisPublicidad[]; inactive?: MisPublicidad[] }
+      setActive(Array.isArray(data.active) ? data.active : [])
+      setInactive(Array.isArray(data.inactive) ? data.inactive : [])
+    } catch {
+      toast.error('No se pudieron cargar tus publicidades')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    void load()
+  useEffect(() => {
+    void reloadList(true)
   }, [])
 
   useEffect(() => {
@@ -243,6 +245,11 @@ export default function MisPublicidadesPage() {
                                 )}
                                 <span className="ml-2 hidden sm:inline">Descargar comprobante</span>
                               </Button>
+                              <DeletePublicidadButton
+                                publicidadId={p.id}
+                                variant="owner"
+                                onDeleted={() => void reloadList()}
+                              />
                             </div>
                           </div>
                           <p className="text-sm text-slate-600 dark:text-gray-300 mt-2 line-clamp-2">{p.description}</p>
@@ -308,26 +315,28 @@ export default function MisPublicidadesPage() {
                                 {categoryBySlug.get(p.category) ?? p.category} · {formatStatus(p.status)}
                               </p>
                             </div>
-                            {p.payment_link_url && p.status === 'payment_pending' && (
-                              <Button asChild size="sm" variant="outline" className="shrink-0">
-                                <a href={p.payment_link_url} target="_blank" rel="noopener noreferrer">
-                                  Pagar
-                                </a>
-                              </Button>
-                            )}
-                            {(p.status === 'pending' || p.status === 'rejected' || p.status === 'payment_pending') && (
-                              <Button
-                                asChild
-                                size="sm"
-                                variant="outline"
-                                className="shrink-0"
-                              >
-                                <Link href={`/mis-publicidades/${p.id}/editar`}>
-                                  <Pencil className="w-4 h-4 mr-2" />
-                                  Editar
-                                </Link>
-                              </Button>
-                            )}
+                            <div className="flex flex-wrap gap-2 shrink-0 justify-end">
+                              {p.payment_link_url && p.status === 'payment_pending' && (
+                                <Button asChild size="sm" variant="outline" className="shrink-0">
+                                  <a href={p.payment_link_url} target="_blank" rel="noopener noreferrer">
+                                    Pagar
+                                  </a>
+                                </Button>
+                              )}
+                              {(p.status === 'pending' || p.status === 'rejected' || p.status === 'payment_pending') && (
+                                <Button asChild size="sm" variant="outline" className="shrink-0">
+                                  <Link href={`/mis-publicidades/${p.id}/editar`}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Editar
+                                  </Link>
+                                </Button>
+                              )}
+                              <DeletePublicidadButton
+                                publicidadId={p.id}
+                                variant="owner"
+                                onDeleted={() => void reloadList()}
+                              />
+                            </div>
                           </div>
                           <p className="text-sm text-slate-600 dark:text-gray-300 mt-2 line-clamp-2">{p.description}</p>
                           {p.end_at && p.status !== 'payment_pending' && (

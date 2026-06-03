@@ -1,0 +1,13 @@
+*.keystore
+keystore.properties
+KEYSTORE_CREDENTIALS.txt
+*.jks
+local.properties
+!local.properties.example
+.gradle/
+build/
+app/build/
+.idea/
+*.iml
+captures/
+.DS_Store

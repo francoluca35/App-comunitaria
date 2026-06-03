@@ -1,11 +1,17 @@
 export function publicStoragePathFromUrl(url: string, bucket: string): string | null {
 	try {
 		const parsed = new URL(url)
-		const prefix = `/storage/v1/object/public/${bucket}/`
-		const index = parsed.pathname.indexOf(prefix)
-		if (index === -1) return null
-		const path = decodeURIComponent(parsed.pathname.slice(index + prefix.length))
-		return path && !path.includes('..') ? path : null
+		const prefixes = [
+			`/storage/v1/object/public/${bucket}/`,
+			`/storage/v1/render/image/public/${bucket}/`,
+		]
+		for (const prefix of prefixes) {
+			const index = parsed.pathname.indexOf(prefix)
+			if (index === -1) continue
+			const path = decodeURIComponent(parsed.pathname.slice(index + prefix.length).split('?')[0])
+			if (path && !path.includes('..')) return path
+		}
+		return null
 	} catch {
 		return null
 	}

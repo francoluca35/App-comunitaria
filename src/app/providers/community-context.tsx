@@ -727,7 +727,15 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           )
           const mediaError = mediaResults.find((r) => r.error)
           if (mediaError?.error) {
-            await supabase.from('posts').delete().eq('id', data.id)
+            const headers = await getAuthHeaders()
+            if (headers.Authorization) {
+              await fetch(`/api/posts/${encodeURIComponent(data.id)}`, {
+                method: 'DELETE',
+                headers,
+              })
+            } else {
+              await supabase.from('posts').delete().eq('id', data.id)
+            }
             return { ok: false, error: mediaError.error.message ?? 'Error al guardar fotos o videos' }
           }
         }
@@ -751,7 +759,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: 'Error de conexión. Intentá de nuevo.' }
       }
     },
-    [supabase]
+    [getAuthHeaders, supabase]
   )
 
   const updatePostStatus = useCallback(
@@ -963,8 +971,17 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     async (commentId: string): Promise<{ ok: boolean; error?: string }> => {
       const target = comments.find((c) => c.id === commentId)
       if (!target) return { ok: false, error: 'Comentario no encontrado' }
-      const { error } = await supabase.from('comments').delete().eq('id', commentId)
-      if (error) return { ok: false, error: error.message ?? 'No se pudo eliminar el comentario' }
+
+      const headers = await getAuthHeaders()
+      if (!headers.Authorization) return { ok: false, error: 'Sesión expirada' }
+
+      const res = await fetch(`/api/comments/${encodeURIComponent(commentId)}`, {
+        method: 'DELETE',
+        headers,
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo eliminar el comentario' }
+
       setComments((prev) => prev.filter((c) => c.id !== commentId))
       setCommentCountByPostId((prev) => ({
         ...prev,
@@ -972,7 +989,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       }))
       return { ok: true }
     },
-    [comments, supabase]
+    [comments, getAuthHeaders]
   )
 
   const reportComment = useCallback(

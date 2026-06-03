@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceRoleClient } from '@/lib/supabase/server'
-import { publicStoragePathsFromUrls } from '@/lib/server/storage-path'
+import { removeStorageObjectsByUrls } from '@/lib/server/storage-cleanup'
 
 export const PUBLICIDAD_STORAGE_BUCKET = 'publicaciones'
 
@@ -13,6 +13,38 @@ export function normalizePublicidadImageUrls(images: unknown): string[] {
 	return Array.isArray(images) ? images.filter((url): url is string => typeof url === 'string') : []
 }
 
+function isMissingRelationError(error: { code?: string; message?: string } | null): boolean {
+	if (!error) return false
+	return error.code === '42P01' || (error.message ?? '').toLowerCase().includes('does not exist')
+}
+
+/** Elimina una publicidad, sus comentarios y las imágenes en Storage. */
+export async function deletePublicidadById(
+	db: SupabaseClient,
+	id: string
+): Promise<{ ok: boolean; error?: string }> {
+	const trimmed = id.trim()
+	if (!trimmed) return { ok: false, error: 'ID requerido' }
+
+	const { data, error } = await db
+		.from('publicidad_requests')
+		.select('id, images')
+		.eq('id', trimmed)
+		.maybeSingle()
+
+	if (error) return { ok: false, error: error.message }
+	if (!data) return { ok: false, error: 'No encontrado' }
+
+	const { error: commentsError } = await db.from('publicidad_comments').delete().eq('publicidad_id', trimmed)
+	if (commentsError && !isMissingRelationError(commentsError)) {
+		return { ok: false, error: commentsError.message }
+	}
+
+	const result = await deletePublicidadRowsWithStorage(db, [data as PublicidadCleanupRow])
+	if (!result.ok) return { ok: false, error: result.error }
+	return { ok: true }
+}
+
 export async function deletePublicidadRowsWithStorage(
 	db: SupabaseClient,
 	rows: PublicidadCleanupRow[]
@@ -20,18 +52,16 @@ export async function deletePublicidadRowsWithStorage(
 	const ids = [...new Set(rows.map((row) => row.id).filter(Boolean))]
 	if (ids.length === 0) return { ok: true, deletedCount: 0 }
 
-	const storagePaths = publicStoragePathsFromUrls(
-		rows.flatMap((row) => normalizePublicidadImageUrls(row.images)),
-		PUBLICIDAD_STORAGE_BUCKET
-	)
+	const imageUrls = rows.flatMap((row) => normalizePublicidadImageUrls(row.images))
+	if (imageUrls.length > 0) {
+		const removed = await removeStorageObjectsByUrls(db, PUBLICIDAD_STORAGE_BUCKET, imageUrls)
+		if (!removed.ok) {
+			return { ok: false, error: removed.error ?? 'No se pudieron borrar las imágenes del Storage', deletedCount: 0 }
+		}
+	}
 
 	const { error: deleteError } = await db.from('publicidad_requests').delete().in('id', ids)
 	if (deleteError) return { ok: false, error: deleteError.message, deletedCount: 0 }
-
-	if (storagePaths.length > 0) {
-		const { error: storageError } = await db.storage.from(PUBLICIDAD_STORAGE_BUCKET).remove(storagePaths)
-		if (storageError) return { ok: false, error: storageError.message, deletedCount: ids.length }
-	}
 
 	return { ok: true, deletedCount: ids.length }
 }

@@ -37,6 +37,12 @@ Aplicación mobile-first para difusión de información comunitaria con sistema 
 
 **O usar login con Google (simulado)**
 
+## 📱 App Android (Play Protect)
+
+Si Google bloquea **CST** como “app no segura”, el APK instalado es viejo (`targetSdk` bajo). Compilá el contenedor en `android/` (API 35) y redistribuí; instrucciones en **[docs/ANDROID_APK.md](docs/ANDROID_APK.md)**.
+
+Alternativa para usuarios: desinstalar CST → abrir el sitio en **Chrome** → **Instalar app** (PWA).
+
 ## 📱 Navegación
 
 La app usa bottom navigation con:

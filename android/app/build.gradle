@@ -1,0 +1,66 @@
+plugins {
+	id 'com.android.application'
+}
+
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+	keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+def twaHost = 'www.comunidaddesantotome.com.ar'
+def twaLaunchPath = '/pwa-launch'
+
+android {
+	namespace 'ar.com.comunidaddesantotome.cst'
+	compileSdk 35
+
+	defaultConfig {
+		applicationId 'ar.com.comunidaddesantotome.cst'
+		minSdk 23
+		targetSdk 35
+		versionCode 3
+		versionName '1.1.0'
+
+		resValue 'string', 'appName', 'CST'
+		resValue 'string', 'fullAppName', 'CST Comunidad'
+		resValue 'string', 'hostName', twaHost
+		resValue 'string', 'launchUrl', "https://${twaHost}${twaLaunchPath}"
+		resValue 'string', 'webManifestUrl', "https://${twaHost}/manifest.json"
+		resValue 'string', 'assetStatements',
+			'[{ \"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": { \"namespace\": \"web\", \"site\": \"https://www.comunidaddesantotome.com.ar\" } }]'
+	}
+
+	def releaseKeystore = keystorePropsFile.exists()
+		? keystoreProps.getProperty('storeFile')?.trim()
+		: null
+
+	signingConfigs {
+		release {
+			if (releaseKeystore) {
+				storeFile rootProject.file(releaseKeystore)
+				storePassword keystoreProps.getProperty('storePassword')
+				keyAlias keystoreProps.getProperty('keyAlias')
+				keyPassword keystoreProps.getProperty('keyPassword')
+			}
+		}
+	}
+
+	buildTypes {
+		release {
+			minifyEnabled false
+			if (releaseKeystore) {
+				signingConfig signingConfigs.release
+			}
+		}
+	}
+
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_17
+		targetCompatibility JavaVersion.VERSION_17
+	}
+}
+
+dependencies {
+	implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}
