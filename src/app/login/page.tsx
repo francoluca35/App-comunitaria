@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePwaInstallPrompt } from '@/hooks/usePwaInstallPrompt'
-import { AndroidPlayProtectHint } from '@/components/AndroidPlayProtectHint'
 import { Button } from '@/app/components/ui/button'
 import {
 	Dialog,
@@ -211,13 +210,8 @@ export default function LoginPage() {
 											? 'Instalá CST en tu teléfono para abrirla como aplicación.'
 											: 'En iPhone o iPad: añadí CST a la pantalla de inicio desde Safari.'}
 									</p>
-									<AndroidPlayProtectHint />
 								</div>
-							) : (
-								<div className="mt-4 w-full max-w-[280px]">
-									<AndroidPlayProtectHint />
-								</div>
-							)}
+							) : null}
 						</div>
 
 						{mobileStep === 'welcome' ? (
@@ -615,13 +609,8 @@ export default function LoginPage() {
 												? 'Instalá CST como aplicación en este dispositivo.'
 												: 'En iPhone o iPad usá “Añadir a pantalla de inicio” desde Safari.'}
 										</p>
-										<AndroidPlayProtectHint className="mt-2 text-center text-[10px] leading-snug text-amber-800/90" />
 									</div>
-								) : (
-									<div className="mt-4">
-										<AndroidPlayProtectHint className="text-center text-[10px] leading-snug text-amber-800/90" />
-									</div>
-								)}
+								) : null}
 							</div>
 
 							{mode === 'signin' ? (
