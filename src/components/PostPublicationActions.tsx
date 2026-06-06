@@ -1,6 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import {
+	SharePostPreviewDialog,
+	type PostSharePreview,
+} from '@/components/SharePostPreviewDialog'
 import Link from 'next/link'
 import { Heart, MessageCircle, Share2, ThumbsUp } from 'lucide-react'
 import { toast } from 'sonner'
@@ -40,6 +44,8 @@ export type PostPublicationActionsProps = {
 	reactionSummary?: PostReactionSummary
 	myReaction?: PostReactionType
 	onReactionChange?: (reaction: PostReactionType | null) => Promise<{ ok: boolean; error?: string }>
+	/** Vista previa estilo WhatsApp/Facebook al tocar Compartir. */
+	sharePreview?: PostSharePreview
 }
 
 function iconActionClass(compact: boolean) {
@@ -185,7 +191,9 @@ export function PostPublicationActions({
 	reactionSummary,
 	myReaction,
 	onReactionChange,
+	sharePreview,
 }: PostPublicationActionsProps) {
+	const [shareDialogOpen, setShareDialogOpen] = useState(false)
 	const wa = whatsappNumber?.replace(/\D/g, '') ?? ''
 	const hasWa = wa.length > 0
 	const commentsHref = commentsHrefProp ?? `/post/${postId}`
@@ -198,24 +206,12 @@ export function PostPublicationActions({
 
 	if (!showComments && !hasWa && !showShare && !onReactionChange) return null
 
-	const handleShare = async () => {
-		if (typeof window === 'undefined') return
-		const url = postPermalink(postId)
-		if (typeof navigator.share === 'function') {
-			try {
-				await navigator.share({ url })
-				return
-			} catch (e: unknown) {
-				const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : ''
-				if (name === 'AbortError') return
-			}
+	const handleShare = () => {
+		if (sharePreview) {
+			setShareDialogOpen(true)
+			return
 		}
-		try {
-			await navigator.clipboard.writeText(url)
-			toast.success('Enlace copiado al portapapeles')
-		} catch {
-			toast.error('No se pudo compartir ni copiar el enlace')
-		}
+		void fallbackShare(postId)
 	}
 
 	const commentControl = (
@@ -228,6 +224,7 @@ export function PostPublicationActions({
 	)
 
 	return (
+		<>
 		<div
 			role="group"
 			aria-label="Acciones de la publicación"
@@ -292,5 +289,34 @@ export function PostPublicationActions({
 				) : null}
 			</div>
 		</div>
+		{sharePreview ? (
+			<SharePostPreviewDialog
+				postId={postId}
+				preview={sharePreview}
+				open={shareDialogOpen}
+				onOpenChange={setShareDialogOpen}
+			/>
+		) : null}
+		</>
 	)
+}
+
+async function fallbackShare(postId: string) {
+	if (typeof window === 'undefined') return
+	const url = postPermalink(postId)
+	if (typeof navigator.share === 'function') {
+		try {
+			await navigator.share({ url })
+			return
+		} catch (e: unknown) {
+			const name = e && typeof e === 'object' && 'name' in e ? String((e as { name: string }).name) : ''
+			if (name === 'AbortError') return
+		}
+	}
+	try {
+		await navigator.clipboard.writeText(url)
+		toast.success('Enlace copiado al portapapeles')
+	} catch {
+		toast.error('No se pudo compartir ni copiar el enlace')
+	}
 }

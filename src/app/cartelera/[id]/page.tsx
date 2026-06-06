@@ -6,6 +6,8 @@ import { Button } from '@/app/components/ui/button'
 import { getActivePublicidadDisplayById } from '@/lib/server/active-publicidad-by-id'
 import { createClient } from '@/lib/supabase/server'
 import { getPublicidadImageUrls } from '@/lib/publicidad-display'
+import { publicidadPermalink } from '@/lib/app-public-url'
+import { buildShareMetadata } from '@/lib/share-metadata'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { optimizedStorageImageUrl } from '@/lib/storage-image'
 
@@ -24,8 +26,20 @@ export const revalidate = 0
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params
   const p = await getActivePublicidadDisplayById(id)
-  if (!p) return { title: 'Publicidad no disponible · CST Comunidad' }
-  return { title: `${p.title} · Publicidad` }
+  if (!p) {
+    return {
+      title: 'Publicidad no disponible · CST Comunidad',
+      description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
+    }
+  }
+  const images = getPublicidadImageUrls(p)
+  return buildShareMetadata({
+    title: p.title,
+    description: p.description,
+    pageUrl: publicidadPermalink(p.id),
+    imageUrl: images[0],
+    type: 'website',
+  })
 }
 
 export default async function PublicidadPermalinkPage({ params }: PageProps) {

@@ -23,6 +23,7 @@ drop policy if exists "Public read for publicaciones" on storage.objects;
 drop policy if exists "Authenticated can upload to publicaciones" on storage.objects;
 drop policy if exists "Users can upload to own folder publicaciones" on storage.objects;
 drop policy if exists "Users can delete own uploads" on storage.objects;
+drop policy if exists "Users can update own uploads in publicaciones" on storage.objects;
 
 -- --------------------------------------------
 -- Lectura: cualquiera puede ver (bucket público)
