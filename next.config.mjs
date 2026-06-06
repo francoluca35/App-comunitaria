@@ -6,12 +6,15 @@ function supabaseStorageRemotePattern() {
   try {
     const u = new URL(raw.trim())
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
-    return {
+    const base = {
       protocol: u.protocol.replace(':', ''),
       hostname: u.hostname,
       port: u.port || undefined,
-      pathname: '/storage/v1/object/**',
     }
+    return [
+      { ...base, pathname: '/storage/v1/object/**' },
+      { ...base, pathname: '/storage/v1/render/image/**' },
+    ]
   } catch {
     return null
   }
@@ -23,7 +26,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      ...(supabasePattern ? [supabasePattern] : []),
+      ...(Array.isArray(supabasePattern) ? supabasePattern : supabasePattern ? [supabasePattern] : []),
     ],
   },
   async redirects() {

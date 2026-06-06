@@ -21,6 +21,20 @@ export const metadata: Metadata = {
   metadataBase: new URL(getAppPublicOrigin()),
   title: 'CST Comunidad',
   description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
+  openGraph: {
+    type: 'website',
+    locale: 'es_AR',
+    siteName: 'CST Comunidad',
+    title: 'CST Comunidad',
+    description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
+    images: [{ url: '/Assets/logo-mobil-launcher-512.png', alt: 'CST Comunidad' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CST Comunidad',
+    description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
+    images: ['/Assets/logo-mobil-launcher-512.png'],
+  },
   manifest: '/manifest.json',
   applicationName: 'CST Comunidad',
   appleWebApp: {

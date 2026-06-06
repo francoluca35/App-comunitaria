@@ -1,296 +1,35 @@
-'use client'
+import type { Metadata } from 'next'
+import { postPermalink } from '@/lib/app-public-url'
+import { buildShareMetadata } from '@/lib/share-metadata'
+import { getApprovedPostForShare } from '@/lib/server/post-for-share'
+import PostDetailClient from './PostDetailClient'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { useApp } from '@/app/providers'
-import { Button } from '@/app/components/ui/button'
-import { Textarea } from '@/app/components/ui/textarea'
-import { PostAuthorAvatarChatLink } from '@/components/PostAuthorAvatarChatLink'
-import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
-import { Badge } from '@/app/components/ui/badge'
-import { PostAuthorNameCategoryRow } from '@/components/PostAuthorNameCategoryRow'
-import { Card, CardContent } from '@/app/components/ui/card'
-import { ArrowLeft, Send } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { toast } from 'sonner'
-import { DashboardLayout } from '@/components/DashboardLayout'
-import { DeleteOwnPostButton } from '@/components/DeleteOwnPostButton'
-import { EditOwnPostButton } from '@/components/EditOwnPostButton'
-import { PostPublicationActions } from '@/components/PostPublicationActions'
-import { PostImageWithLightbox } from '@/components/PostImageWithLightbox'
+type PageProps = { params: Promise<{ postId: string }> }
 
-export default function PostDetailPage() {
-  const params = useParams<{ postId: string }>()
-  const router = useRouter()
-  const {
-    posts,
-    comments,
-    addComment,
-    currentUser,
-    config,
-    hydratePostFromServer,
-    loadCommentsForPost,
-    commentCountByPostId,
-    postReactionSummaryByPostId,
-    myReactionByPostId,
-    setPostReaction,
-  } = useApp()
+/** Metadatos frescos al compartir (edición de texto/imagen en el post). */
+export const dynamic = 'force-dynamic'
 
-  const [commentText, setCommentText] = useState('')
-  const [hydrateDone, setHydrateDone] = useState(false)
-  const [commentsLoading, setCommentsLoading] = useState(false)
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+	const { postId } = await params
+	const post = await getApprovedPostForShare(postId)
 
-  const postId = Array.isArray(params.postId) ? params.postId[0] : params.postId
-  const post = posts.find((p) => p.id === postId)
-  const postComments = comments.filter((c) => c.postId === postId)
+	if (!post) {
+		return {
+			title: 'Publicación · CST Comunidad',
+			description: 'Plataforma de difusión comunitaria — Comunidad de Santo Tomé',
+		}
+	}
 
-  useEffect(() => {
-    if (!postId) return
-    if (post) {
-      setHydrateDone(true)
-      return
-    }
-    let cancelled = false
-    setHydrateDone(false)
-    void hydratePostFromServer(postId).finally(() => {
-      if (!cancelled) setHydrateDone(true)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [postId, post, hydratePostFromServer])
+	return buildShareMetadata({
+		title: post.title,
+		description: post.description,
+		pageUrl: postPermalink(post.id),
+		imageUrl: post.imageUrl,
+		type: 'article',
+	})
+}
 
-  useEffect(() => {
-    if (!postId || !post) return
-    setCommentsLoading(true)
-    void loadCommentsForPost(postId).finally(() => setCommentsLoading(false))
-  }, [postId, post?.id, loadCommentsForPost])
-
-  if (!post) {
-    if (!hydrateDone) {
-      return (
-        <DashboardLayout>
-          <div className="max-w-2xl mx-auto text-center py-16">
-            <p className="text-slate-500 dark:text-gray-400">Cargando publicación…</p>
-          </div>
-        </DashboardLayout>
-      )
-    }
-    return (
-      <DashboardLayout>
-        <div className="max-w-2xl mx-auto text-center py-16">
-          <p className="text-slate-500 dark:text-gray-400 mb-6">Publicación no encontrada</p>
-          <Button onClick={() => router.push('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al inicio
-          </Button>
-        </div>
-      </DashboardLayout>
-    )
-  }
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!currentUser) {
-      toast.error('Debés iniciar sesión para comentar')
-      return
-    }
-    if (!commentText.trim()) {
-      toast.error('Escribí un comentario')
-      return
-    }
-    const result = await addComment(post.id, commentText)
-    if (!result.ok) {
-      toast.error(result.error ?? 'No se pudo publicar')
-      return
-    }
-    setCommentText('')
-    toast.success('Comentario agregado')
-  }
-
-  const statusBadge =
-    post.status === 'pending' ? (
-      <Badge className="border-0 bg-amber-500/15 text-amber-700 dark:text-amber-300">Pendiente</Badge>
-    ) : post.status === 'rejected' ? (
-      <Badge className="border-0 bg-rose-500/15 text-rose-700 dark:text-rose-300">Rechazada</Badge>
-    ) : null
-
-  return (
-    <DashboardLayout>
-      <div className="max-w-xl mx-auto px-1">
-        {/* Header: atrás + título */}
-        <div className="flex items-center gap-2 mb-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.back()}
-            className="h-9 w-9 rounded-lg text-slate-600 dark:text-gray-400 hover:bg-slate-100 dark:hover:bg-gray-800 hover:text-slate-900 dark:hover:text-white shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-[#2B2B2B]">
-            Detalle
-          </h1>
-          <div className="flex items-center gap-0.5">
-            <EditOwnPostButton postId={post.id} authorId={post.authorId} size="icon" />
-            <DeleteOwnPostButton postId={post.id} authorId={post.authorId} redirectTo="/" size="icon" />
-          </div>
-        </div>
-
-        {/* Arriba: autor y texto */}
-        <div className="mb-2 flex items-start gap-2.5">
-          <PostAuthorAvatarChatLink
-            authorId={post.authorId}
-            authorName={post.authorName}
-            authorAvatar={post.authorAvatar}
-            className="h-10 w-10 shrink-0 rounded-lg ring-1 ring-slate-200 dark:ring-gray-700"
-            fallbackClassName="rounded-lg text-sm"
-          />
-          <div className="min-w-0 flex-1">
-            <PostAuthorNameCategoryRow
-              authorName={post.authorName}
-              category={post.category}
-              statusBadge={statusBadge}
-              nameClassName="text-sm font-semibold"
-            />
-            <p className="mt-0.5 text-xs leading-tight text-slate-500 dark:text-gray-400">
-              {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: es })}
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-3">
-          <h2 className="mb-1 text-lg font-bold leading-snug text-[#2B2B2B]">
-            {post.title}
-          </h2>
-          {post.category === 'venta' && (post.saleSubcategory?.trim() || post.salePrice?.trim()) ? (
-            <p className="mb-1 text-sm font-semibold text-[#5A000E] dark:text-[#F3C9D0]">
-              {post.saleSubcategory?.trim() ? post.saleSubcategory.trim() : null}
-              {post.salePrice?.trim() ? (
-                <span>
-                  {post.saleSubcategory?.trim() ? ' · ' : ''}
-                  {post.salePrice.trim()}
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-          <p className="whitespace-pre-wrap text-sm leading-snug text-[#2B2B2B]">
-            {post.description}
-          </p>
-        </div>
-
-        {/* Imagen(es) al medio */}
-        {post.media.length > 0 ? (
-          <div className="mb-3">
-            <PostImageWithLightbox
-              media={post.media}
-              alt={post.title}
-              variant="detail"
-              priority
-            />
-          </div>
-        ) : null}
-
-        {/* Acciones + comentarios */}
-        <div className="mb-3 overflow-hidden rounded-lg border border-[#CED0D4] bg-white p-0 sm:border-[#D8D2CC] sm:bg-[#F4EFEA] sm:p-1">
-          <PostPublicationActions
-            postId={post.id}
-            whatsappNumber={config.whatsappEnabled ? post.whatsappNumber : undefined}
-            showComments={config.commentsEnabled}
-            commentsHref="#comments"
-            commentCount={
-              config.commentsEnabled
-                ? commentsLoading
-                  ? commentCountByPostId[postId]
-                  : postComments.length
-                : undefined
-            }
-            reactionSummary={postReactionSummaryByPostId[post.id]}
-            myReaction={myReactionByPostId[post.id]}
-            onReactionChange={(reaction) => setPostReaction(post.id, reaction)}
-            compact
-          />
-        </div>
-
-        {config.commentsEnabled && (
-          <Card className="rounded-xl border-slate-200/80 dark:border-gray-700/80 shadow-sm" id="comments">
-            <CardContent className="p-3 sm:p-4">
-              <h3 className="mb-2 text-sm font-semibold text-card-foreground">
-                {commentsLoading ? 'Comentarios' : `Comentarios (${postComments.length})`}
-              </h3>
-
-              <div className="space-y-2 mb-3">
-                {commentsLoading ? (
-                  <p className="text-center text-xs text-slate-500 dark:text-gray-400 py-4 rounded-lg bg-slate-50 dark:bg-gray-800/30">
-                    Cargando comentarios…
-                  </p>
-                ) : postComments.length === 0 ? (
-                  <p className="text-center text-xs text-slate-500 dark:text-gray-400 py-4 rounded-lg bg-slate-50 dark:bg-gray-800/30">
-                    No hay comentarios aún. ¡Sé el primero!
-                  </p>
-                ) : (
-                  postComments.map((comment) => (
-                    <div key={comment.id} className="flex gap-2">
-                      <Avatar className="w-8 h-8 rounded-lg shrink-0">
-                        <AvatarImage src={comment.authorAvatar} />
-                        <AvatarFallback className="rounded-lg text-xs">{comment.authorName[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0 rounded-lg bg-slate-50 dark:bg-gray-800/50 px-2.5 py-2 border border-slate-100 dark:border-gray-700/50">
-                        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <span className="text-xs font-medium text-slate-900 dark:text-white">
-                            {comment.authorName}
-                          </span>
-                          <span className="text-[11px] text-slate-500 dark:text-gray-400">
-                            {formatDistanceToNow(comment.createdAt, { addSuffix: true, locale: es })}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-gray-300 leading-snug">{comment.text}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {currentUser ? (
-                <form onSubmit={(e) => void handleSubmitComment(e)}>
-                  <div className="flex gap-2">
-                    <Avatar className="w-8 h-8 rounded-lg shrink-0">
-                      <AvatarImage src={currentUser.avatar} />
-                      <AvatarFallback className="rounded-lg text-xs">{currentUser.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 space-y-1.5">
-                      <Textarea
-                        placeholder="Escribí un comentario…"
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        rows={2}
-                        className="min-h-0 resize-none rounded-lg border-slate-200 dark:border-gray-700 text-sm py-2"
-                      />
-                      <Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
-                        <Send className="w-3.5 h-3.5 mr-1.5" />
-                        Enviar
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              ) : (
-                <Card className="rounded-lg bg-slate-50 dark:bg-gray-800/50 border-slate-200 dark:border-gray-700">
-                  <CardContent className="p-3 text-center">
-                    <p className="text-xs text-slate-600 dark:text-gray-400 mb-2">
-                      Iniciá sesión para dejar un comentario
-                    </p>
-                    <Button asChild size="sm" className="h-8 rounded-lg text-xs">
-                      <Link href="/login">Iniciar sesión</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </DashboardLayout>
-  )
+export default async function PostDetailPage({ params }: PageProps) {
+	const { postId } = await params
+	return <PostDetailClient postId={postId} />
 }

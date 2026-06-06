@@ -167,6 +167,11 @@ export function PostCard({ post, onOpenComments, priority }: PostCardProps) {
 					reactionSummary={postReactionSummaryByPostId[post.id]}
 					myReaction={myReactionByPostId[post.id]}
 					onReactionChange={(reaction) => setPostReaction(post.id, reaction)}
+					sharePreview={{
+						title: post.title,
+						description: post.description,
+						imageUrl: post.media.find((m) => m.type === 'image')?.url ?? null,
+					}}
 				/>
 			</CardFooter>
 		</Card>
