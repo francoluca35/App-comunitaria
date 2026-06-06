@@ -1,5 +1,5 @@
 // Service worker para PWA y notificaciones push
-const CACHE_NAME = 'comunidad-v4'
+const CACHE_NAME = 'comunidad-v5'
 /** Icono para notificaciones push (Android / escritorio); mismo estilo que el launcher 192. */
 const ICON_PATH = '/Assets/logo-mobil-launcher-192.png'
 
@@ -11,6 +11,12 @@ function getFullIconUrl(path) {
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
 })
 
 self.addEventListener('activate', (event) => {

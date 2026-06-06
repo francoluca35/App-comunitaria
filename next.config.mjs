@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const pkg = require('./package.json')
+
 function supabaseStorageRemotePattern() {
   const raw = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!raw || typeof raw !== 'string') return null
@@ -24,6 +29,9 @@ const supabasePattern = supabaseStorageRemotePattern()
 
 const nextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION ?? pkg.version,
+  },
   images: {
     remotePatterns: [
       ...(Array.isArray(supabasePattern) ? supabasePattern : supabasePattern ? [supabasePattern] : []),
