@@ -2,6 +2,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { buildInstagramUrl, buildWhatsAppUrl } from '@/lib/server/publicidad'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type PublicidadRow = {
   id: string
@@ -21,7 +22,12 @@ function rowToDisplay(r: PublicidadRow): PublicidadDisplay | null {
     if (Number.isFinite(end.getTime()) && end.getTime() <= Date.now()) return null
   }
 
-  const imgs = Array.isArray(r.images) ? r.images.filter((x): x is string => typeof x === 'string') : []
+  const imgs = Array.isArray(r.images)
+    ? r.images
+        .filter((x): x is string => typeof x === 'string')
+        .map((url) => ensureStorageObjectPublicUrl(url))
+        .filter(Boolean)
+    : []
   const imageUrl = imgs.length ? imgs[0]! : undefined
 
   return {

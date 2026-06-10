@@ -3,6 +3,8 @@ import { createServiceRoleClient } from '@/lib/supabase/server'
 import { requireReferentAvatarManager } from '@/lib/referent-avatar-auth'
 import { fetchCanonicalMarioProfile } from '@/lib/mario-account'
 import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
+import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
+import { publicStoragePathFromUrl } from '@/lib/server/storage-path'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -13,16 +15,9 @@ function getExt(mime: string): string {
 }
 
 async function removeAvatarObjectFromUrl(storage: NonNullable<ReturnType<typeof createServiceRoleClient>>, url: string) {
-	try {
-		const u = new URL(url)
-		const prefix = '/storage/v1/object/public/avatars/'
-		const i = u.pathname.indexOf(prefix)
-		if (i === -1) return
-		const path = u.pathname.slice(i + prefix.length)
-		await storage.storage.from('avatars').remove([path])
-	} catch {
-		// ignorar
-	}
+	const path = publicStoragePathFromUrl(url, 'avatars')
+	if (!path) return
+	await storage.storage.from('avatars').remove([path])
 }
 
 /** POST: sube foto del referente (perfil canónico de Mario) — admin_master o cuenta Mario. */
@@ -89,8 +84,7 @@ export async function POST(request: NextRequest) {
 		)
 	}
 
-	const { data: urlData } = storage.storage.from('avatars').getPublicUrl(path)
-	const avatarUrl = urlData.publicUrl
+	const avatarUrl = buildSupabasePublicStorageUrl('avatars', path)
 
 	const { error: updateError } = await storage
 		.from('profiles')

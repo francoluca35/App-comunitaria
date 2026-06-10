@@ -7,7 +7,7 @@ import { Button } from '@/app/components/ui/button'
 import { cn } from '@/app/components/ui/utils'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import type { PostMediaItem } from '@/app/providers'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type Variant = 'feed' | 'detail'
 
@@ -50,7 +50,7 @@ function CollageCell({
 }: CollageCellProps) {
   const [loaded, setLoaded] = useState(false)
   const isVideo = item.type === 'video'
-  const previewUrl = isVideo ? item.url : optimizedStorageImageUrl(item.url, { width: 720, height: 540, quality: 76, resize: 'cover' })
+  const previewUrl = isVideo ? item.url : ensureStorageObjectPublicUrl(item.url)
 
   useEffect(() => {
     setLoaded(false)
@@ -158,7 +158,7 @@ export function PostImageWithLightbox({
   const lbSrc = lbItem?.url ?? ''
   const lbDisplaySrc =
     lbItem && lbItem.type !== 'video'
-      ? optimizedStorageImageUrl(lbSrc, { width: 1600, quality: 82, resize: 'contain' })
+      ? ensureStorageObjectPublicUrl(lbSrc)
       : lbSrc
   const lbIsVideo = lbItem?.type === 'video'
 
@@ -399,11 +399,7 @@ function SingleMediaPreview({
   const previewDisplaySrc =
     previewIsVideo
       ? previewSrc
-      : optimizedStorageImageUrl(previewSrc, {
-          width: variant === 'detail' ? 900 : 900,
-          quality: 78,
-          resize: 'contain',
-        })
+      : ensureStorageObjectPublicUrl(previewSrc)
 
   useEffect(() => {
     setPreviewLoaded(false)

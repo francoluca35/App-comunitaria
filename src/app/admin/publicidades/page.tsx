@@ -9,7 +9,7 @@ import { Button } from '@/app/components/ui/button'
 import { ArrowLeft, Banknote, Loader2, Megaphone } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { DeletePublicidadButton } from '@/components/DeletePublicidadButton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 
@@ -49,7 +49,7 @@ function AdminPublicidadCard({
             {req.images?.[0] ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={optimizedStorageImageUrl(req.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                src={ensureStorageObjectPublicUrl(req.images[0])}
                 alt={req.title}
                 className="w-full h-full object-cover"
                 loading="lazy"

@@ -18,7 +18,6 @@ function supabaseStorageRemotePattern() {
     }
     return [
       { ...base, pathname: '/storage/v1/object/**' },
-      { ...base, pathname: '/storage/v1/render/image/**' },
     ]
   } catch {
     return null

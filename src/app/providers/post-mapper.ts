@@ -1,4 +1,5 @@
 import type { Post, PostMediaItem, PostStatus } from './types'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 export function normalizePostMediaRows(
   rows: { url: string; position: number; type?: string | null }[] | null | undefined
@@ -7,7 +8,7 @@ export function normalizePostMediaRows(
   return [...list]
     .sort((a, b) => a.position - b.position)
     .map((m) => ({
-      url: m.url,
+      url: m.type === 'video' ? m.url : ensureStorageObjectPublicUrl(m.url),
       type: m.type === 'video' ? 'video' : 'image',
     }))
 }
@@ -59,7 +60,7 @@ export function mapSupabasePostRow(row: SupabasePostRow): Post {
     media,
     authorId: row.author_id,
     authorName: profile?.name ?? row.author_id.slice(0, 8),
-    authorAvatar: profile?.avatar_url ?? undefined,
+    authorAvatar: profile?.avatar_url ? ensureStorageObjectPublicUrl(profile.avatar_url) : undefined,
     status: row.status as PostStatus,
     createdAt: new Date(row.created_at),
     whatsappNumber: row.whatsapp_number ?? undefined,

@@ -17,7 +17,7 @@ import {
 } from '@/app/components/ui/dropdown-menu'
 import { cn } from '@/app/components/ui/utils'
 import { publicidadPermalink } from '@/lib/app-public-url'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type Props = {
   publicidad: PublicidadDisplay
@@ -42,8 +42,8 @@ export function PublicidadFeedCard({
 	const captionRef = useRef<HTMLParagraphElement | null>(null)
 	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
 	const mainImage = pubImages[0]
-	const avatarImage = mainImage ? optimizedStorageImageUrl(mainImage, { width: 96, height: 96, quality: 70, resize: 'cover' }) : ''
-	const coverImage = mainImage ? optimizedStorageImageUrl(mainImage, { width: 900, height: 900, quality: 78, resize: 'cover' }) : ''
+	const avatarImage = mainImage ? ensureStorageObjectPublicUrl(mainImage) : ''
+	const coverImage = mainImage ? ensureStorageObjectPublicUrl(mainImage) : ''
 	const hasWa = Boolean(pub.whatsappUrl)
 	const hasIg = Boolean(pub.instagramUrl)
 	const captionText = pub.description.trim()

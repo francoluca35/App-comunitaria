@@ -26,7 +26,7 @@ import {
   canPermanentlyDeletePosts,
   canViewAllPostsForModeration,
 } from '@/lib/post-admin-permissions'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { PostAuthorAvatarChatLink } from '@/components/PostAuthorAvatarChatLink'
 
 export default function AdminModerationPage() {
@@ -188,7 +188,7 @@ export default function AdminModerationPage() {
               <video src={post.media[0].url} muted playsInline className="w-full h-full object-cover" />
             ) : (
               <img
-                src={optimizedStorageImageUrl(post.media[0].url, { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                src={ensureStorageObjectPublicUrl(post.media[0].url)}
                 alt={post.title}
                 className="w-full h-full object-cover"
                 loading="lazy"

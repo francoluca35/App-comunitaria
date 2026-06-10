@@ -7,9 +7,10 @@
     "dev": "next dev --turbo",
     "dev:webpack": "set NEXT_DISABLE_TURBOPACK=1 && next dev",
     "dev:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev-clean-restart.ps1",
-    "build": "set NEXT_DISABLE_TURBOPACK=1 && next build",
+    "build": "node scripts/check-no-storage-image-transforms.mjs && set NEXT_DISABLE_TURBOPACK=1 && next build",
     "start": "next start",
     "lint": "next lint",
+    "check:storage-urls": "node scripts/check-no-storage-image-transforms.mjs",
     "icons:pwa": "node scripts/generate-launcher-icons.mjs",
     "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-build-release.ps1"
   },

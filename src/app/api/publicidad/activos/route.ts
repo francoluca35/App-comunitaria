@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildInstagramUrl, buildWhatsAppUrl } from '@/lib/server/publicidad'
 import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 /**
  * GET /api/publicidad/activos — todas las publicidades activas (vigentes)
@@ -40,7 +41,9 @@ export async function GET(request: NextRequest) {
 
     const mapped = (data ?? []).map((r: any) => {
       const imgs = Array.isArray(r.images)
-        ? (r.images.filter((x: unknown) => typeof x === 'string') as string[])
+        ? (r.images.filter((x: unknown) => typeof x === 'string') as string[]).map((url) =>
+            ensureStorageObjectPublicUrl(url)
+          )
         : []
       const imageUrl = imgs.length ? imgs[0] : null
 

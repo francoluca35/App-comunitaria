@@ -19,7 +19,7 @@ import { Megaphone, X } from 'lucide-react'
 import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { useApp } from '@/app/providers'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type Props = {
   open: boolean
@@ -126,7 +126,7 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
                       <div className="flex min-h-[220px] max-h-[min(48vh,440px)] items-center justify-center px-0 py-0 sm:max-h-[min(50vh,480px)]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={optimizedStorageImageUrl(url, { width: 1200, quality: 82, resize: 'contain' })}
+                          src={ensureStorageObjectPublicUrl(url)}
                           alt={`${displayPublicidad.title} — imagen ${i + 1}`}
                           loading={i === slideIndex ? 'eager' : 'lazy'}
                           decoding="async"

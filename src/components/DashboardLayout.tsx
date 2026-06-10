@@ -29,7 +29,7 @@ import {
 } from '@/lib/chat-route-utils'
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -471,7 +471,7 @@ export function DashboardLayout({
                         {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={optimizedStorageImageUrl(p.imageUrl, { width: 360, height: 270, quality: 72, resize: 'cover' })}
+                            src={ensureStorageObjectPublicUrl(p.imageUrl)}
                             alt={p.title}
                             className="h-full w-full object-cover"
                             loading="lazy"

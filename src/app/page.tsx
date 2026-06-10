@@ -52,7 +52,7 @@ import {
 import { CST } from '@/lib/cst-theme'
 import { useReferentPublicProfile } from '@/hooks/useReferentPublicProfile'
 import { isMarioAccountEmail } from '@/lib/mario-account'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 const FEED_FILTER_ALL = 'all'
 const FEED_FILTER_SOLO_PUBLICIDADES = 'publicidades_only'
@@ -308,7 +308,7 @@ function ZonaPublicitariaCarousel() {
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={optimizedStorageImageUrl(p.imageUrl, { width: 360, height: 270, quality: 72, resize: 'cover' })}
+                        src={ensureStorageObjectPublicUrl(p.imageUrl)}
                         alt={p.title}
                         className="h-full w-full object-cover"
                         loading="lazy"
