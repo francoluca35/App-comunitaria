@@ -1,4 +1,5 @@
 import type { AdminProfile, User } from './types'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 export function profileToUser(profile: {
   id: string
@@ -21,7 +22,7 @@ export function profileToUser(profile: {
     isAdmin: profile.role === 'admin',
     isAdminMaster: profile.role === 'admin_master',
     isBlocked: profile.status === 'blocked',
-    avatar: profile.avatar_url ?? undefined,
+    avatar: profile.avatar_url ? ensureStorageObjectPublicUrl(profile.avatar_url) : undefined,
     isModerator: profile.role === 'moderator',
     suspendedUntil: profile.suspended_until ?? undefined,
     phone: profile.phone ?? undefined,
@@ -39,7 +40,7 @@ export function adminProfileToUser(p: AdminProfile): User {
     isAdmin: p.role === 'admin',
     isAdminMaster: p.role === 'admin_master',
     isBlocked: p.status === 'blocked',
-    avatar: p.avatar_url ?? undefined,
+    avatar: p.avatar_url ? ensureStorageObjectPublicUrl(p.avatar_url) : undefined,
     isModerator: p.role === 'moderator',
     suspendedUntil: p.suspended_until ?? undefined,
     phone: p.phone ?? undefined,

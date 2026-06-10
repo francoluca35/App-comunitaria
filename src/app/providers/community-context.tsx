@@ -25,6 +25,7 @@ import { commentCountsFromRpcRows } from '@/app/providers/comment-counts'
 import { useAuth } from '@/app/providers/auth-context'
 import { useAppConfig } from '@/app/providers/app-config-context'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { buildSupabasePublicStorageUrl, ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
 import type {
@@ -86,8 +87,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
   const uploadCommentImage = useCallback(
     async (userId: string, file: File): Promise<string> => {
-      const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      if (!baseUrl) throw new Error('Configuración de Storage no disponible')
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error('Configuración de Storage no disponible')
       const [compressed] = await compressImagesForCommunityUpload([file])
       if (!compressed) throw new Error('No se pudo procesar la imagen')
       assertStoredMediaLimit(compressed, file.name)
@@ -98,7 +98,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         contentType: compressed.type || 'image/jpeg',
       })
       if (error) throw error
-      return `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/publicaciones/${path}`
+      return buildSupabasePublicStorageUrl('publicaciones', path)
     },
     [supabase]
   )
@@ -482,9 +482,9 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             postId: String(r.post_id),
             authorId: String(r.author_id),
             authorName: profile?.name?.trim() || 'Usuario',
-            authorAvatar: profile?.avatar_url ?? undefined,
+            authorAvatar: profile?.avatar_url ? ensureStorageObjectPublicUrl(profile.avatar_url) : undefined,
             text: r.text,
-            imageUrl: r.image_url ?? undefined,
+            imageUrl: r.image_url ? ensureStorageObjectPublicUrl(r.image_url) : undefined,
             likeCount: 0,
             likedByMe: false,
             createdAt: new Date(r.created_at),
@@ -983,9 +983,11 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         postId: String(r.post_id),
         authorId: String(r.author_id),
         authorName: profile?.name?.trim() || u.name,
-        authorAvatar: profile?.avatar_url ?? u.avatar,
+        authorAvatar: profile?.avatar_url
+          ? ensureStorageObjectPublicUrl(profile.avatar_url)
+          : u.avatar,
         text: r.text,
-        imageUrl: r.image_url ?? undefined,
+        imageUrl: r.image_url ? ensureStorageObjectPublicUrl(r.image_url) : undefined,
         likeCount: 0,
         likedByMe: false,
         createdAt: new Date(r.created_at),

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
 import { compressVideoForCommunityUpload } from '@/lib/compress-upload-video'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
+import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
 
 export type LocalAttachment = { file: File; kind: 'image' | 'video' }
 
@@ -58,10 +59,6 @@ export async function uploadLocalPostMedia(
   attachments: LocalAttachment[],
   bucket = 'publicaciones'
 ): Promise<PostMediaItem[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!baseUrl) {
-    throw new Error('Configuración de Storage no disponible')
-  }
   const supabase = createClient()
 
   const imageInput = attachments.filter((a) => a.kind === 'image').map((a) => a.file)
@@ -83,7 +80,7 @@ export async function uploadLocalPostMedia(
       })
       if (error) throw error
       out.push({
-        url: `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${path}`,
+        url: buildSupabasePublicStorageUrl(bucket, path),
         type: 'image',
       })
     } else {
@@ -97,7 +94,7 @@ export async function uploadLocalPostMedia(
       })
       if (error) throw error
       out.push({
-        url: `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${path}`,
+        url: buildSupabasePublicStorageUrl(bucket, path),
         type: 'video',
       })
     }

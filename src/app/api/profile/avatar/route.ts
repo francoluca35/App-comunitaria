@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
+import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
+import { publicStoragePathFromUrl } from '@/lib/server/storage-path'
 
 const MAX_SIZE_BYTES = MEDIA_UPLOAD_LIMITS.maxStoredBytes
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -69,18 +71,9 @@ export async function POST(request: NextRequest) {
 
   const currentAvatarUrl = profile?.avatar_url
   if (currentAvatarUrl && typeof currentAvatarUrl === 'string') {
-    try {
-      const u = new URL(currentAvatarUrl)
-      const prefix = '/storage/v1/object/public/avatars/'
-      const i = u.pathname.indexOf(prefix)
-      if (i !== -1) {
-        const oldPath = u.pathname.slice(i + prefix.length)
-        if (oldPath.startsWith(userId + '/')) {
-          await storage.storage.from('avatars').remove([oldPath])
-        }
-      }
-    } catch {
-      // Ignorar si la URL no es válida o no es de nuestro bucket
+    const oldPath = publicStoragePathFromUrl(currentAvatarUrl, 'avatars')
+    if (oldPath?.startsWith(`${userId}/`)) {
+      await storage.storage.from('avatars').remove([oldPath])
     }
   }
 
@@ -111,8 +104,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { data: urlData } = storage.storage.from('avatars').getPublicUrl(path)
-  const avatarUrl = urlData.publicUrl
+  const avatarUrl = buildSupabasePublicStorageUrl('avatars', path)
 
   const { error: updateError } = await supabase
     .from('profiles')
@@ -160,18 +152,9 @@ export async function DELETE(request: NextRequest) {
 
   const currentAvatarUrl = profile?.avatar_url
   if (currentAvatarUrl && typeof currentAvatarUrl === 'string') {
-    try {
-      const u = new URL(currentAvatarUrl)
-      const prefix = '/storage/v1/object/public/avatars/'
-      const i = u.pathname.indexOf(prefix)
-      if (i !== -1) {
-        const oldPath = u.pathname.slice(i + prefix.length)
-        if (oldPath.startsWith(userId + '/')) {
-          await storage.storage.from('avatars').remove([oldPath])
-        }
-      }
-    } catch {
-      // ignorar
+    const oldPath = publicStoragePathFromUrl(currentAvatarUrl, 'avatars')
+    if (oldPath?.startsWith(`${userId}/`)) {
+      await storage.storage.from('avatars').remove([oldPath])
     }
   }
 

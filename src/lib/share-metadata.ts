@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getAppPublicOrigin } from '@/lib/app-public-url'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 const DEFAULT_OG_IMAGE_PATH = '/Assets/logo-mobil-launcher-512.png'
 const OG_DESCRIPTION_MAX = 200
@@ -21,22 +22,6 @@ export function absolutePublicUrl(pathOrUrl: string): string {
 
 export function defaultOgImageUrl(): string {
 	return absolutePublicUrl(DEFAULT_OG_IMAGE_PATH)
-}
-
-/** WhatsApp/FB leen mejor object/public que render/image de Supabase. */
-export function ensureStorageObjectPublicUrl(url: string): string {
-	try {
-		const parsed = new URL(url.trim())
-		const renderMarker = '/storage/v1/render/image/public/'
-		const objectMarker = '/storage/v1/object/public/'
-		if (parsed.pathname.includes(renderMarker)) {
-			parsed.pathname = parsed.pathname.replace(renderMarker, objectMarker)
-			parsed.search = ''
-		}
-		return parsed.toString()
-	} catch {
-		return url
-	}
 }
 
 /** og:image debe ser URL absoluta https; preferimos la URL pública directa del storage. */

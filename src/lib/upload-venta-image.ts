@@ -1,6 +1,7 @@
 import type { PostMediaItem } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { compressImageForVentaUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
 
 /**
  * Sube una sola imagen de publicación de venta (≤ 1 MB).
@@ -10,9 +11,6 @@ export async function uploadVentaImage(
   file: File,
   bucket = 'publicaciones'
 ): Promise<PostMediaItem> {
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!baseUrl) throw new Error('Configuración de Storage no disponible')
-
   const compressed = await compressImageForVentaUpload(file)
   const ext = storageExtensionFromFile(compressed)
   const path = `${userId}/${crypto.randomUUID()}.${ext}`
@@ -23,7 +21,7 @@ export async function uploadVentaImage(
   })
   if (error) throw error
   return {
-    url: `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${bucket}/${path}`,
+    url: buildSupabasePublicStorageUrl(bucket, path),
     type: 'image',
   }
 }

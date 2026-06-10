@@ -22,7 +22,7 @@ import {
   phonePrefixAndLocalFromStored,
   phoneStoredFromPrefixAndLocal,
 } from '@/lib/publicidad-contact-fields'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { buildSupabasePublicStorageUrl, ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 const BUCKET = 'publicaciones'
 const MAX_IMAGES = 5
@@ -247,8 +247,7 @@ export default function EditarPublicidadPage() {
   const uploadNewFiles = async (): Promise<string[]> => {
     if (!currentUser || !newFiles.length) return []
     const supabase = createClient()
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!baseUrl) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       toast.error('Configuración de Storage no disponible')
       return []
     }
@@ -265,8 +264,7 @@ export default function EditarPublicidadPage() {
         toast.error(`Error al subir ${label}: ${error.message}`)
         throw error
       }
-      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
-      urls.push(publicUrl)
+      urls.push(buildSupabasePublicStorageUrl(BUCKET, path))
     }
     return urls
   }
@@ -503,7 +501,7 @@ export default function EditarPublicidadPage() {
                         <div key={item.key} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-gray-800">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={item.kind === 'existing' ? optimizedStorageImageUrl(item.url, { width: 180, height: 180, quality: 70, resize: 'cover' }) : item.url}
+                            src={item.kind === 'existing' ? ensureStorageObjectPublicUrl(item.url) : item.url}
                             alt=""
                             className="w-full h-full object-cover"
                           />

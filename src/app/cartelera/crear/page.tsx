@@ -13,6 +13,7 @@ import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
+import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
 import { assertStoredMediaLimit, MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
 import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
@@ -164,8 +165,7 @@ export default function CrearPublicidadPage() {
     if (!imageFiles.length) return []
 
     const supabase = createClient()
-    const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!baseUrl) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       toast.error('Configuración de Storage no disponible')
       return []
     }
@@ -183,8 +183,7 @@ export default function CrearPublicidadPage() {
         toast.error(`Error al subir ${label}: ${error.message}`)
         throw error
       }
-      const publicUrl = `${baseUrl.replace(/\/$/, '')}/storage/v1/object/public/${BUCKET}/${path}`
-      urls.push(publicUrl)
+      urls.push(buildSupabasePublicStorageUrl(BUCKET, path))
     }
     return urls
   }

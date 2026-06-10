@@ -9,7 +9,7 @@ import { getPublicidadImageUrls } from '@/lib/publicidad-display'
 import { publicidadPermalink } from '@/lib/app-public-url'
 import { buildShareMetadata } from '@/lib/share-metadata'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 async function getPublicidadCategoryLabel(slug: string): Promise<string> {
   const supabase = createClient()
@@ -98,7 +98,7 @@ export default async function PublicidadPermalinkPage({ params }: PageProps) {
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={optimizedStorageImageUrl(cover, { width: 1200, height: 675, quality: 80, resize: 'cover' })}
+                src={ensureStorageObjectPublicUrl(cover)}
                 alt={p.title}
                 className="h-full w-full object-cover"
               />

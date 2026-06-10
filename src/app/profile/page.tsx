@@ -48,7 +48,7 @@ import {
   parseArgentinaMobileStored,
   validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -383,7 +383,7 @@ export default function ProfilePage() {
                     {p.images?.[0] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={optimizedStorageImageUrl(p.images[0], { width: 160, height: 160, quality: 70, resize: 'cover' })}
+                        src={ensureStorageObjectPublicUrl(p.images[0])}
                         alt=""
                         className="h-full w-full object-cover"
                         loading="lazy"
@@ -511,7 +511,7 @@ export default function ProfilePage() {
             <div className="flex h-48 w-48 shrink-0 overflow-hidden rounded-full bg-slate-200 ring-2 ring-[#D8D2CC] dark:bg-gray-700 dark:ring-gray-600">
               {currentUser.avatar ? (
                 <img
-                  src={optimizedStorageImageUrl(currentUser.avatar, { width: 192, height: 192, quality: 75, resize: 'cover' })}
+                  src={ensureStorageObjectPublicUrl(currentUser.avatar)}
                   alt={currentUser.name ?? ''}
                   className="h-full w-full object-cover"
                 />

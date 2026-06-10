@@ -6,6 +6,7 @@ import { MEDIA_UPLOAD_LIMITS, assertStoredMediaLimit } from '@/lib/media-upload-
  * En las pantallas de publicación el vecino puede elegir hasta varias fotos de hasta 5 MB c/u;
  * acá se comprimen para que ocupen mucho menos en el bucket.
  * Objetivo típico: ~0,5–1 MB por imagen en lugar de 3–5 MB de cámara, sin pérdida visible en el feed.
+ * No usar Supabase /render/image/ al mostrar: la compresión al subir reemplaza las transformaciones en servidor.
  *
  * - Máximo ~2048 px en el lado mayor (suficiente para pantallas y zoom).
  * - Tamaño objetivo por archivo <= 1.5 MB (itera calidad/dimensiones dentro de la librería).

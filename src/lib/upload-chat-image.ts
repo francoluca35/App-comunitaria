@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 export const CHAT_IMAGE_BUCKET = 'chat-images'
 
@@ -44,5 +45,5 @@ export async function uploadChatImage(
 		return { error: 'No se obtuvo URL pública de la imagen' }
 	}
 
-	return { publicUrl: pub.publicUrl, path }
+	return { publicUrl: ensureStorageObjectPublicUrl(pub.publicUrl), path }
 }

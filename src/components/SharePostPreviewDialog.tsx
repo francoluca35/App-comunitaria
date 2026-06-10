@@ -13,7 +13,7 @@ import {
 import { Button } from '@/app/components/ui/button'
 import { postPermalink } from '@/lib/app-public-url'
 import { truncateForOgDescription } from '@/lib/share-metadata'
-import { optimizedStorageImageUrl } from '@/lib/storage-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 export type PostSharePreview = {
 	title: string
@@ -33,7 +33,7 @@ export function SharePostPreviewDialog({ postId, preview, open, onOpenChange }: 
 	const url = postPermalink(postId)
 	const description = truncateForOgDescription(preview.description, 120)
 	const thumbSrc = preview.imageUrl
-		? optimizedStorageImageUrl(preview.imageUrl, { width: 400, height: 400, quality: 82, resize: 'cover' })
+		? ensureStorageObjectPublicUrl(preview.imageUrl)
 		: '/Assets/logo-mobil-launcher-192.png'
 
 	const copyLink = async () => {
