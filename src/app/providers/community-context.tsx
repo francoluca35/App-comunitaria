@@ -28,6 +28,12 @@ import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/li
 import { buildSupabasePublicStorageUrl, ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
+import {
+	ADMIN_USERS_PAGE_SIZE,
+	ADMIN_USERS_SEARCH_LIMIT,
+	fetchAdminUsersList,
+	type AdminUsersListQuery,
+} from '@/lib/admin-users-api'
 import type {
   AdminProfile,
   Comment,
@@ -82,8 +88,21 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   const commentCountsRpcUnavailableRef = useRef(false)
   const reactionUserIdRef = useRef<string | null>(null)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
+  const [adminUsersTotal, setAdminUsersTotal] = useState(0)
+  const [adminBlockedUsersTotal, setAdminBlockedUsersTotal] = useState(0)
   const [adminProfiles, setAdminProfiles] = useState<AdminProfile[]>([])
+  const [adminProfilesPage, setAdminProfilesPage] = useState(1)
+  const [adminProfilesTotalPages, setAdminProfilesTotalPages] = useState(1)
+  const [adminProfilesTotal, setAdminProfilesTotal] = useState(0)
   const [adminProfilesLoading, setAdminProfilesLoading] = useState(false)
+  const adminListQueryRef = useRef<AdminUsersListQuery>({
+    page: 1,
+    pageSize: ADMIN_USERS_PAGE_SIZE,
+    search: '',
+    role: 'all',
+    status: 'all',
+    order: 'newest',
+  })
 
   const uploadCommentImage = useCallback(
     async (userId: string, file: File): Promise<string> => {
@@ -528,49 +547,117 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
 
   const canLoadAdminProfiles = currentUser?.isAdmin || currentUser?.isAdminMaster
 
+  const loadAdminUsersStats = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+
+    const [allRes, blockedRes] = await Promise.all([
+      fetchAdminUsersList(session.access_token, { page: 1, pageSize: 1 }),
+      fetchAdminUsersList(session.access_token, { page: 1, pageSize: 1, status: 'blocked' }),
+    ])
+
+    if (!('error' in allRes)) setAdminUsersTotal(allRes.total)
+    if (!('error' in blockedRes)) setAdminBlockedUsersTotal(blockedRes.total)
+  }, [supabase])
+
+  const loadAdminProfiles = useCallback(
+    async (
+      overrides?: Partial<{
+        page: number
+        search: string
+        role: AdminUsersListQuery['role']
+        status: AdminUsersListQuery['status']
+        order: AdminUsersListQuery['order']
+      }>
+    ) => {
+      if (!canLoadAdminProfiles) return
+      setAdminProfilesLoading(true)
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+
+        const query: AdminUsersListQuery = {
+          ...adminListQueryRef.current,
+          ...overrides,
+          pageSize: ADMIN_USERS_PAGE_SIZE,
+        }
+        adminListQueryRef.current = query
+
+        const result = await fetchAdminUsersList(session.access_token, query)
+        if ('error' in result) {
+          console.error('loadAdminProfiles error:', result.error)
+          return
+        }
+
+        setAdminProfiles(result.users)
+        setAdminProfilesPage(result.page)
+        setAdminProfilesTotalPages(result.totalPages)
+        setAdminProfilesTotal(result.total)
+      } finally {
+        setAdminProfilesLoading(false)
+      }
+    },
+    [supabase, canLoadAdminProfiles]
+  )
+
+  const searchAdminProfiles = useCallback(
+    async (search: string): Promise<AdminProfile[]> => {
+      if (!canLoadAdminProfiles) return []
+      const q = search.trim()
+      if (!q) return []
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) return []
+
+      const result = await fetchAdminUsersList(session.access_token, {
+        page: 1,
+        pageSize: ADMIN_USERS_SEARCH_LIMIT,
+        search: q,
+      })
+      if ('error' in result) return []
+      return result.users
+    },
+    [supabase, canLoadAdminProfiles]
+  )
+
+  const fetchAdminProfilesByIds = useCallback(
+    async (ids: string[]): Promise<AdminProfile[]> => {
+      if (!canLoadAdminProfiles || ids.length === 0) return []
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session?.access_token) return []
+
+      const result = await fetchAdminUsersList(session.access_token, {
+        page: 1,
+        pageSize: ADMIN_USERS_PAGE_SIZE,
+        ids: ids.join(','),
+      })
+      if ('error' in result) return []
+      return result.users
+    },
+    [supabase, canLoadAdminProfiles]
+  )
+
   useEffect(() => {
     if (!canLoadAdminProfiles) return
     let cancelled = false
     const load = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session?.access_token || cancelled) return
-      try {
-        const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${session.access_token}` } })
-        if (!res.ok || cancelled) return
-        const data: AdminProfile[] = await res.json()
-        if (!cancelled) {
-          setAdminProfiles(data)
-          setUsers(data.map(adminProfileToUser))
-        }
-      } catch (e) {
-        if (!cancelled) console.error('loadAdminProfiles error:', e)
-      }
+      if (cancelled) return
+      await loadAdminUsersStats()
     }
-    load()
+    void load()
     return () => {
       cancelled = true
     }
-  }, [supabase, currentUser?.id, canLoadAdminProfiles])
-
-  const loadAdminProfiles = useCallback(async () => {
-    if (!canLoadAdminProfiles) return
-    setAdminProfilesLoading(true)
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session?.access_token) return
-      const res = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${session.access_token}` } })
-      if (!res.ok) return
-      const data: AdminProfile[] = await res.json()
-      setAdminProfiles(data)
-      setUsers(data.map(adminProfileToUser))
-    } finally {
-      setAdminProfilesLoading(false)
-    }
-  }, [supabase, canLoadAdminProfiles])
+  }, [supabase, currentUser?.id, canLoadAdminProfiles, loadAdminUsersStats])
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     const {
@@ -595,6 +682,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
       }
       await loadAdminProfiles()
+      await loadAdminUsersStats()
       return { ok: true }
     },
     [getAuthHeaders, loadAdminProfiles]
@@ -615,6 +703,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
       }
       await loadAdminProfiles()
+      await loadAdminUsersStats()
       return { ok: true }
     },
     [getAuthHeaders, loadAdminProfiles]
@@ -633,6 +722,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
       }
       await loadAdminProfiles()
+      await loadAdminUsersStats()
       return { ok: true }
     },
     [getAuthHeaders, loadAdminProfiles]
@@ -651,6 +741,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
       }
       await loadAdminProfiles()
+      await loadAdminUsersStats()
       return { ok: true }
     },
     [getAuthHeaders, loadAdminProfiles]
@@ -665,6 +756,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
       }
       await loadAdminProfiles()
+      await loadAdminUsersStats()
       return { ok: true }
     },
     [getAuthHeaders, loadAdminProfiles]
@@ -1109,9 +1201,16 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       toggleCommentLike,
       users,
       toggleBlockUser,
+      adminUsersTotal,
+      adminBlockedUsersTotal,
       adminProfiles,
+      adminProfilesPage,
+      adminProfilesTotalPages,
+      adminProfilesTotal,
       adminProfilesLoading,
       loadAdminProfiles,
+      searchAdminProfiles,
+      fetchAdminProfilesByIds,
       updateUserRole,
       setUserSuspended,
       blockUser,
@@ -1142,9 +1241,16 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       toggleCommentLike,
       users,
       toggleBlockUser,
+      adminUsersTotal,
+      adminBlockedUsersTotal,
       adminProfiles,
+      adminProfilesPage,
+      adminProfilesTotalPages,
+      adminProfilesTotal,
       adminProfilesLoading,
       loadAdminProfiles,
+      searchAdminProfiles,
+      fetchAdminProfilesByIds,
       updateUserRole,
       setUserSuspended,
       blockUser,

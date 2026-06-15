@@ -191,9 +191,22 @@ export interface CommunityContextType {
   users: User[]
   toggleBlockUser: (userId: string) => void
 
+  adminUsersTotal: number
+  adminBlockedUsersTotal: number
   adminProfiles: AdminProfile[]
+  adminProfilesPage: number
+  adminProfilesTotalPages: number
+  adminProfilesTotal: number
   adminProfilesLoading: boolean
-  loadAdminProfiles: () => Promise<void>
+  loadAdminProfiles: (query?: Partial<{
+    page: number
+    search: string
+    role: 'all' | 'viewer' | 'moderator' | 'admin' | 'admin_master'
+    status: 'all' | 'active' | 'blocked' | 'suspended'
+    order: 'newest' | 'oldest'
+  }>) => Promise<void>
+  searchAdminProfiles: (search: string) => Promise<AdminProfile[]>
+  fetchAdminProfilesByIds: (ids: string[]) => Promise<AdminProfile[]>
   updateUserRole: (
     userId: string,
     role: 'viewer' | 'moderator' | 'admin' | 'admin_master'

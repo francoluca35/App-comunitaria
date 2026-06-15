@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { DeletePublicidadButton } from '@/components/DeletePublicidadButton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
+import { adminCarteleraItemUrl, adminCarteleraListUrl } from '@/lib/admin-cartelera-api'
 
 type AdminRequest = {
   id: string
@@ -103,7 +104,7 @@ function AdminPublicidadCard({
   )
 }
 
-export default function AdminPublicidadesPage() {
+export default function AdminCarteleraPage() {
   const router = useRouter()
   const { currentUser } = useApp()
 
@@ -123,7 +124,7 @@ export default function AdminPublicidadesPage() {
     async (status: string): Promise<AdminRequest[]> => {
       const accessToken = await getAccessToken()
       if (!accessToken) return []
-      const res = await fetch(`/api/admin/publicidades?status=${status}`, {
+      const res = await fetch(adminCarteleraListUrl(status), {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!res.ok) throw new Error('No se pudo cargar')
@@ -169,7 +170,7 @@ export default function AdminPublicidadesPage() {
 
     setActionBusyId(id)
     try {
-      const res = await fetch(`/api/admin/publicidades/${id}`, {
+      const res = await fetch(adminCarteleraItemUrl(id), {
         method: 'PATCH',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -295,4 +296,3 @@ export default function AdminPublicidadesPage() {
     </DashboardLayout>
   )
 }
-

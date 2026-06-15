@@ -1,16 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
-import { useApp } from '@/app/providers'
+import { useApp, type AdminProfile } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { cn } from '@/app/components/ui/utils'
-import {
-	adminContactChatPath,
-	canUseAdminContactSearch,
-	filterAdminContacts,
-} from '@/lib/admin-contact-search'
+import { adminContactChatPath, canUseAdminContactSearch } from '@/lib/admin-contact-search'
 
 const INPUT_CLASS =
 	'w-full rounded-2xl border border-[#D8D2CC] bg-white py-2.5 pl-11 pr-4 text-sm text-[#2B2B2B] placeholder:text-[#7A5C52]/70 shadow-sm outline-none focus:border-[#8B0015] focus:ring-2 focus:ring-[#8B0015]/20 dark:border-[#3a3b3c] dark:bg-[#3a3b3c] dark:text-[#e4e6eb] dark:placeholder:text-[#b0b3b8] dark:focus:border-[#8B0015] dark:focus:ring-[#8B0015]/30'
@@ -25,17 +21,15 @@ type Props = {
 
 export function AdminHeaderContactSearch({ variant = 'desktop', className }: Props) {
 	const router = useRouter()
-	const { currentUser, adminProfiles, adminProfilesLoading, loadAdminProfiles } = useApp()
+	const { currentUser, searchAdminProfiles } = useApp()
 	const [query, setQuery] = useState('')
 	const [open, setOpen] = useState(false)
+	const [results, setResults] = useState<AdminProfile[]>([])
+	const [searching, setSearching] = useState(false)
 	const rootRef = useRef<HTMLDivElement>(null)
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	const enabled = canUseAdminContactSearch(currentUser)
-
-	useEffect(() => {
-		if (!enabled) return
-		void loadAdminProfiles()
-	}, [enabled, loadAdminProfiles])
 
 	useEffect(() => {
 		if (!open) return
@@ -46,15 +40,34 @@ export function AdminHeaderContactSearch({ variant = 'desktop', className }: Pro
 		return () => document.removeEventListener('pointerdown', onPointerDown)
 	}, [open])
 
-	const results = useMemo(
-		() => filterAdminContacts(adminProfiles, query, currentUser?.id),
-		[adminProfiles, query, currentUser?.id]
-	)
+	useEffect(() => {
+		const q = query.trim()
+		if (!enabled || !q) {
+			setResults([])
+			setSearching(false)
+			return
+		}
+
+		if (debounceRef.current) clearTimeout(debounceRef.current)
+		setSearching(true)
+		debounceRef.current = setTimeout(() => {
+			void (async () => {
+				const found = await searchAdminProfiles(q)
+				setResults(found.filter((p) => p.id !== currentUser?.id))
+				setSearching(false)
+			})()
+		}, 300)
+
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [query, enabled, searchAdminProfiles, currentUser?.id])
 
 	const goToChat = useCallback(
 		(userId: string) => {
 			setQuery('')
 			setOpen(false)
+			setResults([])
 			router.push(adminContactChatPath(userId))
 		},
 		[router]
@@ -99,8 +112,8 @@ export function AdminHeaderContactSearch({ variant = 'desktop', className }: Pro
 						variant === 'mobile' ? 'top-full mt-1' : 'top-full mt-1.5'
 					)}
 				>
-					{adminProfilesLoading ? (
-						<li className="px-4 py-3 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">Cargando contactos…</li>
+					{searching ? (
+						<li className="px-4 py-3 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">Buscando contactos…</li>
 					) : results.length === 0 ? (
 						<li className="px-4 py-3 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">Sin resultados</li>
 					) : (
@@ -119,16 +132,10 @@ export function AdminHeaderContactSearch({ variant = 'desktop', className }: Pro
 												{label[0]?.toUpperCase() ?? '?'}
 											</AvatarFallback>
 										</Avatar>
-										<span className="min-w-0 flex-1">
-											<span className="block truncate text-sm font-medium text-[#2B2B2B] dark:text-[#e4e6eb]">
-												{label}
-											</span>
-											{p.email ? (
-												<span className="block truncate text-xs text-[#7A5C52] dark:text-[#b0b3b8]">
-													{p.email}
-												</span>
-											) : null}
-										</span>
+										<div className="min-w-0">
+											<p className="truncate text-sm font-medium text-[#2B2B2B] dark:text-[#e4e6eb]">{label}</p>
+											<p className="truncate text-xs text-[#7A5C52] dark:text-[#b0b3b8]">{p.email}</p>
+										</div>
 									</button>
 								</li>
 							)

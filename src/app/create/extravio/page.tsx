@@ -324,7 +324,7 @@ export default function CreateExtravioPage() {
 											<video
 												src={URL.createObjectURL(att.file)}
 												className="h-full w-full object-cover"
-												muted
+												controls
 												playsInline
 											/>
 										) : (

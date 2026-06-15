@@ -1,7 +1,7 @@
 export const MEDIA_UPLOAD_LIMITS = {
 	maxStoredBytes: 1.5 * 1024 * 1024,
 	maxImageInputBytes: 5 * 1024 * 1024,
-	maxVideoInputBytes: 8 * 1024 * 1024,
+	maxVideoInputBytes: 50 * 1024 * 1024,
 	maxAudioStoredBytes: 1.5 * 1024 * 1024,
 	/** Publicaciones de venta: una sola foto, máximo 1 MB al subir. */
 	ventaMaxStoredBytes: 1 * 1024 * 1024,
@@ -9,7 +9,7 @@ export const MEDIA_UPLOAD_LIMITS = {
 	maxAudioDurationMs: 4 * 60 * 1000,
 	maxStoredMbLabel: '1.5 MB',
 	maxImageInputMbLabel: '5 MB',
-	maxVideoInputMbLabel: '8 MB',
+	maxVideoInputMbLabel: '50 MB',
 	ventaMaxStoredMbLabel: '1 MB',
 } as const
 

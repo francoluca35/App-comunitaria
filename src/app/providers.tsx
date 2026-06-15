@@ -7,6 +7,7 @@ import { AppUpdatePrompt } from '@/components/AppUpdatePrompt'
 import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
 import { PushEnrollmentBanner } from '@/components/PushEnrollmentBanner'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
+import { serviceWorkerScriptUrl } from '@/lib/app-version'
 import { AppConfigProvider, useAppConfig } from '@/app/providers/app-config-context'
 import { AuthProvider, useAuth } from '@/app/providers/auth-context'
 import { CategoriesProvider, useCategories } from '@/app/providers/categories-context'
@@ -68,7 +69,7 @@ function AppChrome() {
 export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    navigator.serviceWorker.register(serviceWorkerScriptUrl()).catch(() => {})
   }, [])
 
   return (
