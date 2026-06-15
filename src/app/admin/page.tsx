@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 export default function AdminDashboardPage() {
   const router = useRouter()
-  const { currentUser, posts, users, recentRegistrations } = useApp()
+  const { currentUser, posts, adminUsersTotal, adminBlockedUsersTotal, recentRegistrations } = useApp()
 
   if (!currentUser?.isAdmin) {
     return (
@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
   const pendingPosts = posts.filter((p) => p.status === 'pending')
   const approvedPosts = posts.filter((p) => p.status === 'approved')
   const rejectedPosts = posts.filter((p) => p.status === 'rejected')
-  const blockedUsers = users.filter((u) => u.isBlocked)
+  const blockedUsersCount = adminBlockedUsersTotal
 
   return (
     <DashboardLayout>
@@ -93,7 +93,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-0.5">Usuarios</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{users.length}</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{adminUsersTotal}</p>
             </div>
           </div>
         </section>
@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
                 <Users className="w-6 h-6 text-[#8B0015] dark:text-[#F3C9D0]" />
               </div>
               <span className="text-sm font-medium text-slate-900 dark:text-white text-center">Usuarios</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400">{blockedUsers.length} bloq.</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{blockedUsersCount} bloq.</span>
             </Link>
 
             <Link
@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Link
-              href="/admin/publicidades"
+              href="/admin/cartelera"
               className="aspect-square flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-violet-100 dark:border-violet-900/40 hover:bg-violet-50/80 dark:hover:bg-slate-700/80 active:bg-violet-100/50 dark:active:bg-slate-700"
             >
               <div className="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center shrink-0">

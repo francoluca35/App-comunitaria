@@ -49,7 +49,6 @@ export async function PATCH(
     return NextResponse.json({ ok: true })
   }
 
-  // approve
   const { data: configMainRow, error: configMainError } = await auth.supabase
     .from('app_config')
     .select('value')
@@ -63,10 +62,10 @@ export async function PATCH(
     .maybeSingle()
 
   if (configMainError) {
-    console.error('PATCH /api/admin/publicidades approve main config error:', configMainError)
+    console.error('PATCH /api/admin/cartelera approve main config error:', configMainError)
   }
   if (configLateralError) {
-    console.error('PATCH /api/admin/publicidades approve lateral config error:', configLateralError)
+    console.error('PATCH /api/admin/cartelera approve lateral config error:', configLateralError)
   }
 
   const valorMain = parseValorPublicitarioJsonb(configMainRow?.value)
@@ -112,4 +111,3 @@ export async function DELETE(
 
   return NextResponse.json({ ok: true })
 }
-

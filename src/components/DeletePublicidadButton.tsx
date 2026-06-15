@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/app/components/ui/utils'
 import { createClient } from '@/lib/supabase/client'
+import { adminCarteleraItemUrl } from '@/lib/admin-cartelera-api'
 
 type Props = {
 	publicidadId: string
@@ -68,7 +69,7 @@ export function DeletePublicidadButton({
 			const url =
 				variant === 'owner'
 					? `/api/publicidad/mis/${publicidadId}`
-					: `/api/admin/publicidades/${publicidadId}`
+					: adminCarteleraItemUrl(publicidadId)
 
 			const res = await fetch(url, {
 				method: 'DELETE',

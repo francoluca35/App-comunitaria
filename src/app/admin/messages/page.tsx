@@ -19,44 +19,26 @@ import {
 } from '@/lib/chat-inbox-previews'
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 
-function normalize(s: string): string {
-	return s
-		.toLowerCase()
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-}
-
-function matchProfile(profile: AdminProfile, query: string): boolean {
-	if (!query.trim()) return true
-	const q = normalize(query)
-	const name = normalize(profile.name ?? '')
-	const email = normalize(profile.email ?? '')
-	const phone = (profile.phone ?? '').replace(/\D/g, '')
-	const queryDigits = query.replace(/\D/g, '')
-	return (
-		name.includes(q) ||
-		email.includes(q) ||
-		(queryDigits.length >= 2 && phone.includes(queryDigits))
-	)
-}
-
 export default function AdminMessagesPage() {
 	const router = useRouter()
-	const { currentUser, adminProfiles, adminProfilesLoading, loadAdminProfiles } = useApp()
+	const { currentUser, adminProfilesLoading, searchAdminProfiles, fetchAdminProfilesByIds } = useApp()
 	const supabase = useMemo(() => createClient(), [])
 	const [search, setSearch] = useState('')
+	const [debouncedSearch, setDebouncedSearch] = useState('')
 	const [lastByPeer, setLastByPeer] = useState<Record<string, PeerPreview>>({})
-	const hasRequestedLoad = useRef(false)
+	const [chatProfiles, setChatProfiles] = useState<AdminProfile[]>([])
+	const [searchResults, setSearchResults] = useState<AdminProfile[]>([])
+	const [loadingContacts, setLoadingContacts] = useState(false)
+	const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const isStaffAdmin = canUseAdminContactSearch(currentUser)
 
 	useEffect(() => {
-		if (!isStaffAdmin || hasRequestedLoad.current) return
-		hasRequestedLoad.current = true
-		loadAdminProfiles()
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isStaffAdmin])
+		if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+		searchDebounceRef.current = setTimeout(() => setDebouncedSearch(search), 300)
+		return () => {
+			if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+		}
+	}, [search])
 
 	useEffect(() => {
 		if (!isStaffAdmin || !currentUser?.id) return
@@ -70,13 +52,51 @@ export default function AdminMessagesPage() {
 		}
 	}, [currentUser?.id, isStaffAdmin, supabase])
 
-	const filtered = useMemo(() => {
-		return adminProfiles.filter((p) => matchProfile(p, search))
-	}, [adminProfiles, search])
+	useEffect(() => {
+		if (!isStaffAdmin) return
+		const q = debouncedSearch.trim()
+
+		if (q) {
+			let cancelled = false
+			setLoadingContacts(true)
+			void (async () => {
+				const found = await searchAdminProfiles(q)
+				if (!cancelled) {
+					setSearchResults(found)
+					setLoadingContacts(false)
+				}
+			})()
+			return () => {
+				cancelled = true
+			}
+		}
+
+		const peerIds = Object.keys(lastByPeer)
+		if (peerIds.length === 0) {
+			setChatProfiles([])
+			setSearchResults([])
+			return
+		}
+
+		let cancelled = false
+		setLoadingContacts(true)
+		void (async () => {
+			const profiles = await fetchAdminProfilesByIds(peerIds)
+			if (!cancelled) {
+				setChatProfiles(profiles)
+				setLoadingContacts(false)
+			}
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [isStaffAdmin, debouncedSearch, lastByPeer, searchAdminProfiles, fetchAdminProfilesByIds])
+
+	const visibleProfiles = debouncedSearch.trim() ? searchResults : chatProfiles
 
 	const filteredSorted = useMemo(
-		() => sortByChatRecency(filtered, lastByPeer),
-		[filtered, lastByPeer]
+		() => sortByChatRecency(visibleProfiles, lastByPeer),
+		[visibleProfiles, lastByPeer]
 	)
 
 	if (!isStaffAdmin) {
@@ -124,16 +144,20 @@ export default function AdminMessagesPage() {
 						/>
 					</div>
 					<p className="mt-2 px-0.5 text-xs text-slate-600 dark:text-[#8696A0]">
-						Tocá un contacto para abrir el chat en la app. El ícono verde abre WhatsApp si hay teléfono.
+						{debouncedSearch.trim()
+							? 'Resultados de búsqueda en todos los usuarios.'
+							: 'Conversaciones recientes. Buscá por nombre, email o teléfono para encontrar más contactos.'}
 					</p>
 				</div>
 
 				<div className="min-h-0 flex-1 overflow-y-auto">
-					{adminProfilesLoading ? (
+					{loadingContacts || adminProfilesLoading ? (
 						<p className="py-10 text-center text-sm text-slate-600 dark:text-[#8696A0]">Cargando usuarios...</p>
 					) : filteredSorted.length === 0 ? (
 						<p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-[#8696A0]">
-							{adminProfiles.length === 0 ? 'No hay usuarios cargados.' : 'Ningún usuario coincide con la búsqueda.'}
+							{debouncedSearch.trim()
+								? 'Ningún usuario coincide con la búsqueda.'
+								: 'No hay conversaciones todavía. Buscá un contacto para iniciar un chat.'}
 						</p>
 					) : (
 						filteredSorted.map((profile) => {

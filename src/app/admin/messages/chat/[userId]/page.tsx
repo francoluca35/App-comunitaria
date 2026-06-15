@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { useApp } from '@/app/providers'
+import { useApp, type AdminProfile } from '@/app/providers'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
@@ -45,9 +45,10 @@ export default function AdminChatPage() {
 	const router = useRouter()
 	const params = useParams()
 	const userId = params?.userId as string | undefined
-	const { currentUser, adminProfiles } = useApp()
+	const { currentUser, adminProfiles, fetchAdminProfilesByIds } = useApp()
 	const [messages, setMessages] = useState<ChatMessage[]>([])
 	const [loading, setLoading] = useState(true)
+	const [peerProfile, setPeerProfile] = useState<AdminProfile | null>(null)
 	const [message, setMessage] = useState('')
 	const [sending, setSending] = useState(false)
 	const [showClearAllDialog, setShowClearAllDialog] = useState(false)
@@ -70,7 +71,27 @@ export default function AdminChatPage() {
 
 	const supabase = useMemo(() => createClient(), [])
 
-	const profile = userId ? adminProfiles.find((p) => p.id === userId) : null
+	const profile = peerProfile
+
+	useEffect(() => {
+		if (!userId) {
+			setPeerProfile(null)
+			return
+		}
+		const cached = adminProfiles.find((p) => p.id === userId)
+		if (cached) {
+			setPeerProfile(cached)
+			return
+		}
+		let cancelled = false
+		void (async () => {
+			const rows = await fetchAdminProfilesByIds([userId])
+			if (!cancelled) setPeerProfile(rows[0] ?? null)
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [userId, adminProfiles, fetchAdminProfilesByIds])
 	const myId = currentUser?.id ?? ''
 	const otherId = userId ?? ''
 	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =

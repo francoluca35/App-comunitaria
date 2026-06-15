@@ -42,6 +42,10 @@ const nextConfig = {
       { source: '/publicidades', destination: '/cartelera', permanent: true },
       { source: '/publicidades/crear', destination: '/cartelera/crear', permanent: true },
       { source: '/publicidades/:id', destination: '/cartelera/:id', permanent: true },
+      { source: '/admin/publicidades', destination: '/admin/cartelera', permanent: true },
+      { source: '/admin/publicidades/:path*', destination: '/admin/cartelera/:path*', permanent: true },
+      { source: '/api/admin/publicidades', destination: '/api/admin/cartelera', permanent: true },
+      { source: '/api/admin/publicidades/:path*', destination: '/api/admin/cartelera/:path*', permanent: true },
     ]
   },
 }

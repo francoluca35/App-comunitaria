@@ -584,7 +584,7 @@ function CreateOtroForm() {
                       <video
                         src={URL.createObjectURL(att.file)}
                         className="w-full h-full object-cover"
-                        muted
+                        controls
                         playsInline
                       />
                     ) : (

@@ -46,33 +46,10 @@ import { useChatReceiptEffects } from '@/hooks/useChatReceiptEffects'
 
 const DESKTOP_MQ = '(min-width: 1024px)'
 
-function normalize(s: string): string {
-	return s
-		.toLowerCase()
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '')
-		.replace(/\s+/g, ' ')
-		.trim()
-}
-
-function matchProfile(profile: AdminProfile, query: string): boolean {
-	if (!query.trim()) return true
-	const q = normalize(query)
-	const name = normalize(profile.name ?? '')
-	const email = normalize(profile.email ?? '')
-	const phone = (profile.phone ?? '').replace(/\D/g, '')
-	const queryDigits = query.replace(/\D/g, '')
-	return (
-		name.includes(q) ||
-		email.includes(q) ||
-		(queryDigits.length >= 2 && phone.includes(queryDigits))
-	)
-}
-
 type ChatMsg = ChatMessageWithReceipts
 
 export function FloatingChatHub() {
-	const { currentUser, adminProfiles, adminProfilesLoading, loadAdminProfiles } = useApp()
+	const { currentUser, searchAdminProfiles, fetchAdminProfilesByIds } = useApp()
 	const router = useRouter()
 	const pathname = usePathname()
 	const supabase = useMemo(() => createClient(), [])
@@ -88,6 +65,11 @@ export function FloatingChatHub() {
 	const [adminShowContactList, setAdminShowContactList] = useState(false)
 	const [adminContactSearch, setAdminContactSearch] = useState('')
 	const [adminLastByPeer, setAdminLastByPeer] = useState<Record<string, PeerPreview>>({})
+	const [adminChatProfiles, setAdminChatProfiles] = useState<AdminProfile[]>([])
+	const [adminSearchResults, setAdminSearchResults] = useState<AdminProfile[]>([])
+	const [adminContactsLoading, setAdminContactsLoading] = useState(false)
+	const [adminDebouncedSearch, setAdminDebouncedSearch] = useState('')
+	const adminSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	/** Menú de acciones rápidas: colapsado deja un solo botón al borde para no tapar formularios ni el enviar del chat. */
 	const [quickActionsOpen, setQuickActionsOpen] = useState(false)
 
@@ -141,12 +123,74 @@ export function FloatingChatHub() {
 		return () => mq.removeEventListener('change', apply)
 	}, [])
 
+	useEffect(() => {
+		if (adminSearchDebounceRef.current) clearTimeout(adminSearchDebounceRef.current)
+		adminSearchDebounceRef.current = setTimeout(() => setAdminDebouncedSearch(adminContactSearch), 300)
+		return () => {
+			if (adminSearchDebounceRef.current) clearTimeout(adminSearchDebounceRef.current)
+		}
+	}, [adminContactSearch])
+
+	useEffect(() => {
+		if (!dockOpen || !isDesktop || !currentUser?.isAdmin || !adminShowContactList) return
+		const q = adminDebouncedSearch.trim()
+		if (q) {
+			let cancelled = false
+			setAdminContactsLoading(true)
+			void (async () => {
+				const found = await searchAdminProfiles(q)
+				if (!cancelled) {
+					setAdminSearchResults(found)
+					setAdminContactsLoading(false)
+				}
+			})()
+			return () => {
+				cancelled = true
+			}
+		}
+
+		const peerIds = Object.keys(adminLastByPeer)
+		if (peerIds.length === 0) {
+			setAdminChatProfiles([])
+			setAdminSearchResults([])
+			return
+		}
+
+		let cancelled = false
+		setAdminContactsLoading(true)
+		void (async () => {
+			const profiles = await fetchAdminProfilesByIds(peerIds)
+			if (!cancelled) {
+				setAdminChatProfiles(profiles)
+				setAdminContactsLoading(false)
+			}
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [
+		dockOpen,
+		isDesktop,
+		currentUser?.isAdmin,
+		adminShowContactList,
+		adminDebouncedSearch,
+		adminLastByPeer,
+		searchAdminProfiles,
+		fetchAdminProfilesByIds,
+	])
+
+	const adminKnownProfiles = useMemo(() => {
+		const map = new Map<string, AdminProfile>()
+		for (const p of [...adminChatProfiles, ...adminSearchResults]) {
+			map.set(p.id, p)
+		}
+		return map
+	}, [adminChatProfiles, adminSearchResults])
+
 	const filteredAdminContacts = useMemo(() => {
-		const base = adminProfiles
-			.filter((p) => p.id !== myId)
-			.filter((p) => matchProfile(p, adminContactSearch))
+		const base = (adminDebouncedSearch.trim() ? adminSearchResults : adminChatProfiles).filter((p) => p.id !== myId)
 		return sortByChatRecency(base, adminLastByPeer)
-	}, [adminProfiles, myId, adminContactSearch, adminLastByPeer])
+	}, [adminDebouncedSearch, adminSearchResults, adminChatProfiles, myId, adminLastByPeer])
 
 	useEffect(() => {
 		if (!dockOpen || !isDesktop || !currentUser?.isAdmin || !adminShowContactList || !myId) return
@@ -194,13 +238,13 @@ export function FloatingChatHub() {
 
 	const peerLabel = useCallback(
 		(pid: string) => {
-			const p = adminProfiles.find((x) => x.id === pid)
+			const p = adminKnownProfiles.get(pid)
 			if (p?.name?.trim()) return p.name.trim()
 			if (p?.email) return p.email
 			const th = threads.find((t) => t.peerId === pid)
 			return th?.items[0]?.title?.trim() || 'Chat'
 		},
-		[adminProfiles, threads]
+		[adminKnownProfiles, threads]
 	)
 
 	const loadThread = useCallback(
@@ -328,9 +372,9 @@ export function FloatingChatHub() {
 			setDockOpen(true)
 			setAdminShowContactList(true)
 			setAdminContactSearch('')
+			setAdminDebouncedSearch('')
 			setPeerId(null)
 			setMessages([])
-			void loadAdminProfiles()
 			return
 		}
 		setDockOpen(true)
@@ -648,15 +692,15 @@ export function FloatingChatHub() {
 								/>
 							</div>
 							<div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1">
-								{adminProfilesLoading ? (
+								{adminContactsLoading ? (
 									<div className="flex justify-center py-8">
 										<Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-[#8696A0]" />
 									</div>
 								) : filteredAdminContacts.length === 0 ? (
 									<p className="px-2 py-6 text-center text-xs text-slate-600 dark:text-[#8696A0]">
-										{adminProfiles.filter((p) => p.id !== myId).length === 0
-											? 'No hay otros usuarios.'
-											: 'Ningún usuario coincide con la búsqueda.'}
+										{adminDebouncedSearch.trim()
+											? 'Ningún usuario coincide con la búsqueda.'
+											: 'No hay conversaciones todavía. Buscá un contacto para iniciar un chat.'}
 									</p>
 								) : (
 									<ul className="flex flex-col gap-0.5">

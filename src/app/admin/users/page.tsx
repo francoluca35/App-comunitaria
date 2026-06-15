@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp, type AdminProfile } from '@/app/providers'
 import { Button } from '@/app/components/ui/button'
@@ -18,10 +18,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/app/components/ui/dialog'
-import { ArrowLeft, Crown, Shield, ShieldCheck, UserX, Ban, Trash2, Clock, Search } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Crown, Shield, ShieldCheck, UserX, Ban, Trash2, Clock, Search } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { toast } from 'sonner'
+import { ADMIN_USERS_PAGE_SIZE } from '@/lib/admin-users-api'
 
 export default function AdminUsersPage() {
   const router = useRouter()
@@ -29,6 +29,9 @@ export default function AdminUsersPage() {
     currentUser,
     adminProfiles,
     adminProfilesLoading,
+    adminProfilesPage,
+    adminProfilesTotalPages,
+    adminProfilesTotal,
     loadAdminProfiles,
     updateUserRole,
     setUserSuspended,
@@ -40,16 +43,38 @@ export default function AdminUsersPage() {
   const [suspendDays, setSuspendDays] = useState<string>('7')
   const [acting, setActing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | 'viewer' | 'moderator' | 'admin' | 'admin_master'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'blocked' | 'suspended'>('all')
   const [createdOrder, setCreatedOrder] = useState<'newest' | 'oldest'>('newest')
-  const hasRequestedLoad = useRef(false)
+  const [page, setPage] = useState(1)
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!currentUser?.isAdmin || hasRequestedLoad.current) return
-    hasRequestedLoad.current = true
-    loadAdminProfiles()
-  }, [currentUser?.isAdmin])
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1)
+    }, 350)
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [searchQuery])
+
+  const reloadList = useCallback(() => {
+    void loadAdminProfiles({
+      page,
+      search: debouncedSearch,
+      role: roleFilter,
+      status: statusFilter,
+      order: createdOrder,
+    })
+  }, [loadAdminProfiles, page, debouncedSearch, roleFilter, statusFilter, createdOrder])
+
+  useEffect(() => {
+    if (!currentUser?.isAdmin) return
+    reloadList()
+  }, [currentUser?.isAdmin, reloadList])
 
   if (!currentUser?.isAdmin) {
     return (
@@ -96,7 +121,7 @@ export default function AdminUsersPage() {
     setActing(false)
     if (ok) {
       toast.success(`Usuario suspendido por ${days} días`)
-      loadAdminProfiles()
+      reloadList()
       setSelected(null)
     } else toast.error(error ?? 'Error al suspender')
   }
@@ -134,27 +159,11 @@ export default function AdminUsersPage() {
 
   const isSuspended = (p: AdminProfile) => p.suspended_until && new Date(p.suspended_until) > new Date()
 
-  const filteredProfiles = adminProfiles
-    .filter((p) => {
-      const q = searchQuery.trim().toLowerCase()
-      if (!q) return true
-      const name = (p.name ?? '').toLowerCase()
-      const email = (p.email ?? '').toLowerCase()
-      const phone = (p.phone ?? '').replace(/\s/g, '')
-      const qNorm = q.replace(/\s/g, '')
-      return name.includes(q) || email.includes(q) || phone.includes(qNorm)
-    })
-    .filter((p) => (roleFilter === 'all' ? true : p.role === roleFilter))
-    .filter((p) => {
-      if (statusFilter === 'all') return true
-      if (statusFilter === 'suspended') return Boolean(isSuspended(p))
-      return p.status === statusFilter
-    })
-    .sort((a, b) => {
-      const at = new Date(a.created_at).getTime()
-      const bt = new Date(b.created_at).getTime()
-      return createdOrder === 'newest' ? bt - at : at - bt
-    })
+  const hasActiveFilters =
+    debouncedSearch.trim().length > 0 || roleFilter !== 'all' || statusFilter !== 'all' || createdOrder !== 'newest'
+
+  const rangeStart = adminProfilesTotal === 0 ? 0 : (adminProfilesPage - 1) * ADMIN_USERS_PAGE_SIZE + 1
+  const rangeEnd = Math.min(adminProfilesPage * ADMIN_USERS_PAGE_SIZE, adminProfilesTotal)
 
   return (
     <DashboardLayout>
@@ -178,7 +187,13 @@ export default function AdminUsersPage() {
             />
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
-            <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as typeof roleFilter)}>
+            <Select
+              value={roleFilter}
+              onValueChange={(value) => {
+                setRoleFilter(value as typeof roleFilter)
+                setPage(1)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Rol" />
               </SelectTrigger>
@@ -190,7 +205,13 @@ export default function AdminUsersPage() {
                 <SelectItem value="admin_master">Admin master</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value as typeof statusFilter)
+                setPage(1)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
@@ -201,7 +222,13 @@ export default function AdminUsersPage() {
                 <SelectItem value="suspended">Suspendidos</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={createdOrder} onValueChange={(value) => setCreatedOrder(value as typeof createdOrder)}>
+            <Select
+              value={createdOrder}
+              onValueChange={(value) => {
+                setCreatedOrder(value as typeof createdOrder)
+                setPage(1)
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Orden" />
               </SelectTrigger>
@@ -213,17 +240,21 @@ export default function AdminUsersPage() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
             <span>
-              Mostrando {filteredProfiles.length} de {adminProfiles.length} usuarios
+              {adminProfilesTotal === 0
+                ? 'Sin usuarios'
+                : `Mostrando ${rangeStart}–${rangeEnd} de ${adminProfilesTotal.toLocaleString('es-AR')} usuarios`}
             </span>
-            {(searchQuery || roleFilter !== 'all' || statusFilter !== 'all' || createdOrder !== 'newest') && (
+            {hasActiveFilters && (
               <button
                 type="button"
                 className="font-semibold text-[#8B0015] hover:underline"
                 onClick={() => {
                   setSearchQuery('')
+                  setDebouncedSearch('')
                   setRoleFilter('all')
                   setStatusFilter('all')
                   setCreatedOrder('newest')
+                  setPage(1)
                 }}
               >
                 Limpiar filtros
@@ -236,12 +267,12 @@ export default function AdminUsersPage() {
           <p className="text-slate-500 dark:text-slate-400">Cargando usuarios...</p>
         ) : (
           <div className="space-y-3">
-            {filteredProfiles.length === 0 ? (
+            {adminProfiles.length === 0 ? (
               <p className="text-slate-500 dark:text-slate-400 py-4 text-center">
-                {adminProfiles.length === 0 ? 'No hay usuarios.' : 'Ningún usuario coincide con la búsqueda.'}
+                {hasActiveFilters ? 'Ningún usuario coincide con la búsqueda.' : 'No hay usuarios.'}
               </p>
             ) : null}
-            {filteredProfiles.map((profile) => (
+            {adminProfiles.map((profile) => (
               <Card
                 key={profile.id}
                 className="cursor-pointer hover:shadow-md transition-shadow"
@@ -289,6 +320,34 @@ export default function AdminUsersPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {adminProfilesTotalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 dark:border-gray-800 dark:bg-gray-900/70">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={adminProfilesLoading || page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Anterior
+            </Button>
+            <span className="text-sm text-slate-600 dark:text-slate-300 tabular-nums">
+              Página {adminProfilesPage} de {adminProfilesTotalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={adminProfilesLoading || page >= adminProfilesTotalPages}
+              onClick={() => setPage((p) => Math.min(adminProfilesTotalPages, p + 1))}
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
           </div>
         )}
 
@@ -396,7 +455,7 @@ export default function AdminUsersPage() {
                           setActing(false)
                           if (ok) {
                             toast.success('Suspensión quitada')
-                            loadAdminProfiles()
+                            reloadList()
                             setSelected(null)
                           } else toast.error(error ?? 'Error')
                         }}

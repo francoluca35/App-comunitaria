@@ -449,7 +449,6 @@ function SingleMediaPreview({
         <video
           key={previewSrc}
           src={previewDisplaySrc}
-          muted
           playsInline
           controls
           preload="metadata"
