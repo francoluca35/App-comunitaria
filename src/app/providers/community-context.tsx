@@ -28,6 +28,7 @@ import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/li
 import { buildSupabasePublicStorageUrl, ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
+import { formatCommunityRateLimitError } from '@/lib/supabase-rate-limit'
 import {
 	ADMIN_USERS_PAGE_SIZE,
 	ADMIN_USERS_SEARCH_LIMIT,
@@ -155,6 +156,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase
           .from('posts')
           .select(POSTS_SELECT)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false })
           .range(0, POSTS_FEED_PAGE_SIZE - 1)
 
@@ -209,11 +211,16 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     try {
       const from = feedNextOffsetRef.current
       const to = from + POSTS_FEED_PAGE_SIZE - 1
-      const { data, error } = await supabase
+      const u = currentUserRef.current
+      let q = supabase
         .from('posts')
         .select(POSTS_SELECT)
         .order('created_at', { ascending: false })
         .range(from, to)
+      if (!canViewAllPostsForModeration(u)) {
+        q = q.eq('status', 'approved')
+      }
+      const { data, error } = await q
       if (error) return
       const mapped = (data ?? []).map((row) => mapSupabasePostRow(row as SupabasePostRow))
       feedNextOffsetRef.current = from + mapped.length
@@ -333,20 +340,17 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           }
 
           if (usedFallback) {
-            const counts = await Promise.all(
-              chunk.map(async (postId) => {
-                const { count, error } = await supabase
-                  .from('comments')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('post_id', postId)
-                if (error) {
-                  console.warn('refreshCommentCountsForPostIds (fallback):', error.message)
-                  return [postId, 0] as const
-                }
-                return [postId, count ?? 0] as const
-              })
-            )
-            for (const [pid, count] of counts) merged[pid] = count
+            const { data: rows, error } = await supabase.from('comments').select('post_id').in('post_id', chunk)
+            if (error) {
+              console.warn('refreshCommentCountsForPostIds (fallback):', error.message)
+            } else {
+              const counts: Record<string, number> = {}
+              for (const row of rows ?? []) {
+                const pid = String((row as { post_id: string }).post_id)
+                counts[pid] = (counts[pid] ?? 0) + 1
+              }
+              for (const pid of chunk) merged[pid] = counts[pid] ?? 0
+            }
           }
         }
         setCommentCountByPostId((prev) => {
@@ -802,7 +806,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           .single()
 
         if (error) {
-          return { ok: false, error: error.message ?? 'Error al guardar la publicación' }
+          return {
+            ok: false,
+            error: formatCommunityRateLimitError(error.message) ?? error.message ?? 'Error al guardar la publicación',
+          }
         }
 
         const mediaItems = post.media ?? []
@@ -989,7 +996,12 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           },
           { onConflict: 'post_id,user_id' }
         )
-        if (error) return { ok: false, error: error.message ?? 'No se pudo guardar la reacción' }
+        if (error) {
+          return {
+            ok: false,
+            error: formatCommunityRateLimitError(error.message) ?? error.message ?? 'No se pudo guardar la reacción',
+          }
+        }
       }
 
       setMyReactionByPostId((prev) => ({ ...prev, [postId]: reaction ?? undefined }))
@@ -1057,7 +1069,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       }
 
       if (error) {
-        return { ok: false, error: error.message ?? 'No se pudo publicar el comentario' }
+        return {
+          ok: false,
+          error: formatCommunityRateLimitError(error.message) ?? error.message ?? 'No se pudo publicar el comentario',
+        }
       }
 
       const r = data as {
