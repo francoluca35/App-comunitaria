@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { DEFAULT_PUBLICIDAD_CATEGORIES } from '@/lib/category-defaults'
 import { isMissingCategoriesTable } from '@/lib/server/categories-table-error'
+import { HTTP_CACHE_PUBLIC_CATEGORIES } from '@/lib/server/http-cache'
 
 /** GET: categorías de publicidad (lectura pública). Si falta la migración, devuelve defaults (200). */
 export async function GET() {
@@ -13,14 +14,16 @@ export async function GET() {
       .order('sort_order', { ascending: true })
     if (error) {
       if (isMissingCategoriesTable(error)) {
-        return NextResponse.json(DEFAULT_PUBLICIDAD_CATEGORIES)
+        return NextResponse.json(DEFAULT_PUBLICIDAD_CATEGORIES, { headers: HTTP_CACHE_PUBLIC_CATEGORIES })
       }
       console.error('GET publicidad_categories:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-    return NextResponse.json(data?.length ? data : DEFAULT_PUBLICIDAD_CATEGORIES)
+    return NextResponse.json(data?.length ? data : DEFAULT_PUBLICIDAD_CATEGORIES, {
+      headers: HTTP_CACHE_PUBLIC_CATEGORIES,
+    })
   } catch (e) {
     console.error('GET publicidad_categories:', e)
-    return NextResponse.json(DEFAULT_PUBLICIDAD_CATEGORIES)
+    return NextResponse.json(DEFAULT_PUBLICIDAD_CATEGORIES, { headers: HTTP_CACHE_PUBLIC_CATEGORIES })
   }
 }

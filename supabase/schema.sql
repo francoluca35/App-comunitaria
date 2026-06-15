@@ -66,6 +66,9 @@ create index if not exists idx_posts_author on public.posts(author_id);
 create index if not exists idx_posts_status on public.posts(status);
 create index if not exists idx_posts_category on public.posts(category);
 create index if not exists idx_posts_created_at on public.posts(created_at desc);
+create index if not exists idx_posts_status_created_at on public.posts(status, created_at desc);
+create index if not exists idx_posts_author_status_created_at on public.posts(author_id, status, created_at desc);
+create index if not exists idx_posts_author_created_at on public.posts(author_id, created_at desc);
 
 -- URLs de medios (imágenes/videos) por publicación
 create table if not exists public.post_media (
@@ -90,6 +93,7 @@ create table if not exists public.comments (
 );
 
 create index if not exists idx_comments_post on public.comments(post_id);
+create index if not exists idx_comments_author_created_at on public.comments(author_id, created_at desc);
 
 -- Categorías dinámicas (slug en posts.category)
 create table if not exists public.post_categories (

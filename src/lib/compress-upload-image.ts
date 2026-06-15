@@ -19,6 +19,12 @@ const MAX_SIZE_MB = MEDIA_UPLOAD_LIMITS.maxStoredBytes / (1024 * 1024)
 const SKIP_IF_NOT_LARGER_THAN_BYTES = 120_000
 const AVATAR_MAX_WIDTH_OR_HEIGHT = 512
 
+const WEBP_COMPRESSION = {
+  fileType: 'image/webp' as const,
+  initialQuality: 0.85,
+  useWebWorker: true,
+} as const
+
 export async function compressImageForCommunityUpload(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file
   if (file.size > MEDIA_UPLOAD_LIMITS.maxImageInputBytes) {
@@ -32,9 +38,9 @@ export async function compressImageForCommunityUpload(file: File): Promise<File>
 
   try {
     const compressed = await imageCompression(file, {
+      ...WEBP_COMPRESSION,
       maxSizeMB: MAX_SIZE_MB,
       maxWidthOrHeight: MAX_WIDTH_OR_HEIGHT,
-      useWebWorker: true,
     })
     assertStoredMediaLimit(compressed, file.name)
     return compressed
@@ -63,9 +69,9 @@ export async function compressImageForVentaUpload(file: File): Promise<File> {
   const maxMb = MEDIA_UPLOAD_LIMITS.ventaMaxStoredBytes / (1024 * 1024)
   try {
     const compressed = await imageCompression(file, {
+      ...WEBP_COMPRESSION,
       maxSizeMB: maxMb,
       maxWidthOrHeight: 1600,
-      useWebWorker: true,
     })
     if (compressed.size > MEDIA_UPLOAD_LIMITS.ventaMaxStoredBytes) {
       throw new Error(`${file.name} debe pesar ${MEDIA_UPLOAD_LIMITS.ventaMaxStoredMbLabel} o menos`)
@@ -96,9 +102,9 @@ export async function compressAvatarForUpload(file: File): Promise<File> {
   }
   try {
     const compressed = await imageCompression(file, {
+      ...WEBP_COMPRESSION,
       maxSizeMB: MAX_SIZE_MB,
       maxWidthOrHeight: AVATAR_MAX_WIDTH_OR_HEIGHT,
-      useWebWorker: true,
     })
     assertStoredMediaLimit(compressed, 'La imagen')
     return compressed

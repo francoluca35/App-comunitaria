@@ -29,12 +29,15 @@ function supportedMimeType(requireAudio: boolean): string {
 }
 
 function captureElementStream(video: HTMLVideoElement): MediaStream | null {
-	if (typeof video.captureStream === 'function') {
-		return video.captureStream()
+	const withCapture = video as HTMLVideoElement & {
+		captureStream?: () => MediaStream
+		mozCaptureStream?: () => MediaStream
 	}
-	const legacy = video as HTMLVideoElement & { mozCaptureStream?: () => MediaStream }
-	if (typeof legacy.mozCaptureStream === 'function') {
-		return legacy.mozCaptureStream()
+	if (typeof withCapture.captureStream === 'function') {
+		return withCapture.captureStream()
+	}
+	if (typeof withCapture.mozCaptureStream === 'function') {
+		return withCapture.mozCaptureStream()
 	}
 	return null
 }

@@ -44,44 +44,35 @@ function parseListParams(request: NextRequest): ListParams {
 	}
 }
 
-function applyListFilters(
-	query: ReturnType<SupabaseClient['from']>,
-	params: ListParams
-) {
-	let q = query
+async function listProfiles(supabase: SupabaseClient, select: string, params: ListParams) {
+	let query = supabase.from('profiles').select(select, { count: 'exact' })
 
 	if (params.ids.length > 0) {
-		return q.in('id', params.ids)
-	}
+		query = query.in('id', params.ids)
+	} else {
+		if (params.role !== 'all') {
+			query = query.eq('role', params.role)
+		}
 
-	if (params.role !== 'all') {
-		q = q.eq('role', params.role)
-	}
+		if (params.status === 'blocked') {
+			query = query.eq('status', 'blocked')
+		} else if (params.status === 'active') {
+			query = query.eq('status', 'active')
+		} else if (params.status === 'suspended') {
+			query = query.gt('suspended_until', new Date().toISOString())
+		}
 
-	if (params.status === 'blocked') {
-		q = q.eq('status', 'blocked')
-	} else if (params.status === 'active') {
-		q = q.eq('status', 'active')
-	} else if (params.status === 'suspended') {
-		q = q.gt('suspended_until', new Date().toISOString())
-	}
-
-	if (params.search) {
-		const safe = escapeIlike(params.search)
-		const digits = params.search.replace(/\D/g, '')
-		if (digits.length >= 2) {
-			q = q.or(`name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${digits}%`)
-		} else {
-			q = q.or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
+		if (params.search) {
+			const safe = escapeIlike(params.search)
+			const digits = params.search.replace(/\D/g, '')
+			if (digits.length >= 2) {
+				query = query.or(`name.ilike.%${safe}%,email.ilike.%${safe}%,phone.ilike.%${digits}%`)
+			} else {
+				query = query.or(`name.ilike.%${safe}%,email.ilike.%${safe}%`)
+			}
 		}
 	}
 
-	return q
-}
-
-async function listProfiles(supabase: SupabaseClient, select: string, params: ListParams) {
-	let query = supabase.from('profiles').select(select, { count: 'exact' })
-	query = applyListFilters(query, params)
 	query = query.order('created_at', { ascending: params.order === 'oldest' })
 
 	if (params.ids.length === 0) {
