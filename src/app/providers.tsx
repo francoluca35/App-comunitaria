@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useEffect, useMemo, type ReactNode } from 'react'
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ThemeProvider } from 'next-themes'
 import { Toaster } from './components/ui/sonner'
 import { AppUpdatePrompt } from '@/components/AppUpdatePrompt'
 import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
+import { PwaInstallPrompt } from '@/components/PwaInstallPrompt'
 import { PushEnrollmentBanner } from '@/components/PushEnrollmentBanner'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
 import { serviceWorkerScriptUrl } from '@/lib/app-version'
@@ -37,6 +38,7 @@ export { useCommunity } from '@/app/providers/community-context'
 
 function AppChrome() {
   const { authLoading, currentUser } = useAuth()
+  const [pwaInstallPromptOpen, setPwaInstallPromptOpen] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -59,9 +61,14 @@ function AppChrome() {
   return (
     <>
       <AppUpdatePrompt />
+      <PwaInstallPrompt onOpenChange={setPwaInstallPromptOpen} />
       <PushEnrollmentBanner authLoading={authLoading} userId={currentUser?.id} />
       <RealtimeNotificationSubscriptions />
-      <MobileNotificationsOncePrompt authLoading={authLoading} userId={currentUser?.id} />
+      <MobileNotificationsOncePrompt
+        gateOpen={!pwaInstallPromptOpen}
+        authLoading={authLoading}
+        userId={currentUser?.id}
+      />
     </>
   )
 }
