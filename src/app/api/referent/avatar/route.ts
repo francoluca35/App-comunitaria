@@ -4,6 +4,7 @@ import { requireReferentAvatarManager } from '@/lib/referent-avatar-auth'
 import { fetchCanonicalMarioProfile } from '@/lib/mario-account'
 import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
+import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 import { publicStoragePathFromUrl } from '@/lib/server/storage-path'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
 
 	const { error: uploadError } = await storage.storage
 		.from('avatars')
-		.upload(path, file, { contentType: file.type, upsert: false })
+		.upload(path, file, storageImmutableUploadOptions(file.type))
 
 	if (uploadError) {
 		console.error('Referent avatar upload:', uploadError)

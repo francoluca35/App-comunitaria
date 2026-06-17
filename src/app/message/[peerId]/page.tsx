@@ -60,7 +60,7 @@ export default function MessageWithPeerPage() {
 	const supabase = useMemo(() => createClient(), [])
 	const myId = currentUser?.id ?? ''
 	const otherId = peer?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 	const backToTeamList =
 		currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos'
@@ -189,17 +189,6 @@ export default function MessageWithPeerPage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference, onIncomingMessageWhileChatOpen, onMessageUpdated])
-
-	const pollInterval = 1500
-	useEffect(() => {
-		if (!myId || !otherId) return
-		const tick = () => {
-			void pollReceipts()
-		}
-		tick()
-		const id = setInterval(tick, pollInterval)
-		return () => clearInterval(id)
-	}, [myId, otherId, pollReceipts])
 
 	if (!currentUser) {
 		return (

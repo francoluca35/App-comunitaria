@@ -1,5 +1,6 @@
 import type { Post, PostMediaItem, PostStatus } from './types'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { storagePreviewUrl } from '@/lib/storage-thumbnail'
 
 export function normalizePostMediaRows(
   rows: { url: string; position: number; type?: string | null }[] | null | undefined
@@ -9,6 +10,7 @@ export function normalizePostMediaRows(
     .sort((a, b) => a.position - b.position)
     .map((m) => ({
       url: m.type === 'video' ? m.url : ensureStorageObjectPublicUrl(m.url),
+      thumbUrl: m.type === 'video' ? undefined : storagePreviewUrl(m.url),
       type: m.type === 'video' ? 'video' : 'image',
     }))
 }

@@ -94,7 +94,7 @@ export default function AdminChatPage() {
 	}, [userId, adminProfiles, fetchAdminProfilesByIds])
 	const myId = currentUser?.id ?? ''
 	const otherId = userId ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	const loadMessages = async () => {
@@ -167,17 +167,6 @@ export default function AdminChatPage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [myId, otherId, profile?.name, onIncomingMessageWhileChatOpen, onMessageUpdated])
-
-	const pollInterval = 1500
-	useEffect(() => {
-		if (!myId || !otherId) return
-		const tick = () => {
-			void pollReceipts()
-		}
-		tick()
-		const id = setInterval(tick, pollInterval)
-		return () => clearInterval(id)
-	}, [myId, otherId, pollReceipts])
 
 	if (!canUseAdminContactSearch(currentUser)) {
 		return (

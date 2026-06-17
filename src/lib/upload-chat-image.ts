@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 
 export const CHAT_IMAGE_BUCKET = 'chat-images'
 
@@ -32,8 +33,7 @@ export async function uploadChatImage(
 	const path = `${userId}/${crypto.randomUUID()}.${ext}`
 
 	const { error: upErr } = await supabase.storage.from(CHAT_IMAGE_BUCKET).upload(path, blob, {
-		contentType: mime,
-		upsert: false,
+		...storageImmutableUploadOptions(mime),
 	})
 
 	if (upErr) {

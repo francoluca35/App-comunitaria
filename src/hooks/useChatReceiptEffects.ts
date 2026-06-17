@@ -71,17 +71,11 @@ export function useChatReceiptEffects(
 		[myId, setMessages]
 	)
 
-	const pollReceipts = useCallback(async () => {
-		if (!myId || !otherId) return
-		await resolveChatReceiptsSupport(supabase)
-	}, [supabase, myId, otherId])
-
 	return {
 		onConversationOpen,
 		onIncomingMessage,
 		onIncomingMessageWhileChatOpen,
 		onMessageUpdated,
-		pollReceipts,
 		applyOutgoingReadLocally,
 		chatSelect: chatMessageSelect(),
 	}

@@ -57,6 +57,8 @@ export type PostMediaKind = 'image' | 'video'
 export interface PostMediaItem {
   url: string
   type: PostMediaKind
+  /** Miniatura derivada por convención `_thumb.webp` (solo imágenes). */
+  thumbUrl?: string
 }
 
 export interface Post {

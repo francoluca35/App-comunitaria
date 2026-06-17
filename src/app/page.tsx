@@ -53,6 +53,7 @@ import { CST } from '@/lib/cst-theme'
 import { useReferentPublicProfile } from '@/hooks/useReferentPublicProfile'
 import { isMarioAccountEmail } from '@/lib/mario-account'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { fetchLateralPublicidadAds, mapLateralPublicidadRows } from '@/lib/lateral-publicidad-cache'
 
 const FEED_FILTER_ALL = 'all'
 const FEED_FILTER_SOLO_PUBLICIDADES = 'publicidades_only'
@@ -233,31 +234,10 @@ function ZonaPublicitariaCarousel() {
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/publicidad/activos?lateral=1')
-      .then(async (res) => {
-        if (!res.ok) return []
-        const data = (await res.json().catch(() => [])) as unknown
-        if (!Array.isArray(data)) return []
-        return data as Record<string, unknown>[]
-      })
+    void fetchLateralPublicidadAds()
       .then((rows) => {
         if (cancelled) return
-        const mapped: PublicidadDisplay[] = rows.map((r) => ({
-          id: String(r.id ?? ''),
-          title: String(r.title ?? ''),
-          description: String(r.description ?? ''),
-          category: String(r.category ?? ''),
-          createdAt: new Date(
-            typeof r.createdAt === 'string' || typeof r.createdAt === 'number' ? r.createdAt : Date.now()
-          ),
-          imageUrl: typeof r.imageUrl === 'string' ? r.imageUrl : undefined,
-          images: Array.isArray(r.images)
-            ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
-            : undefined,
-          whatsappUrl: typeof r.whatsappUrl === 'string' ? r.whatsappUrl : undefined,
-          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : undefined,
-        }))
-        setAds(mapped)
+        setAds(mapLateralPublicidadRows(rows) as PublicidadDisplay[])
       })
       .catch(() => {
         if (!cancelled) setAds([])

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-auth'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import {
 	VALOR_PUBLICITARIO_CONFIG_KEY,
 	VALOR_PUBLICITARIO_LATERAL_CONFIG_KEY,
@@ -36,7 +37,7 @@ async function computePriceAmount(
 }
 
 async function insertOwnerNotification(
-	serviceClient: NonNullable<Awaited<ReturnType<typeof requireAdmin>>['serviceClient']>,
+	serviceClient: ReturnType<typeof createServiceRoleClient>,
 	ownerId: string,
 	type: 'publicidad_active' | 'publicidad_payment_link',
 	title: string,

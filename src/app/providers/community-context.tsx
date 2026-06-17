@@ -24,8 +24,9 @@ import { adminProfileToUser } from '@/app/providers/user-mapper'
 import { commentCountsFromRpcRows } from '@/app/providers/comment-counts'
 import { useAuth } from '@/app/providers/auth-context'
 import { useAppConfig } from '@/app/providers/app-config-context'
-import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
-import { buildSupabasePublicStorageUrl, ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { compressImagesForCommunityUpload } from '@/lib/compress-upload-image'
+import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { uploadImageWithThumbnail } from '@/lib/storage-thumbnail'
 import { assertStoredMediaLimit } from '@/lib/media-upload-limits'
 import { canViewAllPostsForModeration } from '@/lib/post-admin-permissions'
 import { formatCommunityRateLimitError } from '@/lib/supabase-rate-limit'
@@ -111,14 +112,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       const [compressed] = await compressImagesForCommunityUpload([file])
       if (!compressed) throw new Error('No se pudo procesar la imagen')
       assertStoredMediaLimit(compressed, file.name)
-      const ext = storageExtensionFromFile(compressed)
-      const path = `${userId}/comments/${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from('publicaciones').upload(path, compressed, {
-        upsert: false,
-        contentType: compressed.type || 'image/jpeg',
-      })
-      if (error) throw error
-      return buildSupabasePublicStorageUrl('publicaciones', path)
+      const { url } = await uploadImageWithThumbnail(supabase, 'publicaciones', userId, compressed)
+      return url
     },
     [supabase]
   )

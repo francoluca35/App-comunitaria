@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
+import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 import { publicStoragePathFromUrl } from '@/lib/server/storage-path'
 
 const MAX_SIZE_BYTES = MEDIA_UPLOAD_LIMITS.maxStoredBytes
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
 
   const { error: uploadError } = await storage.storage
     .from('avatars')
-    .upload(path, file, { contentType: file.type, upsert: false })
+    .upload(path, file, storageImmutableUploadOptions(file.type))
 
   if (uploadError) {
     console.error('Avatar upload error:', uploadError)

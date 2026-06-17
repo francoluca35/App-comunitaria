@@ -162,16 +162,11 @@ export default function AdminCarteleraPage() {
 		if (!currentUser?.isAdmin) return
 		setAdminLoading(true)
 		try {
-			const [pendingRows, paymentRows, rejectedRows, activeRows] = await Promise.all([
-				fetchByStatus('pending'),
-				fetchByStatus('payment_pending'),
-				fetchByStatus('rejected'),
+			const [pendingRows, activeRows] = await Promise.all([
+				fetchByStatus('pending_all'),
 				fetchByStatus('active'),
 			])
-			const mergedPending = [...pendingRows, ...paymentRows, ...rejectedRows].sort(
-				(a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-			)
-			setPending(mergedPending)
+			setPending(pendingRows)
 			setActive(activeRows)
 		} catch {
 			toast.error('No se pudieron cargar las publicidades')

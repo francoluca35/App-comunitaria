@@ -50,7 +50,7 @@ export default function ChatPage() {
 
 	const myId = currentUser?.id ?? ''
 	const otherId = support?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	const loadMessages = async () => {
@@ -128,17 +128,6 @@ export default function ChatPage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [myId, otherId, support?.name, onIncomingMessageWhileChatOpen, onMessageUpdated])
-
-	const pollInterval = 1500
-	useEffect(() => {
-		if (!myId || !otherId) return
-		const tick = () => {
-			void pollReceipts()
-		}
-		tick()
-		const id = setInterval(tick, pollInterval)
-		return () => clearInterval(id)
-	}, [myId, otherId, pollReceipts])
 
 	useEffect(() => {
 		if (supportLoading) return

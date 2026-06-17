@@ -8,6 +8,7 @@ import { cn } from '@/app/components/ui/utils'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import type { PostMediaItem } from '@/app/providers'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { storagePreviewUrl } from '@/lib/storage-thumbnail'
 
 type Variant = 'feed' | 'detail'
 
@@ -35,6 +36,7 @@ type CollageCellProps = {
   onOpen: (index: number) => void
   className?: string
   overlayCount?: number
+  useThumbnail?: boolean
 }
 
 function CollageCell({
@@ -47,14 +49,19 @@ function CollageCell({
   onOpen,
   className,
   overlayCount,
+  useThumbnail = false,
 }: CollageCellProps) {
   const [loaded, setLoaded] = useState(false)
   const isVideo = item.type === 'video'
-  const previewUrl = isVideo ? item.url : ensureStorageObjectPublicUrl(item.url)
+  const fullUrl = isVideo ? item.url : ensureStorageObjectPublicUrl(item.url)
+  const initialSrc =
+    isVideo || !useThumbnail ? fullUrl : item.thumbUrl ?? storagePreviewUrl(item.url)
+  const [previewUrl, setPreviewUrl] = useState(initialSrc)
 
   useEffect(() => {
     setLoaded(false)
-  }, [item.url, isVideo])
+    setPreviewUrl(isVideo || !useThumbnail ? fullUrl : item.thumbUrl ?? storagePreviewUrl(item.url))
+  }, [item.url, item.thumbUrl, isVideo, useThumbnail, fullUrl])
 
   return (
     <button
@@ -126,7 +133,13 @@ function CollageCell({
               decoding="async"
               draggable={false}
               onLoad={() => setLoaded(true)}
-              onError={onFail}
+              onError={() => {
+                if (!isVideo && previewUrl !== fullUrl) {
+                  setPreviewUrl(fullUrl)
+                  return
+                }
+                onFail()
+              }}
               className={cn(
                 'relative z-[1] h-full w-full object-cover transition-opacity duration-300',
                 loaded ? 'opacity-100' : 'opacity-0'
@@ -396,14 +409,21 @@ function SingleMediaPreview({
   const [previewLoaded, setPreviewLoaded] = useState(false)
   const previewSrc = item.url
   const previewIsVideo = item.type === 'video'
-  const previewDisplaySrc =
-    previewIsVideo
-      ? previewSrc
-      : ensureStorageObjectPublicUrl(previewSrc)
+  const fullUrl = previewIsVideo ? previewSrc : ensureStorageObjectPublicUrl(previewSrc)
+  const initialDisplay =
+    previewIsVideo || variant !== 'feed'
+      ? fullUrl
+      : item.thumbUrl ?? storagePreviewUrl(previewSrc)
+  const [displaySrc, setDisplaySrc] = useState(initialDisplay)
 
   useEffect(() => {
     setPreviewLoaded(false)
-  }, [previewSrc, previewIsVideo])
+    setDisplaySrc(
+      previewIsVideo || variant !== 'feed'
+        ? fullUrl
+        : item.thumbUrl ?? storagePreviewUrl(previewSrc)
+    )
+  }, [previewSrc, previewIsVideo, variant, item.thumbUrl, fullUrl])
 
   if (failed) {
     return (
@@ -448,7 +468,7 @@ function SingleMediaPreview({
       {previewIsVideo ? (
         <video
           key={previewSrc}
-          src={previewDisplaySrc}
+          src={displaySrc}
           playsInline
           controls
           preload="metadata"
@@ -463,7 +483,7 @@ function SingleMediaPreview({
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={previewSrc}
+          src={displaySrc}
           alt={alt}
           width={1600}
           height={1200}
@@ -472,7 +492,13 @@ function SingleMediaPreview({
           decoding="async"
           draggable={false}
           onLoad={() => setPreviewLoaded(true)}
-          onError={onFail}
+          onError={() => {
+            if (displaySrc !== fullUrl) {
+              setDisplaySrc(fullUrl)
+              return
+            }
+            onFail()
+          }}
           className={cn(
             'relative z-[1] mx-auto block h-auto w-full max-w-full select-none object-contain transition-opacity duration-300 sm:w-auto',
             previewLoaded ? 'opacity-100' : 'opacity-0'
@@ -502,6 +528,7 @@ function MultiMediaCollage({
   variant: Variant
 }) {
   const n = media.length
+  const useThumb = variant === 'feed'
   /** Altura cómoda en feed / detalle (tipo muro) */
   const collageHeight =
     variant === 'detail'
@@ -532,6 +559,7 @@ function MultiMediaCollage({
             failed={!!failed[index]}
             onFail={() => onFail(index)}
             onOpen={onOpen}
+            useThumbnail={useThumb}
             className="h-full min-h-0"
           />
         ))}
@@ -553,6 +581,7 @@ function MultiMediaCollage({
           failed={!!failed[0]}
           onFail={() => onFail(0)}
           onOpen={onOpen}
+          useThumbnail={useThumb}
           className="col-span-1 min-h-0 h-full"
         />
         <CollageCell
@@ -563,6 +592,7 @@ function MultiMediaCollage({
           failed={!!failed[1]}
           onFail={() => onFail(1)}
           onOpen={onOpen}
+          useThumbnail={useThumb}
           className="col-span-1 min-h-0 h-full"
         />
         <CollageCell
@@ -573,6 +603,7 @@ function MultiMediaCollage({
           failed={!!failed[2]}
           onFail={() => onFail(2)}
           onOpen={onOpen}
+          useThumbnail={useThumb}
           className="col-span-2 min-h-0 h-full"
         />
       </div>
@@ -595,6 +626,7 @@ function MultiMediaCollage({
             failed={!!failed[index]}
             onFail={() => onFail(index)}
             onOpen={onOpen}
+            useThumbnail={useThumb}
             className="min-h-0 h-full"
           />
         ))}
@@ -617,6 +649,7 @@ function MultiMediaCollage({
         failed={!!failed[0]}
         onFail={() => onFail(0)}
         onOpen={onOpen}
+        useThumbnail={useThumb}
         className="col-span-3 min-h-0 h-full"
       />
       <CollageCell
@@ -627,6 +660,7 @@ function MultiMediaCollage({
         failed={!!failed[1]}
         onFail={() => onFail(1)}
         onOpen={onOpen}
+        useThumbnail={useThumb}
         className="col-span-3 min-h-0 h-full"
       />
       <CollageCell
@@ -637,6 +671,7 @@ function MultiMediaCollage({
         failed={!!failed[2]}
         onFail={() => onFail(2)}
         onOpen={onOpen}
+        useThumbnail={useThumb}
         className="col-span-2 min-h-0 h-full"
       />
       <CollageCell
@@ -647,6 +682,7 @@ function MultiMediaCollage({
         failed={!!failed[3]}
         onFail={() => onFail(3)}
         onOpen={onOpen}
+        useThumbnail={useThumb}
         className="col-span-2 min-h-0 h-full"
       />
       <CollageCell
@@ -657,6 +693,7 @@ function MultiMediaCollage({
         failed={!!failed[4]}
         onFail={() => onFail(4)}
         onOpen={onOpen}
+        useThumbnail={useThumb}
         className="col-span-2 min-h-0 h-full"
         overlayCount={moreCount}
       />
