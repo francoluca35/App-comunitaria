@@ -191,11 +191,18 @@ export async function DELETE(
 	const auth = await requireAdmin(request)
 	if (!auth.ok) return auth.response
 
-	const db = auth.serviceClient ?? auth.supabase
+	const serviceClient = auth.serviceClient
+	if (!serviceClient) {
+		return NextResponse.json(
+			{ error: 'Falta SUPABASE_SERVICE_ROLE_KEY en el servidor para eliminar publicidades.' },
+			{ status: 503 }
+		)
+	}
+
 	const { id } = await params
 	if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-	const deleted = await deletePublicidadById(db, id)
+	const deleted = await deletePublicidadById(serviceClient, id)
 	if (!deleted.ok) {
 		const status = deleted.error === 'No encontrado' ? 404 : 500
 		return NextResponse.json({ error: deleted.error ?? 'No se pudo eliminar' }, { status })

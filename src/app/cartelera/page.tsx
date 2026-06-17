@@ -239,6 +239,11 @@ export default function PublicidadesPage() {
                     categoryLabel={pubCatLabel}
                     onOpenDetail={() => setSelectedPublicidad(p)}
                     onOpenComments={() => setSelectedPublicidadComments(p)}
+                    onDeleted={() => {
+                      setPublicidades((prev) => prev.filter((item) => item.id !== p.id))
+                      setSelectedPublicidad((s) => (s?.id === p.id ? null : s))
+                      setSelectedPublicidadComments((s) => (s?.id === p.id ? null : s))
+                    }}
                     imagePriority={index < 2}
                   />
                 </li>
