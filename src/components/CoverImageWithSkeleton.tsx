@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Skeleton } from '@/app/components/ui/skeleton'
+import { PreviewStorageImage } from '@/components/PreviewStorageImage'
 import { cn } from '@/app/components/ui/utils'
 
 type Props = {
@@ -25,8 +26,7 @@ export function CoverImageWithSkeleton({ src, alt = '', className, loading = 'la
       {!loaded ? (
         <Skeleton className="absolute inset-0 z-0 rounded-none border-0 bg-[#D4CEC8]/65" aria-hidden />
       ) : null}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <PreviewStorageImage
         src={src}
         alt={alt}
         className={cn(
@@ -35,7 +35,6 @@ export function CoverImageWithSkeleton({ src, alt = '', className, loading = 'la
         )}
         onLoad={() => setLoaded(true)}
         loading={loading}
-        decoding="async"
       />
     </div>
   )

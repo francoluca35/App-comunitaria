@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
+import { maybeCleanupExpiredPublicidades } from '@/lib/server/publicidad-cleanup-throttle'
 
 type PublicidadStatus = 'pending' | 'payment_pending' | 'active' | 'rejected'
 
@@ -40,10 +41,7 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser(token)
   if (userError || !user?.id) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
 
-  const cleanup = await cleanupExpiredPublicidades()
-  if (!cleanup.ok) {
-    console.warn('GET /api/publicidad/mis cleanup expired:', cleanup.error)
-  }
+  await maybeCleanupExpiredPublicidades(cleanupExpiredPublicidades)
 
   const { data, error } = await supabase
     .from('publicidad_requests')

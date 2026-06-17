@@ -6,7 +6,7 @@ import InstagramIcon from '@mui/icons-material/Instagram'
 import { Globe, Megaphone, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CoverImageWithSkeleton } from '@/components/CoverImageWithSkeleton'
-import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
+import { getPublicidadImageUrls, getPublicidadPreviewImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { CST } from '@/lib/cst-theme'
 import { Button } from '@/app/components/ui/button'
 import {
@@ -17,7 +17,6 @@ import {
 } from '@/app/components/ui/dropdown-menu'
 import { cn } from '@/app/components/ui/utils'
 import { publicidadPermalink } from '@/lib/app-public-url'
-import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type Props = {
   publicidad: PublicidadDisplay
@@ -41,9 +40,10 @@ export function PublicidadFeedCard({
 	const [captionOverflowsCollapsed, setCaptionOverflowsCollapsed] = useState(false)
 	const captionRef = useRef<HTMLParagraphElement | null>(null)
 	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
+	const pubPreviewImages = useMemo(() => getPublicidadPreviewImageUrls(pub), [pub])
 	const mainImage = pubImages[0]
-	const avatarImage = mainImage ? ensureStorageObjectPublicUrl(mainImage) : ''
-	const coverImage = mainImage ? ensureStorageObjectPublicUrl(mainImage) : ''
+	const avatarImage = pubPreviewImages[0] ?? ''
+	const coverImage = pubPreviewImages[0] ?? ''
 	const hasWa = Boolean(pub.whatsappUrl)
 	const hasIg = Boolean(pub.instagramUrl)
 	const captionText = pub.description.trim()

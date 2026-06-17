@@ -78,7 +78,7 @@ export function FloatingChatHub() {
 	const BOTTOM_SCROLL_THRESHOLD_PX = 80
 
 	const myId = currentUser?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
 		useChatReceiptEffects(supabase, myId, peerId ?? '', setMessages)
 
 	const {
@@ -317,16 +317,6 @@ export function FloatingChatHub() {
 			supabase.removeChannel(ch)
 		}
 	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
-
-	useEffect(() => {
-		if (!dockOpen || !isDesktop || !peerId || !myId) return
-		const tick = () => {
-			void pollReceipts()
-		}
-		tick()
-		const id = setInterval(tick, 1500)
-		return () => clearInterval(id)
-	}, [dockOpen, isDesktop, peerId, myId, pollReceipts])
 
 	const closeDock = () => {
 		setDockOpen(false)

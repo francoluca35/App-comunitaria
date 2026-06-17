@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertChatAudioUploadLimit } from '@/lib/compress-upload-audio'
+import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 
 export const CHAT_AUDIO_BUCKET = 'chat-audio'
 
@@ -28,8 +29,7 @@ export async function uploadChatAudio(
 	const path = `${userId}/${crypto.randomUUID()}.${ext}`
 
 	const { error: upErr } = await supabase.storage.from(CHAT_AUDIO_BUCKET).upload(path, blob, {
-		contentType: blob.type || 'audio/webm',
-		upsert: false,
+		...storageImmutableUploadOptions(blob.type || 'audio/webm'),
 	})
 
 	if (upErr) {

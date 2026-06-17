@@ -13,7 +13,7 @@ import {
 import { Button } from '@/app/components/ui/button'
 import { postPermalink } from '@/lib/app-public-url'
 import { truncateForOgDescription } from '@/lib/share-metadata'
-import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { PreviewStorageImage } from '@/components/PreviewStorageImage'
 
 export type PostSharePreview = {
 	title: string
@@ -32,9 +32,7 @@ type Props = {
 export function SharePostPreviewDialog({ postId, preview, open, onOpenChange }: Props) {
 	const url = postPermalink(postId)
 	const description = truncateForOgDescription(preview.description, 120)
-	const thumbSrc = preview.imageUrl
-		? ensureStorageObjectPublicUrl(preview.imageUrl)
-		: '/Assets/logo-mobil-launcher-192.png'
+	const thumbSrc = preview.imageUrl ?? '/Assets/logo-mobil-launcher-192.png'
 
 	const copyLink = async () => {
 		try {
@@ -76,8 +74,12 @@ export function SharePostPreviewDialog({ postId, preview, open, onOpenChange }: 
 				<div className="border-b border-[#E4E6EB] bg-[#F0F2F5] p-3">
 					<div className="overflow-hidden rounded-lg border border-[#CED0D4] bg-white shadow-sm">
 						<div className="aspect-[1.91/1] w-full overflow-hidden bg-[#E4E6EB]">
-							{/* eslint-disable-next-line @next/next/no-img-element */}
-							<img src={thumbSrc} alt="" className="h-full w-full object-cover" />
+							{preview.imageUrl ? (
+								<PreviewStorageImage src={thumbSrc} alt="" className="h-full w-full object-cover" />
+							) : (
+								// eslint-disable-next-line @next/next/no-img-element
+								<img src={thumbSrc} alt="" className="h-full w-full object-cover" />
+							)}
 						</div>
 						<div className="space-y-0.5 px-2.5 py-2">
 							<p className="text-[10px] font-medium uppercase tracking-wide text-[#65676B]">

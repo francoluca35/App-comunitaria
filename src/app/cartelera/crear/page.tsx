@@ -12,8 +12,8 @@ import { Textarea } from '@/app/components/ui/textarea'
 import { Label } from '@/app/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { compressImagesForCommunityUpload, storageExtensionFromFile } from '@/lib/compress-upload-image'
-import { buildSupabasePublicStorageUrl } from '@/lib/storage-image'
+import { compressImagesForCommunityUpload } from '@/lib/compress-upload-image'
+import { uploadImageWithThumbnail } from '@/lib/storage-thumbnail'
 import { assertStoredMediaLimit, MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
 import { PublicidadPhoneInstagramFields } from '@/components/PublicidadPhoneInstagramFields'
 import { DEFAULT_ARGENTINA_PROVINCE_PREFIX } from '@/lib/argentina-phone'
@@ -176,14 +176,14 @@ export default function CrearPublicidadPage() {
       const file = prepared[i]
       const label = imageFiles[i]?.name ?? file.name
       assertStoredMediaLimit(file, label)
-      const ext = storageExtensionFromFile(file)
-      const path = `${currentUser.id}/${crypto.randomUUID()}.${ext}`
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false })
-      if (error) {
-        toast.error(`Error al subir ${label}: ${error.message}`)
+      try {
+        const { url } = await uploadImageWithThumbnail(supabase, BUCKET, currentUser.id, file)
+        urls.push(url)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Error al subir'
+        toast.error(`Error al subir ${label}: ${msg}`)
         throw error
       }
-      urls.push(buildSupabasePublicStorageUrl(BUCKET, path))
     }
     return urls
   }

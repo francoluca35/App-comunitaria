@@ -2,6 +2,7 @@ import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
 import { buildInstagramUrl, buildWhatsAppUrl } from '@/lib/server/publicidad'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { cleanupExpiredPublicidades } from '@/lib/server/publicidad-expiration'
+import { maybeCleanupExpiredPublicidades } from '@/lib/server/publicidad-cleanup-throttle'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 
 type PublicidadRow = {
@@ -60,10 +61,7 @@ export async function getActivePublicidadDisplayById(id: string): Promise<Public
   const trimmed = (id?.trim() ?? '').toLowerCase()
   if (!trimmed || trimmed.length > 64) return null
 
-  const cleanup = await cleanupExpiredPublicidades()
-  if (!cleanup.ok) {
-    console.warn('[getActivePublicidadDisplayById] cleanup expired:', cleanup.error)
-  }
+  await maybeCleanupExpiredPublicidades(cleanupExpiredPublicidades)
 
   const service = createServiceRoleClient()
   if (service) {

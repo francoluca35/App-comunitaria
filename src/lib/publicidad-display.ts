@@ -3,6 +3,7 @@
  */
 
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { storagePreviewUrl } from '@/lib/storage-thumbnail'
 
 export interface PublicidadDisplay {
   id: string
@@ -23,4 +24,11 @@ export function getPublicidadImageUrls(p: Pick<PublicidadDisplay, 'images' | 'im
 	if (fromImages.length > 0) return fromImages
 	if (p.imageUrl) return [ensureStorageObjectPublicUrl(p.imageUrl)].filter(Boolean)
 	return []
+}
+
+/** URLs de miniatura para listados y tarjetas (fallback a imagen completa en el componente). */
+export function getPublicidadPreviewImageUrls(
+	p: Pick<PublicidadDisplay, 'images' | 'imageUrl'>
+): string[] {
+	return getPublicidadImageUrls(p).map((url) => storagePreviewUrl(url))
 }

@@ -62,7 +62,7 @@ export default function MarioMessagePage() {
 
 	const myId = currentUser?.id ?? ''
 	const otherId = mario?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, pollReceipts } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	useEffect(() => {
@@ -179,17 +179,6 @@ export default function MarioMessagePage() {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [myId, otherId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
-
-	const pollInterval = 1500
-	useEffect(() => {
-		if (!myId || !otherId) return
-		const tick = () => {
-			void pollReceipts()
-		}
-		tick()
-		const id = setInterval(tick, pollInterval)
-		return () => clearInterval(id)
-	}, [myId, otherId, pollReceipts])
 
 	if (!currentUser) {
 		return (

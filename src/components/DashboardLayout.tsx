@@ -30,6 +30,7 @@ import {
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { fetchLateralPublicidadAds, mapLateralPublicidadRows } from '@/lib/lateral-publicidad-cache'
 
 const LATERAL_AD_INTERVAL_MS = 5000
 const LATERAL_ADS_PER_VIEW = 2
@@ -122,31 +123,10 @@ export function DashboardLayout({
 
   useEffect(() => {
     let cancelled = false
-    fetch('/api/publicidad/activos?lateral=1')
-      .then(async (res) => {
-        if (!res.ok) return []
-        const data = (await res.json().catch(() => [])) as unknown
-        if (!Array.isArray(data)) return []
-        return data as Record<string, unknown>[]
-      })
+    void fetchLateralPublicidadAds()
       .then((rows) => {
         if (cancelled) return
-        const list: PublicidadDisplay[] = rows.map((r) => ({
-          id: String(r.id ?? ''),
-          title: String(r.title ?? ''),
-          description: String(r.description ?? ''),
-          category: String(r.category ?? ''),
-          createdAt: new Date(
-            typeof r.createdAt === 'string' || typeof r.createdAt === 'number' ? r.createdAt : Date.now()
-          ),
-          imageUrl: typeof r.imageUrl === 'string' ? r.imageUrl : undefined,
-          images: Array.isArray(r.images)
-            ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
-            : undefined,
-          whatsappUrl: typeof r.whatsappUrl === 'string' ? r.whatsappUrl : undefined,
-          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : undefined,
-        }))
-        setLateralAds(list)
+        setLateralAds(mapLateralPublicidadRows(rows) as PublicidadDisplay[])
       })
       .catch(() => {
         if (!cancelled) setLateralAds([])
