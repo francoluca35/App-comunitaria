@@ -17,12 +17,15 @@ import {
 } from '@/app/components/ui/dropdown-menu'
 import { cn } from '@/app/components/ui/utils'
 import { publicidadPermalink } from '@/lib/app-public-url'
+import { useApp } from '@/app/providers'
+import { DeletePublicidadButton } from '@/components/DeletePublicidadButton'
 
 type Props = {
   publicidad: PublicidadDisplay
   categoryLabel: string
   onOpenDetail: () => void
   onOpenComments: () => void
+  onDeleted?: () => void
   imagePriority?: boolean
 }
 
@@ -34,8 +37,11 @@ export function PublicidadFeedCard({
   categoryLabel,
   onOpenDetail,
   onOpenComments,
+  onDeleted,
   imagePriority = false,
 }: Props) {
+	const { currentUser } = useApp()
+	const canAdminDelete = Boolean(currentUser?.isAdmin || currentUser?.isAdminMaster)
 	const [captionExpanded, setCaptionExpanded] = useState(false)
 	const [captionOverflowsCollapsed, setCaptionOverflowsCollapsed] = useState(false)
 	const captionRef = useRef<HTMLParagraphElement | null>(null)
@@ -147,6 +153,14 @@ export function PublicidadFeedCard({
               <DropdownMenuItem asChild>
                 <a href="/cartelera">Todas las publicidades</a>
               </DropdownMenuItem>
+              {canAdminDelete ? (
+                <DeletePublicidadButton
+                  publicidadId={pub.id}
+                  variant="admin"
+                  asDropdownItem
+                  onDeleted={onDeleted}
+                />
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
        

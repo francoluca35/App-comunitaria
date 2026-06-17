@@ -32,7 +32,7 @@ import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
 import { fetchLateralPublicidadAds, mapLateralPublicidadRows } from '@/lib/lateral-publicidad-cache'
 
-const LATERAL_AD_INTERVAL_MS = 5000
+const LATERAL_AD_INTERVAL_MS = 8000
 const LATERAL_ADS_PER_VIEW = 2
 
 /** Búsqueda de publicaciones (título, descripción, autor) en inicio y categorías. No filtra la barra de publicidad. */
@@ -426,7 +426,7 @@ export function DashboardLayout({
             </div>
             <div
               key={lateralPairIndex}
-              className="animate-in fade-in-0 zoom-in-95 flex min-h-0 flex-1 flex-col gap-0 duration-300"
+              className="animate-in fade-in-0 zoom-in-95 flex min-h-0 flex-1 flex-col gap-2 duration-300"
             >
               {!lateralLoaded ? (
                 <div className="flex flex-1 items-center justify-center py-8 text-sm text-[#7A5C52] dark:text-[#b0b3b8]">
@@ -440,40 +440,40 @@ export function DashboardLayout({
                 visibleLateralAds.map((p) => (
                   <div
                     key={p.id}
-                    className="overflow-hidden border-y border-[#D8D2CC] bg-white dark:border-[#3a3b3c] dark:bg-[#242526]"
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#D8D2CC] bg-white shadow-sm dark:border-[#3a3b3c] dark:bg-[#242526]"
                   >
                     <button
                       type="button"
                       onClick={() => setLateralDetail(p)}
-                      className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35 focus-visible:ring-offset-2"
+                      className="flex min-h-0 flex-1 flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35 focus-visible:ring-inset"
                     >
-                      <div className="aspect-[4/3] overflow-hidden bg-[#D8D2CC]/35 dark:bg-[#3a3b3c]">
+                      <div className="relative min-h-[72px] flex-1 overflow-hidden bg-[#D8D2CC]/35 dark:bg-[#3a3b3c]">
                         {p.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={ensureStorageObjectPublicUrl(p.imageUrl)}
                             alt={p.title}
-                            className="h-full w-full object-cover"
+                            className="absolute inset-0 h-full w-full object-cover"
                             loading="lazy"
                             decoding="async"
                           />
                         ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <Megaphone className="h-10 w-10 text-[#7A5C52]/50 dark:text-[#b0b3b8]/60" />
+                          <div className="flex h-full min-h-[72px] w-full items-center justify-center">
+                            <Megaphone className="h-8 w-8 text-[#7A5C52]/50 dark:text-[#b0b3b8]/60" />
                           </div>
                         )}
                       </div>
-                      <div className="p-2.5">
-                        <p className="line-clamp-2 text-xs font-semibold text-[#2B2B2B] dark:text-[#e4e6eb]">
+                      <div className="shrink-0 px-2 pb-1 pt-1.5">
+                        <p className="line-clamp-1 text-[11px] font-semibold leading-snug text-[#2B2B2B] dark:text-[#e4e6eb]">
                           {p.title}
                         </p>
                       </div>
                     </button>
-                    <div className="px-3 pb-3">
+                    <div className="shrink-0 px-2 pb-2">
                       <PublicidadContactLinks
                         whatsappUrl={p.whatsappUrl}
                         instagramUrl={p.instagramUrl}
-                        size="sidebar"
+                        size="sidebarCompact"
                         stopPropagationOnClick
                       />
                     </div>

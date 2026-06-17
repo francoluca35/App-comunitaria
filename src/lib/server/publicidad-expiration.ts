@@ -60,10 +60,17 @@ export async function deletePublicidadRowsWithStorage(
 		}
 	}
 
-	const { error: deleteError } = await db.from('publicidad_requests').delete().in('id', ids)
+	const { data: deletedRows, error: deleteError } = await db
+		.from('publicidad_requests')
+		.delete()
+		.in('id', ids)
+		.select('id')
 	if (deleteError) return { ok: false, error: deleteError.message, deletedCount: 0 }
+	if (!deletedRows?.length) {
+		return { ok: false, error: 'No se pudo eliminar el registro de la base de datos', deletedCount: 0 }
+	}
 
-	return { ok: true, deletedCount: ids.length }
+	return { ok: true, deletedCount: deletedRows.length }
 }
 
 export async function cleanupExpiredPublicidades(): Promise<{ ok: boolean; error?: string; deletedCount: number }> {

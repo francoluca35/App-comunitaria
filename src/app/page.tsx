@@ -276,15 +276,15 @@ function ZonaPublicitariaCarousel() {
         </p>
       ) : (
         <Carousel opts={{ loop: ads.length > 1, align: 'start' }} setApi={setApi} className="w-full">
-          <CarouselContent className="-ml-2">
+          <CarouselContent className="-ml-3">
             {ads.map((p) => (
-              <CarouselItem key={p.id} className="basis-1/2 pl-2">
+              <CarouselItem key={p.id} className="basis-1/2 pl-3">
                 <button
                   type="button"
                   onClick={() => setSelectedPublicidad(p)}
-                  className="w-full overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35"
+                  className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35"
                 >
-                  <div className="aspect-[4/3] overflow-hidden bg-[#D8D2CC]/30">
+                  <div className="aspect-video w-full shrink-0 overflow-hidden bg-[#D8D2CC]/30">
                     {p.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -300,8 +300,8 @@ function ZonaPublicitariaCarousel() {
                       </div>
                     )}
                   </div>
-                  <div className="p-2">
-                    <p className="line-clamp-2 text-xs font-semibold text-[#2B2B2B]">{p.title}</p>
+                  <div className="flex min-h-0 flex-1 flex-col p-3">
+                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-[#2B2B2B]">{p.title}</p>
                     <PublicidadContactLinks
                       whatsappUrl={p.whatsappUrl}
                       instagramUrl={p.instagramUrl}
@@ -748,6 +748,11 @@ function HomePageContent() {
                       categoryLabel={pubCatLabel}
                       onOpenDetail={() => setSelectedFeedPublicidad(pub)}
                       onOpenComments={() => setSelectedPublicidadComments(pub)}
+                      onDeleted={() => {
+                        setFeedPublicidades((prev) => prev.filter((p) => p.id !== pub.id))
+                        setSelectedFeedPublicidad((s) => (s?.id === pub.id ? null : s))
+                        setSelectedPublicidadComments((s) => (s?.id === pub.id ? null : s))
+                      }}
                       imagePriority={feedIndex < 2}
                     />
                   </li>

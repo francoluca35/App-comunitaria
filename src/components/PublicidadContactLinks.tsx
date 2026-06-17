@@ -2,7 +2,7 @@
 
 import { MessageCircle, Instagram } from 'lucide-react'
 
-type Size = 'default' | 'compact' | 'sidebar' | 'modal'
+type Size = 'default' | 'compact' | 'sidebar' | 'sidebarCompact' | 'modal'
 
 const sizeClass: Record<Size, { wrap: string; btn: string; icon: string }> = {
   default: {
@@ -17,14 +17,19 @@ const sizeClass: Record<Size, { wrap: string; btn: string; icon: string }> = {
     icon: 'w-[1.125rem] h-[1.125rem]',
   },
   compact: {
-    wrap: 'mt-1.5 flex flex-col gap-1.5',
-    btn: 'flex items-center justify-center gap-1 w-full py-2 rounded-lg text-[10px] font-medium text-white transition-opacity hover:opacity-95',
-    icon: 'w-3 h-3',
+    wrap: 'mt-2 flex flex-col gap-1.5',
+    btn: 'flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-95',
+    icon: 'w-3.5 h-3.5',
   },
   sidebar: {
-    wrap: 'mt-2 flex flex-col gap-1.5',
-    btn: 'flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-95',
+    wrap: 'mt-0 flex flex-col gap-1.5',
+    btn: 'flex items-center justify-center gap-1.5 w-full py-2 rounded-lg text-[11px] font-semibold text-white transition-opacity hover:opacity-95',
     icon: 'w-3.5 h-3.5',
+  },
+  sidebarCompact: {
+    wrap: 'flex flex-col gap-1',
+    btn: 'flex items-center justify-center gap-1 w-full py-1.5 rounded-md text-[10px] font-semibold text-white transition-opacity hover:opacity-95',
+    icon: 'w-3 h-3',
   },
 }
 
