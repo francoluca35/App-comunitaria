@@ -9,7 +9,7 @@ import { DashboardLayout } from '@/components/DashboardLayout'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Banknote, Loader2, Save } from 'lucide-react'
+import { ArrowLeft, Banknote, CreditCard, Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function AdminGestionPublicitariaPage() {
@@ -19,6 +19,9 @@ export default function AdminGestionPublicitariaPage() {
   const [saving, setSaving] = useState(false)
   const [valorInput, setValorInput] = useState('')
   const [valorLateralInput, setValorLateralInput] = useState('')
+  const [aliasInput, setAliasInput] = useState('')
+  const [cbuInput, setCbuInput] = useState('')
+  const [savingDatosPago, setSavingDatosPago] = useState(false)
 
   const loadValor = useCallback(async () => {
     setLoading(true)
@@ -32,18 +35,37 @@ export default function AdminGestionPublicitariaPage() {
       const data2 = (await res2.json()) as { valorPublicitarioLateral?: number }
       const v2 = typeof data2.valorPublicitarioLateral === 'number' ? data2.valorPublicitarioLateral : 0
       setValorLateralInput(String(v2))
+
+      if (!currentUser?.isAdmin) return
+
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) return
+
+      const res3 = await fetch('/api/admin/publicidad-datos-pago', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res3.ok) {
+        const data3 = (await res3.json()) as { alias?: string; cbu?: string }
+        setAliasInput(typeof data3.alias === 'string' ? data3.alias : '')
+        setCbuInput(typeof data3.cbu === 'string' ? data3.cbu : '')
+      }
     } catch {
-      toast.error('No se pudo cargar el valor publicitario')
+      toast.error('No se pudo cargar la configuración publicitaria')
       setValorInput('0')
       setValorLateralInput('0')
+      setAliasInput('')
+      setCbuInput('')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [currentUser?.isAdmin])
 
   useEffect(() => {
+    if (!currentUser?.isAdmin) return
     void loadValor()
-  }, [loadValor])
+  }, [currentUser?.isAdmin, loadValor])
 
   const handleSave = async () => {
     const normalized = valorInput.replace(',', '.').trim()
@@ -116,6 +138,44 @@ export default function AdminGestionPublicitariaPage() {
       toast.error('Error de conexión')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSaveDatosPago = async () => {
+    const alias = aliasInput.trim()
+    const cbu = cbuInput.trim()
+    if (!alias && !cbu) {
+      toast.error('Ingresá al menos un alias o un CBU')
+      return
+    }
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      toast.error('Sesión expirada')
+      return
+    }
+    setSavingDatosPago(true)
+    try {
+      const res = await fetch('/api/admin/publicidad-datos-pago', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ alias, cbu }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error ?? 'No se pudo guardar')
+        return
+      }
+      toast.success('Datos de pago actualizados')
+      setAliasInput(typeof (data as { alias?: string }).alias === 'string' ? (data as { alias: string }).alias : alias)
+      setCbuInput(typeof (data as { cbu?: string }).cbu === 'string' ? (data as { cbu: string }).cbu : cbu)
+    } catch {
+      toast.error('Error de conexión')
+    } finally {
+      setSavingDatosPago(false)
     }
   }
 
@@ -229,6 +289,66 @@ export default function AdminGestionPublicitariaPage() {
                     <Save className="w-4 h-4 mr-2" />
                   )}
                   Guardar valor lateral
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-sky-700 dark:text-sky-300" />
+              </div>
+              <div>
+                <CardTitle>Datos de pago</CardTitle>
+                <CardDescription>
+                  Alias y CBU que se envían al propietario cuando generás un cobro de publicidad.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-sky-600" />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="publicidad-alias">Alias</Label>
+                  <Input
+                    id="publicidad-alias"
+                    type="text"
+                    placeholder="ej. mi.alias.mp"
+                    value={aliasInput}
+                    onChange={(e) => setAliasInput(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="publicidad-cbu">CBU</Label>
+                  <Input
+                    id="publicidad-cbu"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="22 dígitos"
+                    value={cbuInput}
+                    onChange={(e) => setCbuInput(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => void handleSaveDatosPago()}
+                  disabled={savingDatosPago}
+                >
+                  {savingDatosPago ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Guardar datos de pago
                 </Button>
               </>
             )}
