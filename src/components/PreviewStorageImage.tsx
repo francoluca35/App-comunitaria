@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
-import { storagePreviewUrl } from '@/lib/storage-thumbnail'
+import { storagePreviewUrl, THUMB_SUFFIX } from '@/lib/storage-thumbnail'
 import { cn } from '@/app/components/ui/utils'
 
 type Props = {
@@ -19,6 +19,7 @@ type Props = {
 
 /**
  * Muestra miniatura en listados; si no existe (imágenes viejas), cae a la URL completa.
+ * `src` debe ser la URL del archivo original (no la miniatura).
  */
 export function PreviewStorageImage({
 	src,
@@ -31,12 +32,15 @@ export function PreviewStorageImage({
 	fullResolution = false,
 }: Props) {
 	const full = ensureStorageObjectPublicUrl(src)
-	const initial = fullResolution ? full : storagePreviewUrl(full)
-	const [currentSrc, setCurrentSrc] = useState(initial)
+	const isThumbSrc = full.includes(THUMB_SUFFIX)
+	const previewSrc = fullResolution || isThumbSrc ? full : storagePreviewUrl(full)
+	const [currentSrc, setCurrentSrc] = useState(previewSrc)
 
 	useEffect(() => {
-		setCurrentSrc(fullResolution ? full : storagePreviewUrl(full))
-	}, [full, fullResolution])
+		const normalized = ensureStorageObjectPublicUrl(src)
+		const thumb = normalized.includes(THUMB_SUFFIX)
+		setCurrentSrc(fullResolution || thumb ? normalized : storagePreviewUrl(normalized))
+	}, [src, fullResolution])
 
 	return (
 		// eslint-disable-next-line @next/next/no-img-element
@@ -48,7 +52,7 @@ export function PreviewStorageImage({
 			decoding={decoding}
 			onLoad={onLoad}
 			onError={() => {
-				if (currentSrc !== full) {
+				if (!isThumbSrc && currentSrc !== full) {
 					setCurrentSrc(full)
 					return
 				}

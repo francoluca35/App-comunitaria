@@ -16,7 +16,7 @@ import { NotificationBell } from './NotificationBell'
 import { FloatingChatHub } from './FloatingChatHub'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { PublicidadModal } from '@/components/PublicidadModal'
-import type { PublicidadDisplay } from '@/lib/publicidad-display'
+import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { useApp } from '@/app/providers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { CST } from '@/lib/cst-theme'
@@ -29,7 +29,7 @@ import {
 } from '@/lib/chat-route-utils'
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
 import { AdminHeaderContactSearch } from '@/components/AdminHeaderContactSearch'
-import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
+import { PreviewStorageImage } from '@/components/PreviewStorageImage'
 import { fetchLateralPublicidadAds, mapLateralPublicidadRows } from '@/lib/lateral-publicidad-cache'
 
 const LATERAL_AD_INTERVAL_MS = 8000
@@ -437,7 +437,9 @@ export function DashboardLayout({
                   Todavía no hay publicidades con esta opción activas.
                 </p>
               ) : (
-                visibleLateralAds.map((p) => (
+                visibleLateralAds.map((p) => {
+                  const coverUrl = getPublicidadImageUrls(p)[0]
+                  return (
                   <div
                     key={p.id}
                     className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#D8D2CC] bg-white shadow-sm dark:border-[#3a3b3c] dark:bg-[#242526]"
@@ -447,18 +449,17 @@ export function DashboardLayout({
                       onClick={() => setLateralDetail(p)}
                       className="flex min-h-0 flex-1 flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35 focus-visible:ring-inset"
                     >
-                      <div className="relative min-h-[72px] flex-1 overflow-hidden bg-[#D8D2CC]/35 dark:bg-[#3a3b3c]">
-                        {p.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={ensureStorageObjectPublicUrl(p.imageUrl)}
+                      <div className="aspect-video w-full shrink-0 overflow-hidden bg-[#D8D2CC]/35 dark:bg-[#3a3b3c]">
+                        {coverUrl ? (
+                          <PreviewStorageImage
+                            src={coverUrl}
                             alt={p.title}
-                            className="absolute inset-0 h-full w-full object-cover"
+                            className="h-full w-full object-cover"
                             loading="lazy"
-                            decoding="async"
+                            fullResolution
                           />
                         ) : (
-                          <div className="flex h-full min-h-[72px] w-full items-center justify-center">
+                          <div className="flex h-full w-full items-center justify-center">
                             <Megaphone className="h-8 w-8 text-[#7A5C52]/50 dark:text-[#b0b3b8]/60" />
                           </div>
                         )}
@@ -478,7 +479,8 @@ export function DashboardLayout({
                       />
                     </div>
                   </div>
-                ))
+                  )
+                })
               )}
             </div>
           </div>

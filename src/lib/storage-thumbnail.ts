@@ -11,7 +11,7 @@ import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 /** Lado mayor de miniaturas para feed, tarjetas y avatares en listas. */
 export const THUMB_MAX_WIDTH_OR_HEIGHT = 480
 
-const THUMB_SUFFIX = '_thumb.webp'
+export const THUMB_SUFFIX = '_thumb.webp'
 
 export function thumbObjectPath(objectPath: string): string {
 	const path = objectPath.replace(/^\/+/, '')
