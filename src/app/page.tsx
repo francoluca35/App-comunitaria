@@ -31,7 +31,8 @@ import { toast } from 'sonner'
 import { PublicidadModal } from '@/components/PublicidadModal'
 import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
-import { type PublicidadDisplay } from '@/lib/publicidad-display'
+import { type PublicidadDisplay, getPublicidadImageUrls } from '@/lib/publicidad-display'
+import { PreviewStorageImage } from '@/components/PreviewStorageImage'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
 import { PostCard } from '@/components/PostCard'
@@ -277,7 +278,9 @@ function ZonaPublicitariaCarousel() {
       ) : (
         <Carousel opts={{ loop: ads.length > 1, align: 'start' }} setApi={setApi} className="w-full">
           <CarouselContent className="-ml-3">
-            {ads.map((p) => (
+            {ads.map((p) => {
+              const coverUrl = getPublicidadImageUrls(p)[0]
+              return (
               <CarouselItem key={p.id} className="basis-1/2 pl-3">
                 <button
                   type="button"
@@ -285,14 +288,13 @@ function ZonaPublicitariaCarousel() {
                   className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[#D8D2CC] bg-white text-left shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8B0015]/35"
                 >
                   <div className="aspect-video w-full shrink-0 overflow-hidden bg-[#D8D2CC]/30">
-                    {p.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={ensureStorageObjectPublicUrl(p.imageUrl)}
+                    {coverUrl ? (
+                      <PreviewStorageImage
+                        src={coverUrl}
                         alt={p.title}
                         className="h-full w-full object-cover"
                         loading="lazy"
-                        decoding="async"
+                        fullResolution
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
@@ -311,7 +313,8 @@ function ZonaPublicitariaCarousel() {
                   </div>
                 </button>
               </CarouselItem>
-            ))}
+              )
+            })}
           </CarouselContent>
         </Carousel>
       )}

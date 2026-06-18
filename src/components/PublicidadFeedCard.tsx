@@ -6,7 +6,7 @@ import InstagramIcon from '@mui/icons-material/Instagram'
 import { Globe, Megaphone, MessageCircle, MoreHorizontal, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { CoverImageWithSkeleton } from '@/components/CoverImageWithSkeleton'
-import { getPublicidadImageUrls, getPublicidadPreviewImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
+import { getPublicidadImageUrls, type PublicidadDisplay } from '@/lib/publicidad-display'
 import { CST } from '@/lib/cst-theme'
 import { Button } from '@/app/components/ui/button'
 import {
@@ -46,10 +46,8 @@ export function PublicidadFeedCard({
 	const [captionOverflowsCollapsed, setCaptionOverflowsCollapsed] = useState(false)
 	const captionRef = useRef<HTMLParagraphElement | null>(null)
 	const pubImages = useMemo(() => getPublicidadImageUrls(pub), [pub])
-	const pubPreviewImages = useMemo(() => getPublicidadPreviewImageUrls(pub), [pub])
 	const mainImage = pubImages[0]
-	const avatarImage = pubPreviewImages[0] ?? ''
-	const coverImage = pubPreviewImages[0] ?? ''
+	const coverImage = mainImage ?? ''
 	const hasWa = Boolean(pub.whatsappUrl)
 	const hasIg = Boolean(pub.instagramUrl)
 	const captionText = pub.description.trim()
@@ -116,7 +114,7 @@ export function PublicidadFeedCard({
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-[#000000] ring-1 ring-white/10">
           {mainImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarImage} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <img src={mainImage} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : (
             <div
               className="flex h-full w-full items-center justify-center text-black"
