@@ -68,7 +68,7 @@ export async function PATCH(
   const { supabase } = auth
   const { id } = await params
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
-  let body: { role?: string; status?: string; suspended_until?: string | null } = {}
+  let body: { role?: string; status?: string; suspended_until?: string | null; phone?: string | null } = {}
   try {
     body = await request.json()
   } catch {
@@ -89,6 +89,9 @@ export async function PATCH(
   }
   if (body.suspended_until !== undefined) {
     updates.suspended_until = body.suspended_until === null || body.suspended_until === '' ? null : body.suspended_until
+  }
+  if (body.phone !== undefined) {
+    updates.phone = typeof body.phone === 'string' ? body.phone.trim() || null : null
   }
 
   // Primero verificamos que el perfil exista.

@@ -22,6 +22,7 @@ import {
 	buildArgentinaMobileE164,
 	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
 	normalizeArgentinaLocalDigits,
+	validateArgentinaAreaCode,
 	validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
@@ -125,6 +126,10 @@ export default function LoginPage() {
 		}
 		if (registerPassword !== registerPasswordConfirm) {
 			toast.error('La contraseña y la confirmación no coinciden')
+			return
+		}
+		if (!validateArgentinaAreaCode(registerPhonePrefix)) {
+			toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
 			return
 		}
 		if (!validateArgentinaLocalDigits(registerPhoneLocal)) {
@@ -378,7 +383,7 @@ export default function LoginPage() {
 												Teléfono
 											</span>
 										}
-										className="[&_label]:text-xs [&_select]:h-11 [&_select]:rounded-lg [&_select]:border-white/10 [&_select]:bg-white/5 [&_select]:text-white os-light:[&_select]:border-[#D8D2CC] os-light:[&_select]:bg-white os-light:[&_select]:text-[#2B2B2B] [&>div:last-of-type]:rounded-lg [&>div:last-of-type]:border-white/10 [&>div:last-of-type]:bg-white/5 os-light:[&>div:last-of-type]:border-[#D8D2CC] os-light:[&>div:last-of-type]:bg-white [&_input]:text-white os-light:[&_input]:text-[#2B2B2B] [&_p]:text-white/50 os-light:[&_p]:text-[#9a918a]"
+										className="[&>div]:rounded-lg [&>div]:border-white/10 [&>div]:bg-white/5 os-light:[&>div]:border-[#D8D2CC] os-light:[&>div]:bg-white [&_input]:text-white os-light:[&_input]:text-[#2B2B2B] [&_p]:text-white/50 os-light:[&_p]:text-[#9a918a]"
 									/>
 									<div className="space-y-1.5">
 										<Label htmlFor="mobile-register-province" className="text-xs font-medium text-white/60 os-light:text-[#5c5652]">
@@ -689,7 +694,7 @@ export default function LoginPage() {
 										onLocalNumberChange={setRegisterPhoneLocal}
 										required
 										label={<span className="text-sm font-medium text-slate-600">Teléfono</span>}
-										className="[&_select]:rounded-none [&_select]:border-0 [&_select]:border-b [&_select]:border-slate-300 [&_select]:bg-transparent [&_select]:px-0 [&_select]:shadow-none [&>div:last-of-type]:rounded-none [&>div:last-of-type]:border-0 [&>div:last-of-type]:border-b [&>div:last-of-type]:border-slate-300 [&>div:last-of-type]:bg-transparent [&>div:last-of-type]:shadow-none [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:shadow-none"
+										className="[&>div]:rounded-none [&>div]:border-0 [&>div]:border-b [&>div]:border-slate-300 [&>div]:bg-transparent [&>div]:shadow-none [&_input]:rounded-none [&_input]:border-0 [&_input]:bg-transparent [&_input]:px-0 [&_input]:shadow-none"
 									/>
 								</div>
 								<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -761,6 +761,24 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
     [getAuthHeaders, loadAdminProfiles]
   )
 
+  const updateUserPhone = useCallback(
+    async (userId: string, phone: string | null): Promise<{ ok: boolean; error?: string }> => {
+      const headers = await getAuthHeaders()
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ phone }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        return { ok: false, error: (j as { error?: string }).error ?? res.statusText }
+      }
+      await loadAdminProfiles()
+      return { ok: true }
+    },
+    [getAuthHeaders, loadAdminProfiles]
+  )
+
   const addPost = useCallback(
     async (
       post: Omit<Post, 'id' | 'authorId' | 'authorName' | 'authorAvatar' | 'status' | 'createdAt'>
@@ -1226,6 +1244,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       blockUser,
       unblockUser,
       deleteUser,
+      updateUserPhone,
     }),
     [
       posts,
@@ -1266,6 +1285,7 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       blockUser,
       unblockUser,
       deleteUser,
+      updateUserPhone,
     ]
   )
 

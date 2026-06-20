@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { usePauseVideoOnScrollAway } from '@/hooks/usePauseVideoOnScrollAway'
 import { ChevronLeft, ChevronRight, ImageOff, Video } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/app/components/ui/dialog'
 import { Button } from '@/app/components/ui/button'
@@ -407,6 +408,7 @@ function SingleMediaPreview({
   onOpen: () => void
 }) {
   const [previewLoaded, setPreviewLoaded] = useState(false)
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null)
   const previewSrc = item.url
   const previewIsVideo = item.type === 'video'
   const fullUrl = previewIsVideo ? previewSrc : ensureStorageObjectPublicUrl(previewSrc)
@@ -424,6 +426,8 @@ function SingleMediaPreview({
         : item.thumbUrl ?? storagePreviewUrl(previewSrc)
     )
   }, [previewSrc, previewIsVideo, variant, item.thumbUrl, fullUrl])
+
+  usePauseVideoOnScrollAway(previewVideoRef, previewIsVideo, previewSrc)
 
   if (failed) {
     return (
@@ -467,6 +471,7 @@ function SingleMediaPreview({
       </span>
       {previewIsVideo ? (
         <video
+          ref={previewVideoRef}
           key={previewSrc}
           src={displaySrc}
           playsInline
@@ -477,6 +482,7 @@ function SingleMediaPreview({
             previewLoaded ? 'opacity-100' : 'opacity-0'
           )}
           style={{ maxHeight: maxH }}
+          onClick={(e) => e.stopPropagation()}
           onLoadedData={() => setPreviewLoaded(true)}
           onError={onFail}
         />

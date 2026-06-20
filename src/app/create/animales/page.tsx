@@ -30,6 +30,7 @@ import {
   DEFAULT_ARGENTINA_PROVINCE_PREFIX,
   formatArgentinaMobileForDisplay,
   normalizeArgentinaLocalDigits,
+  validateArgentinaAreaCode,
   validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
@@ -141,6 +142,10 @@ export default function CreateAnimalesPage() {
     }
     if (!normalizeArgentinaLocalDigits(telefonoLocal)) {
       toast.error('Indicá un teléfono de contacto')
+      return
+    }
+    if (!validateArgentinaAreaCode(telefonoPrefix)) {
+      toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
       return
     }
     if (!validateArgentinaLocalDigits(telefonoLocal)) {

@@ -19,6 +19,7 @@ import {
 	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
 	normalizeArgentinaLocalDigits,
 	parseArgentinaMobileStored,
+	validateArgentinaAreaCode,
 	validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
@@ -131,6 +132,10 @@ export default function EditarPublicacionPage() {
 		if (config.whatsappEnabled) {
 			const local = normalizeArgentinaLocalDigits(whatsappLocal)
 			if (local) {
+				if (!validateArgentinaAreaCode(whatsappPrefix)) {
+					toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
+					return
+				}
 				if (!validateArgentinaLocalDigits(local)) {
 					toast.error('Revisá el número de WhatsApp')
 					return

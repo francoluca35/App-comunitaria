@@ -46,6 +46,7 @@ import {
   DEFAULT_ARGENTINA_PROVINCE_PREFIX,
   normalizeArgentinaLocalDigits,
   parseArgentinaMobileStored,
+  validateArgentinaAreaCode,
   validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 import { ensureStorageObjectPublicUrl } from '@/lib/storage-image'
@@ -277,6 +278,10 @@ export default function ProfilePage() {
       toast.error('El teléfono debe tener entre 6 y 13 dígitos, sin contar el código de área')
       return
     }
+    if (normalizeArgentinaLocalDigits(editPhoneLocal) && !validateArgentinaAreaCode(editPhonePrefix)) {
+      toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
+      return
+    }
     setSavingProfile(true)
     try {
       const phoneStored = buildArgentinaMobileE164(editPhonePrefix, editPhoneLocal) ?? undefined
@@ -448,8 +453,8 @@ export default function ProfilePage() {
             onLocalNumberChange={setEditPhoneLocal}
             optional
             label="Teléfono"
-            hint="Opcional. Por defecto Santa Fe (342); podés cambiar la zona si tu número es de otra provincia."
-            className="[&_select]:bg-white [&_select]:dark:bg-gray-800 [&>div:last-of-type]:bg-white [&>div:last-of-type]:dark:bg-gray-800"
+            hint="Escribí el número completo con código de área, sin 0 ni 15 al inicio."
+            className="[&>div]:bg-white [&>div]:dark:bg-gray-800"
           />
           <div className="space-y-2">
             <Label htmlFor={`edit-province-${formIdSuffix}`}>Provincia</Label>

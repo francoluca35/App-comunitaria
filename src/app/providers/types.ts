@@ -217,6 +217,7 @@ export interface CommunityContextType {
   blockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
   unblockUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
   deleteUser: (userId: string) => Promise<{ ok: boolean; error?: string }>
+  updateUserPhone: (userId: string, phone: string | null) => Promise<{ ok: boolean; error?: string }>
 }
 
 /** API unificada (varios contextos internos se fusionan en `useApp`). */

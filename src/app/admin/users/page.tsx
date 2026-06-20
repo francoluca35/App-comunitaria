@@ -11,6 +11,15 @@ import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
+import {
+  buildArgentinaMobileE164,
+  DEFAULT_ARGENTINA_PROVINCE_PREFIX,
+  normalizeArgentinaLocalDigits,
+  parseArgentinaMobileStored,
+  validateArgentinaAreaCode,
+  validateArgentinaLocalDigits,
+} from '@/lib/argentina-phone'
 import {
   Dialog,
   DialogContent,
@@ -39,8 +48,12 @@ export default function AdminUsersPage() {
     blockUser,
     unblockUser,
     deleteUser,
+    updateUserPhone,
   } = useApp()
   const [selected, setSelected] = useState<AdminProfile | null>(null)
+  const [editPhonePrefix, setEditPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+  const [editPhoneLocal, setEditPhoneLocal] = useState('')
+  const [savingPhone, setSavingPhone] = useState(false)
   const [suspendDays, setSuspendDays] = useState<string>('7')
   const [acting, setActing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -61,6 +74,18 @@ export default function AdminUsersPage() {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
   }, [searchQuery])
+
+  useEffect(() => {
+    if (!selected) return
+    const parsed = parseArgentinaMobileStored(selected.phone)
+    if (parsed) {
+      setEditPhonePrefix(parsed.prefix)
+      setEditPhoneLocal(parsed.local)
+    } else {
+      setEditPhonePrefix(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+      setEditPhoneLocal('')
+    }
+  }, [selected])
 
   const reloadList = useCallback(() => {
     void loadAdminProfiles({
@@ -156,6 +181,33 @@ export default function AdminUsersPage() {
       toast.success('Usuario eliminado')
       setSelected(null)
     } else toast.error(error ?? 'Error al eliminar')
+  }
+
+  const handleSavePhone = async (userId: string) => {
+    const local = normalizeArgentinaLocalDigits(editPhoneLocal)
+    if (local && !validateArgentinaLocalDigits(local)) {
+      toast.error('El teléfono debe tener entre 6 y 13 dígitos, sin contar el código de área')
+      return
+    }
+    if (local && !validateArgentinaAreaCode(editPhonePrefix)) {
+      toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
+      return
+    }
+    const phoneStored = local ? buildArgentinaMobileE164(editPhonePrefix, local) : null
+    if (local && !phoneStored) {
+      toast.error('Número de teléfono inválido')
+      return
+    }
+    setSavingPhone(true)
+    const { ok, error } = await updateUserPhone(userId, phoneStored)
+    setSavingPhone(false)
+    if (ok) {
+      toast.success('Teléfono actualizado')
+      setSelected((p) => (p?.id === userId ? { ...p, phone: phoneStored } : p))
+      reloadList()
+    } else {
+      toast.error(error ?? 'Error al actualizar el teléfono')
+    }
   }
 
   const isSuspended = (p: AdminProfile) => p.suspended_until && new Date(p.suspended_until) > new Date()
@@ -370,7 +422,6 @@ export default function AdminUsersPage() {
                 </DialogHeader>
                 <div className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
                   <p><span className="font-medium text-slate-700 dark:text-slate-300">Email:</span> {selected.email}</p>
-                  {selected.phone && <p><span className="font-medium text-slate-700 dark:text-slate-300">Teléfono:</span> {selected.phone}</p>}
                   {selected.birth_date && <p><span className="font-medium text-slate-700 dark:text-slate-300">Fecha nac.:</span> {selected.birth_date}</p>}
                   {(selected.province || selected.locality) && (
                     <p><span className="font-medium text-slate-700 dark:text-slate-300">Ubicación:</span> {[selected.province, selected.locality].filter(Boolean).join(', ')}</p>
@@ -379,6 +430,29 @@ export default function AdminUsersPage() {
                   {selected.suspended_until && (
                     <p><span className="font-medium text-slate-700 dark:text-slate-300">Suspendido hasta:</span> {new Date(selected.suspended_until).toLocaleDateString('es')}</p>
                   )}
+                </div>
+
+                <div className="flex flex-col gap-2 pt-2">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Teléfono WhatsApp</p>
+                  <ArgentinaWhatsAppPhoneField
+                    idPrefix={`admin-user-phone-${selected.id}`}
+                    prefix={editPhonePrefix}
+                    onPrefixChange={setEditPhonePrefix}
+                    localNumber={editPhoneLocal}
+                    onLocalNumberChange={setEditPhoneLocal}
+                    optional
+                    label={<span className="text-sm font-medium text-slate-700 dark:text-slate-300">Número del usuario</span>}
+                    hint="Dejá el número vacío para quitar el teléfono. Se guarda en formato WhatsApp (+54 9 …)."
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={acting || savingPhone}
+                    onClick={() => handleSavePhone(selected.id)}
+                  >
+                    {savingPhone ? 'Guardando…' : 'Guardar teléfono'}
+                  </Button>
                 </div>
 
                 <div className="flex flex-col gap-2 pt-2">

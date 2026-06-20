@@ -30,6 +30,7 @@ import {
   buildArgentinaMobileE164,
   DEFAULT_ARGENTINA_PROVINCE_PREFIX,
   normalizeArgentinaLocalDigits,
+  validateArgentinaAreaCode,
   validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
@@ -241,6 +242,10 @@ function CreateOtroForm() {
       config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal)
         ? buildArgentinaMobileE164(whatsappPrefix, whatsappLocal)
         : null
+    if (config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal) && !validateArgentinaAreaCode(whatsappPrefix)) {
+      toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
+      return
+    }
     if (config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal) && !validateArgentinaLocalDigits(whatsappLocal)) {
       toast.error('El WhatsApp debe tener entre 6 y 13 dígitos, sin contar el código de área')
       return

@@ -28,6 +28,7 @@ import {
 	buildArgentinaMobileE164,
 	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
 	normalizeArgentinaLocalDigits,
+	validateArgentinaAreaCode,
 	validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
 
@@ -130,6 +131,10 @@ export default function CreateExtravioPage() {
 		const localWaDigits = normalizeArgentinaLocalDigits(whatsappLocal)
 		if (config.whatsappEnabled && !localWaDigits) {
 			toast.error('Ingresá el número local de WhatsApp')
+			return
+		}
+		if (config.whatsappEnabled && normalizeArgentinaLocalDigits(whatsappLocal) && !validateArgentinaAreaCode(whatsappPrefix)) {
+			toast.error('Ingresá un código de área válido (2 a 4 dígitos)')
 			return
 		}
 		if (config.whatsappEnabled && !validateArgentinaLocalDigits(whatsappLocal)) {
@@ -301,7 +306,7 @@ export default function CreateExtravioPage() {
 									WhatsApp de contacto <span className="text-red-600">*</span>
 								</>
 							}
-							hint="Va a la publicación y al mensaje de Mario. Solo tu número local, sin 0 ni 15 al inicio."
+							hint="Va a la publicación y al mensaje de Mario. Escribí el número completo con código de área, sin 0 ni 15 al inicio."
 						/>
 					)}
 

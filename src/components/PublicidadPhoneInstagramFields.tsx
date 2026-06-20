@@ -40,7 +40,7 @@ export function PublicidadPhoneInstagramFields({
 				onLocalNumberChange={onPhoneLocalChange}
 				optional
 				label="Número de teléfono"
-				hint="Opcional si completás Instagram. Solo tu número local, sin 0 ni 15 al inicio."
+				hint="Va a la publicación y al mensaje de Mario. Escribí el número completo con código de área, sin 0 ni 15 al inicio."
 				className="space-y-2"
 			/>
 			<div className="space-y-2">
