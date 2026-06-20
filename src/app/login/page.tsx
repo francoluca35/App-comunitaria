@@ -25,6 +25,12 @@ import {
 	validateArgentinaAreaCode,
 	validateArgentinaLocalDigits,
 } from '@/lib/argentina-phone'
+import {
+	birthDateDisplayToIso,
+	isAtLeast17FromIsoDate,
+	isCompleteBirthDateDisplay,
+	maskBirthDateInput,
+} from '@/lib/birth-date-input'
 
 export default function LoginPage() {
 	const { login, register, loginWithGoogle } = useAuth()
@@ -92,14 +98,8 @@ export default function LoginPage() {
 		}
 	}
 
-	const isAtLeast17 = (dateStr: string) => {
-		if (!dateStr) return false
-		const birth = new Date(dateStr)
-		const today = new Date()
-		let age = today.getFullYear() - birth.getFullYear()
-		const monthDiff = today.getMonth() - birth.getMonth()
-		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--
-		return age >= 17
+	const onBirthDateChange = (value: string) => {
+		setRegisterBirthDate(maskBirthDateInput(value))
 	}
 
 	const handleRegister = async (e: React.FormEvent) => {
@@ -116,7 +116,16 @@ export default function LoginPage() {
 			toast.error('Por favor completá todos los campos')
 			return
 		}
-		if (!isAtLeast17(registerBirthDate)) {
+		if (!isCompleteBirthDateDisplay(registerBirthDate)) {
+			toast.error('Ingresá la fecha de nacimiento completa (DD/MM/AAAA)')
+			return
+		}
+		const birthDateIso = birthDateDisplayToIso(registerBirthDate)
+		if (!birthDateIso) {
+			toast.error('La fecha de nacimiento no es válida')
+			return
+		}
+		if (!isAtLeast17FromIsoDate(birthDateIso)) {
 			toast.error('Debes tener al menos 17 años para registrarte')
 			return
 		}
@@ -143,7 +152,7 @@ export default function LoginPage() {
 		try {
 			const result = await register({
 				name: registerName.trim(),
-				birthDate: registerBirthDate,
+				birthDate: birthDateIso,
 				phone: registerPhone,
 				province: registerProvince.trim(),
 				locality: registerLocality.trim(),
@@ -364,12 +373,19 @@ export default function LoginPage() {
 										</Label>
 										<Input
 											id="mobile-register-birthdate"
-											type="date"
+											type="text"
+											inputMode="numeric"
+											autoComplete="bday"
+											maxLength={10}
 											value={registerBirthDate}
-											onChange={(e) => setRegisterBirthDate(e.target.value)}
-											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B]"
+											onChange={(e) => onBirthDateChange(e.target.value)}
+											placeholder="02/06/2000"
+											className="h-11 rounded-lg border border-white/10 bg-white/5 px-3 text-sm text-white placeholder:text-white/35 focus-visible:border-[#8B0015] focus-visible:ring-1 focus-visible:ring-[#8B0015]/25 os-light:border-[#D8D2CC] os-light:bg-white os-light:text-[#2B2B2B] os-light:placeholder:text-[#9a918a]"
 											required
 										/>
+										<p className="text-[11px] leading-4 text-white/50 os-light:text-[#9a918a]">
+											Escribí tu fecha de nacimiento de corrido
+										</p>
 									</div>
 									<ArgentinaWhatsAppPhoneField
 										idPrefix="mobile-register-phone"
@@ -679,12 +695,19 @@ export default function LoginPage() {
 										</Label>
 										<Input
 											id="register-birthdate"
-											type="date"
+											type="text"
+											inputMode="numeric"
+											autoComplete="bday"
+											maxLength={10}
 											value={registerBirthDate}
-											onChange={(e) => setRegisterBirthDate(e.target.value)}
+											onChange={(e) => onBirthDateChange(e.target.value)}
+											placeholder="02/06/2000"
 											className="h-10 rounded-none border-0 border-b border-slate-300 bg-transparent px-0 text-sm shadow-none focus-visible:border-[#7c281d] focus-visible:ring-0 sm:text-base"
 											required
 										/>
+										<p className="text-xs leading-4 text-slate-500">
+											Escribí tu fecha de nacimiento de corrido
+										</p>
 									</div>
 									<ArgentinaWhatsAppPhoneField
 										idPrefix="register-phone"
