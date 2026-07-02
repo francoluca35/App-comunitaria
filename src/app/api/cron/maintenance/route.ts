@@ -7,7 +7,7 @@ function unauthorized() {
 
 /**
  * GET /api/cron/maintenance
- * Limpieza horaria de publicidades vencidas.
+ * Limpieza diaria de publicidades vencidas (Vercel Hobby: 1 cron/día).
  *
  * Authorization: Bearer <CRON_SECRET>
  */
