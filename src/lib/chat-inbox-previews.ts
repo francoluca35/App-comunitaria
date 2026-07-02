@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { format, isToday, isYesterday } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { chatContentPreviewLine } from '@/lib/chat-message-payload'
-import { chatMessageRetentionCutoffIso } from '@/lib/chat-retention'
 
 export type ChatPreviewRow = {
 	sender_id: string
@@ -39,7 +38,6 @@ export async function loadChatInboxPreviews(
 		.from('chat_messages')
 		.select('sender_id, receiver_id, content, created_at')
 		.or(`sender_id.eq.${myId},receiver_id.eq.${myId}`)
-		.gte('created_at', chatMessageRetentionCutoffIso())
 		.order('created_at', { ascending: false })
 		.limit(limit)
 

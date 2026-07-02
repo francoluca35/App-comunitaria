@@ -142,7 +142,7 @@ export default function AdminMessagesPage() {
 			return
 		}
 		setClearingAll(true)
-		const res = await fetch('/api/admin/chat/clear-all', {
+		const res = await fetch('/api/chat/clear-all', {
 			method: 'POST',
 			headers: { Authorization: `Bearer ${session.access_token}` },
 		})

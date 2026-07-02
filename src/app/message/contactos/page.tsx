@@ -8,7 +8,17 @@ import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { ArrowLeft, ExternalLink, Search } from 'lucide-react'
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/app/components/ui/alert-dialog'
+import { ArrowLeft, ExternalLink, Search, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/app/components/ui/utils'
 import {
@@ -60,6 +70,8 @@ export default function MessageContactosPage() {
 	const [search, setSearch] = useState('')
 	const [lastByPeer, setLastByPeer] = useState<Record<string, PeerPreview>>({})
 	const [marioId, setMarioId] = useState<string | null>(null)
+	const [showClearAllDialog, setShowClearAllDialog] = useState(false)
+	const [clearingAll, setClearingAll] = useState(false)
 	const hasLoaded = useRef(false)
 
 	useEffect(() => {
@@ -156,6 +168,35 @@ export default function MessageContactosPage() {
 	const marioPreviewLine = marioLast?.preview?.trim() ?? ''
 	const marioTimeLabel = marioLast?.createdAt ? formatChatListTime(marioLast.createdAt) : ''
 
+	const clearAllChats = async () => {
+		const {
+			data: { session },
+		} = await supabase.auth.getSession()
+		if (!session?.access_token) {
+			toast.error('Sesión expirada')
+			return
+		}
+		setClearingAll(true)
+		const res = await fetch('/api/chat/clear-all', {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${session.access_token}` },
+		})
+		setClearingAll(false)
+		setShowClearAllDialog(false)
+		if (!res.ok) {
+			const err = (await res.json().catch(() => ({}))) as { error?: string }
+			toast.error(err.error ?? 'No se pudieron eliminar los mensajes')
+			return
+		}
+		const body = (await res.json().catch(() => ({}))) as { deletedCount?: number }
+		setLastByPeer({})
+		toast.success(
+			body.deletedCount != null && body.deletedCount > 0
+				? `Se eliminaron ${body.deletedCount.toLocaleString('es-AR')} mensajes de todos los chats.`
+				: 'No había mensajes para eliminar.'
+		)
+	}
+
 	if (!currentUser) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
@@ -197,6 +238,17 @@ export default function MessageContactosPage() {
 						<ArrowLeft className="h-5 w-5" />
 					</Button>
 					<h1 className="text-[20px] font-medium text-slate-900 dark:text-[#E9EDEF]">Chats</h1>
+					<Button
+						type="button"
+						variant="destructive"
+						size="sm"
+						className="ml-auto shrink-0 gap-1.5 text-xs sm:text-sm"
+						onClick={() => setShowClearAllDialog(true)}
+						disabled={clearingAll}
+					>
+						<Trash2 className="h-4 w-4" />
+						<span className="hidden sm:inline">Eliminar todo</span>
+					</Button>
 				</div>
 
 				<div className="shrink-0 bg-slate-50 px-3 pb-2 pt-2 dark:bg-[#111B21]">
@@ -427,6 +479,24 @@ export default function MessageContactosPage() {
 					)}
 				</div>
 			</div>
+
+			<AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>¿Eliminar todos los mensajes?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Se borrarán todos los mensajes de todos los chats de la comunidad: textos, avisos automáticos,
+							fotos y audios. Esto incluye los chats de todos los usuarios y no se puede deshacer.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={clearingAll}>Cancelar</AlertDialogCancel>
+						<Button variant="destructive" disabled={clearingAll} onClick={() => void clearAllChats()}>
+							{clearingAll ? 'Eliminando…' : 'Sí, eliminar todo'}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</DashboardLayout>
 	)
 }
