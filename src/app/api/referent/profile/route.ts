@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { fetchCanonicalMarioProfile } from '@/lib/mario-account'
+import { HTTP_CACHE_PUBLIC_CATEGORIES } from '@/lib/server/http-cache'
 
 /**
  * GET: perfil público del referente (foto y nombre para el banner).
@@ -20,9 +21,12 @@ export async function GET() {
 		return NextResponse.json({ error: 'Referente no configurado' }, { status: 404 })
 	}
 
-	return NextResponse.json({
-		id: mario.id,
-		name: mario.name,
-		avatar_url: mario.avatar_url,
-	})
+	return NextResponse.json(
+		{
+			id: mario.id,
+			name: mario.name,
+			avatar_url: mario.avatar_url,
+		},
+		{ headers: HTTP_CACHE_PUBLIC_CATEGORIES }
+	)
 }

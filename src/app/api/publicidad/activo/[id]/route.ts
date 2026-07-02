@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getActivePublicidadDisplayById } from '@/lib/server/active-publicidad-by-id'
-
-export const dynamic = 'force-dynamic'
+import { HTTP_CACHE_PUBLIC_SHORT } from '@/lib/server/http-cache'
 
 /** GET /api/publicidad/activo/[id] — una publicidad activa (para compartir / clientes). */
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -20,5 +19,5 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     images: p.images,
     whatsappUrl: p.whatsappUrl,
     instagramUrl: p.instagramUrl,
-  })
+  }, { headers: HTTP_CACHE_PUBLIC_SHORT })
 }

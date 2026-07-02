@@ -18,10 +18,12 @@ import {
   Flag,
 } from 'lucide-react'
 import { useApp } from '@/app/providers'
-import { getSessionSafe } from '@/lib/auth-api'
 import { createClient } from '@/lib/supabase/client'
 import { sanitizeChatNotificationBody } from '@/lib/chat-message-payload'
 import { showSystemNotification } from '@/lib/notifications'
+import { fetchNotificationsFromSupabase } from '@/lib/notifications-client'
+import { shouldShowNotificationInBell } from '@/lib/notification-display'
+import { useDebouncedAppVisible } from '@/hooks/useDebouncedAppVisible'
 import {
   Popover,
   PopoverContent,
@@ -33,7 +35,6 @@ import { cn } from '@/app/components/ui/utils'
 import { toast } from 'sonner'
 import type { ChatNotificationRow } from '@/lib/chat-notification-ui'
 import { resolveMessageLink } from '@/lib/chat-notification-ui'
-import { shouldShowNotificationInBell } from '@/lib/notification-display'
 import { useChatNotifications } from '@/contexts/ChatNotificationsContext'
 
 const defaultTriggerClass =
@@ -122,52 +123,19 @@ export function NotificationBell({
       setLoading(true)
       setFetchError(null)
       try {
-        let {
-          data: { session },
-        } = await getSessionSafe(supabase)
-        if (!session?.access_token) {
-          setFetchError('No hay sesión')
-          return
-        }
-
-        const load = async (token: string) =>
-          fetch('/api/notifications?type=non-message&limit=30', {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-
-        let res = await load(session.access_token)
-        if (res.status === 401) {
-          const { data: refreshed } = await supabase.auth.refreshSession()
-          if (refreshed.session?.access_token) {
-            session = refreshed.session
-            res = await load(refreshed.session.access_token)
-          }
-        }
-
-        const data: unknown = await res.json().catch(() => null)
-        if (!res.ok) {
-          const msg =
-            data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string'
-              ? (data as { error: string }).error
-              : `Error ${res.status}`
-          setFetchError(msg)
-          if (opts?.showErrorToast) {
-            toast.error('No se pudieron cargar las notificaciones', { description: msg, id: 'notifications-fetch' })
-          }
-          return
-        }
-        if (!Array.isArray(data)) {
-          setFetchError('Respuesta inválida del servidor')
-          if (opts?.showErrorToast) {
-            toast.error('Notificaciones: respuesta inválida', { id: 'notifications-fetch' })
-          }
-          return
-        }
-        const rows = (data as AppNotification[]).filter(
-          (r) => r.type !== 'message' && shouldShowNotificationInBell(r.type)
-        )
+        const data = await fetchNotificationsFromSupabase(supabase, currentUser.id, {
+          type: 'non-message',
+          limit: 30,
+        })
+        const rows = data.filter((r) => r.type !== 'message' && shouldShowNotificationInBell(r.type))
         rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         setNotifications(rows)
+      } catch {
+        const msg = 'Error de conexión'
+        setFetchError(msg)
+        if (opts?.showErrorToast) {
+          toast.error('No se pudieron cargar las notificaciones', { description: msg, id: 'notifications-fetch' })
+        }
       } finally {
         setLoading(false)
       }
@@ -197,26 +165,10 @@ export function NotificationBell({
     fetchNotifications()
   }, [currentUser?.id, fetchNotifications])
 
-  /** En móvil el realtime a veces se corta; al volver a la app refrescamos la campana. */
-  useEffect(() => {
-    if (!currentUser?.id) return
-    let t: ReturnType<typeof setTimeout> | undefined
-    const schedule = () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-      clearTimeout(t)
-      t = setTimeout(() => {
-        void fetchNotifications()
-        void fetchMessageRows()
-      }, 400)
-    }
-    document.addEventListener('visibilitychange', schedule)
-    window.addEventListener('focus', schedule)
-    return () => {
-      clearTimeout(t)
-      document.removeEventListener('visibilitychange', schedule)
-      window.removeEventListener('focus', schedule)
-    }
-  }, [currentUser?.id, fetchNotifications, fetchMessageRows])
+  useDebouncedAppVisible(() => {
+    void fetchNotifications()
+    void fetchMessageRows()
+  })
 
   // Realtime: nueva notificación desde la tabla (persistida por triggers)
   useEffect(() => {
@@ -257,7 +209,6 @@ export function NotificationBell({
               url: row.link_url ?? '/message/contactos',
               urgent: true,
             })
-            void fetchMessageRows()
             return
           }
           setNotifications((prev) => {

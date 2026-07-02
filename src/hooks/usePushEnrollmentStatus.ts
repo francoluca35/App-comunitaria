@@ -9,6 +9,7 @@ import {
 } from '@/lib/push-enrollment'
 import { PUSH_ENROLLMENT_CHANGED_EVENT } from '@/lib/push-enrollment-events'
 import type { BrowserPushPermission } from '@/lib/push-enrollment'
+import { useDebouncedAppVisible } from '@/hooks/useDebouncedAppVisible'
 
 export type PushEnrollmentStatus = {
 	loading: boolean
@@ -67,16 +68,15 @@ export function usePushEnrollmentStatus(userId: string | null | undefined): Push
 		const onChange = () => {
 			void refresh()
 		}
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') void refresh()
-		}
 		window.addEventListener(PUSH_ENROLLMENT_CHANGED_EVENT, onChange)
-		document.addEventListener('visibilitychange', onVisible)
 		return () => {
 			window.removeEventListener(PUSH_ENROLLMENT_CHANGED_EVENT, onChange)
-			document.removeEventListener('visibilitychange', onVisible)
 		}
 	}, [userId, refresh])
+
+	useDebouncedAppVisible(() => {
+		void refresh()
+	}, 15 * 60 * 1000)
 
 	const pushApiAvailable = isPushApiAvailable()
 	const needsPermission = pushApiAvailable && permission !== 'granted'

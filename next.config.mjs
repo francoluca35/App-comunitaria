@@ -32,6 +32,7 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION ?? pkg.version,
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
       ...(Array.isArray(supabasePattern) ? supabasePattern : supabasePattern ? [supabasePattern] : []),
     ],

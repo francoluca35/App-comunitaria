@@ -1,4 +1,5 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
+import { chatMessageRetentionCutoffIso } from '@/lib/chat-retention'
 
 export const CHAT_MESSAGE_SELECT_BASE =
 	'id, sender_id, receiver_id, content, created_at'
@@ -76,10 +77,12 @@ export async function fetchChatMessagesBetween(
 	limit = 100
 ): Promise<{ data: ChatMessageWithReceipts[] | null; error: PostgrestError | null }> {
 	await resolveChatReceiptsSupport(supabase)
+	const retentionCutoff = chatMessageRetentionCutoffIso()
 	const first = await supabase
 		.from('chat_messages')
 		.select(chatMessageSelect())
 		.or(conversationOrFilter(myId, otherId))
+		.gte('created_at', retentionCutoff)
 		.order('created_at', { ascending: false })
 		.limit(limit)
 
@@ -89,6 +92,7 @@ export async function fetchChatMessagesBetween(
 			.from('chat_messages')
 			.select(CHAT_MESSAGE_SELECT_BASE)
 			.or(conversationOrFilter(myId, otherId))
+			.gte('created_at', retentionCutoff)
 			.order('created_at', { ascending: false })
 			.limit(limit)
 		const rows = fallback.data ? (fallback.data as unknown as ChatMessageWithReceipts[]) : null

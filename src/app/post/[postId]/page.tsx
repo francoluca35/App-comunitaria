@@ -6,8 +6,8 @@ import PostDetailClient from './PostDetailClient'
 
 type PageProps = { params: Promise<{ postId: string }> }
 
-/** Metadatos frescos al compartir (edición de texto/imagen en el post). */
-export const dynamic = 'force-dynamic'
+/** Metadatos para compartir; se revalidan cada minuto. */
+export const revalidate = 60
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
 	const { postId } = await params

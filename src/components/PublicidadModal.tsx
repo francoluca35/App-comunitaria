@@ -42,6 +42,14 @@ export function PublicidadModal({ open, onOpenChange, publicidad }: Props) {
       return
     }
 
+    const hasFullDetail =
+      Boolean(publicidad.description?.trim()) &&
+      getPublicidadImageUrls(publicidad).length > 0
+    if (hasFullDetail) {
+      setDetailPublicidad(null)
+      return
+    }
+
     let cancelled = false
     const loadDetail = async () => {
       try {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { HTTP_CACHE_PUBLIC_SHORT } from '@/lib/server/http-cache'
 
 type ParamsCtx = { params: Promise<{ id: string }> }
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest, context: ParamsCtx) {
 		}
 	})
 
-	return NextResponse.json(mapped)
+	return NextResponse.json(mapped, { headers: HTTP_CACHE_PUBLIC_SHORT })
 }
 
 /** POST /api/publicidad/[id]/comments - crear comentario en publicidad activa. */

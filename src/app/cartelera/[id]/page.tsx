@@ -19,9 +19,8 @@ async function getPublicidadCategoryLabel(slug: string): Promise<string> {
 
 type PageProps = { params: Promise<{ id: string }> }
 
-/** Sin caché: el permalink debe reflejar estado actual (activa / vencida). */
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+/** Permalink con revalidación periódica (activa / vencida). */
+export const revalidate = 120
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params

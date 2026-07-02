@@ -60,7 +60,7 @@ export default function MessageWithPeerPage() {
 	const supabase = useMemo(() => createClient(), [])
 	const myId = currentUser?.id ?? ''
 	const otherId = peer?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 	const backToTeamList =
 		currentUser?.isAdmin || currentUser?.isModerator ? '/admin/messages' : '/message/contactos'
@@ -183,12 +183,17 @@ export default function MessageWithPeerPage() {
 					onMessageUpdated(row)
 				}
 			)
+			.on(
+				'postgres_changes',
+				{ event: 'DELETE', schema: 'public', table: 'chat_messages' },
+				(payload) => onMessageDeleted(payload)
+			)
 			.subscribe()
 		return () => {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference, onIncomingMessageWhileChatOpen, onMessageUpdated])
+	}, [myId, otherId, supabase, peer?.name, currentUser?.notificationPreference, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted])
 
 	if (!currentUser) {
 		return (

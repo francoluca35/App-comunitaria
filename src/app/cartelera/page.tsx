@@ -14,6 +14,7 @@ import {
 } from '@/app/components/ui/popover'
 import { OPCION_TODAS } from '@/lib/categorias-publicidad'
 import { sanitizeCategoryRows } from '@/lib/category-defaults'
+import { fetchFeedPublicidadAds } from '@/lib/feed-publicidad-cache'
 import { useApp } from '@/app/providers'
 import type { PublicidadDisplay } from '@/lib/publicidad-display'
 import { PublicidadModal } from '@/components/PublicidadModal'
@@ -22,14 +23,8 @@ import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 
 type SortOrder = 'reciente' | 'antiguo'
 
-function parsePublicidadCreatedAt(raw: unknown): Date {
-  if (raw == null) return new Date(0)
-  const d = new Date(typeof raw === 'string' || typeof raw === 'number' ? raw : '')
-  return Number.isFinite(d.getTime()) ? d : new Date(0)
-}
-
 export default function PublicidadesPage() {
-  const { publicidadCategories, refreshPublicidadCategories, currentUser } = useApp()
+  const { publicidadCategories, currentUser } = useApp()
   const pubCats = useMemo(() => sanitizeCategoryRows(publicidadCategories), [publicidadCategories])
   const [publicidades, setPublicidades] = useState<PublicidadDisplay[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -37,33 +32,10 @@ export default function PublicidadesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   useEffect(() => {
-    void refreshPublicidadCategories()
-    fetch('/api/publicidad/activos')
-      .then(async (res) => {
-        if (!res.ok) return
-        const data = (await res.json().catch(() => [])) as any[]
-        if (!Array.isArray(data)) return
-        if (data.length === 0) {
-          setPublicidades([])
-          return
-        }
-        const mapped: PublicidadDisplay[] = data.map((r) => ({
-          id: String(r.id),
-          title: String(r.title ?? ''),
-          description: String(r.description ?? ''),
-          category: String(r.category ?? ''),
-          createdAt: parsePublicidadCreatedAt(r.createdAt),
-          imageUrl: r.imageUrl ? String(r.imageUrl) : undefined,
-          images: Array.isArray(r.images)
-            ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
-            : undefined,
-          whatsappUrl: typeof r.whatsappUrl === 'string' ? r.whatsappUrl : undefined,
-          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : undefined,
-        }))
-        setPublicidades(mapped)
-      })
-      .catch(() => {})
-  }, [refreshPublicidadCategories])
+    void fetchFeedPublicidadAds()
+      .then((mapped) => setPublicidades(mapped))
+      .catch(() => setPublicidades([]))
+  }, [])
 
   const publicidadFilterOptions = useMemo(
     () => [

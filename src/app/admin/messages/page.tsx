@@ -7,10 +7,20 @@ import { Button } from '@/app/components/ui/button'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { ArrowLeft, ExternalLink, Search } from 'lucide-react'
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/app/components/ui/alert-dialog'
+import { ArrowLeft, ExternalLink, Search, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/app/components/ui/utils'
 import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import {
 	loadChatInboxPreviews,
 	sortByChatRecency,
@@ -18,17 +28,37 @@ import {
 	type PeerPreview,
 } from '@/lib/chat-inbox-previews'
 import { canUseAdminContactSearch } from '@/lib/admin-contact-search'
+import { ADMIN_USERS_PAGE_SIZE, fetchAdminUsersList } from '@/lib/admin-users-api'
+
+async function fetchAllActiveProfiles(accessToken: string, excludeUserId?: string): Promise<AdminProfile[]> {
+	const all: AdminProfile[] = []
+	let page = 1
+	for (;;) {
+		const result = await fetchAdminUsersList(accessToken, {
+			page,
+			pageSize: ADMIN_USERS_PAGE_SIZE,
+			status: 'active',
+		})
+		if ('error' in result) break
+		all.push(...result.users.filter((p) => p.id !== excludeUserId))
+		if (page >= result.totalPages) break
+		page++
+	}
+	return all
+}
 
 export default function AdminMessagesPage() {
 	const router = useRouter()
-	const { currentUser, adminProfilesLoading, searchAdminProfiles, fetchAdminProfilesByIds } = useApp()
+	const { currentUser, adminProfilesLoading, searchAdminProfiles } = useApp()
 	const supabase = useMemo(() => createClient(), [])
 	const [search, setSearch] = useState('')
 	const [debouncedSearch, setDebouncedSearch] = useState('')
 	const [lastByPeer, setLastByPeer] = useState<Record<string, PeerPreview>>({})
-	const [chatProfiles, setChatProfiles] = useState<AdminProfile[]>([])
+	const [allProfiles, setAllProfiles] = useState<AdminProfile[]>([])
 	const [searchResults, setSearchResults] = useState<AdminProfile[]>([])
 	const [loadingContacts, setLoadingContacts] = useState(false)
+	const [showClearAllDialog, setShowClearAllDialog] = useState(false)
+	const [clearingAll, setClearingAll] = useState(false)
 	const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const isStaffAdmin = canUseAdminContactSearch(currentUser)
 
@@ -53,51 +83,84 @@ export default function AdminMessagesPage() {
 	}, [currentUser?.id, isStaffAdmin, supabase])
 
 	useEffect(() => {
-		if (!isStaffAdmin) return
-		const q = debouncedSearch.trim()
-
-		if (q) {
-			let cancelled = false
-			setLoadingContacts(true)
-			void (async () => {
-				const found = await searchAdminProfiles(q)
-				if (!cancelled) {
-					setSearchResults(found)
-					setLoadingContacts(false)
-				}
-			})()
-			return () => {
-				cancelled = true
-			}
-		}
-
-		const peerIds = Object.keys(lastByPeer)
-		if (peerIds.length === 0) {
-			setChatProfiles([])
-			setSearchResults([])
-			return
-		}
-
+		if (!isStaffAdmin || !currentUser?.id) return
 		let cancelled = false
 		setLoadingContacts(true)
 		void (async () => {
-			const profiles = await fetchAdminProfilesByIds(peerIds)
+			const {
+				data: { session },
+			} = await supabase.auth.getSession()
+			if (!session?.access_token || cancelled) {
+				if (!cancelled) setLoadingContacts(false)
+				return
+			}
+			const profiles = await fetchAllActiveProfiles(session.access_token, currentUser.id)
 			if (!cancelled) {
-				setChatProfiles(profiles)
+				setAllProfiles(profiles)
 				setLoadingContacts(false)
 			}
 		})()
 		return () => {
 			cancelled = true
 		}
-	}, [isStaffAdmin, debouncedSearch, lastByPeer, searchAdminProfiles, fetchAdminProfilesByIds])
+	}, [isStaffAdmin, currentUser?.id, supabase])
 
-	const visibleProfiles = debouncedSearch.trim() ? searchResults : chatProfiles
+	useEffect(() => {
+		if (!isStaffAdmin) return
+		const q = debouncedSearch.trim()
+		if (!q) {
+			setSearchResults([])
+			return
+		}
+		let cancelled = false
+		setLoadingContacts(true)
+		void (async () => {
+			const found = await searchAdminProfiles(q)
+			if (!cancelled) {
+				setSearchResults(found.filter((p) => p.id !== currentUser?.id))
+				setLoadingContacts(false)
+			}
+		})()
+		return () => {
+			cancelled = true
+		}
+	}, [isStaffAdmin, debouncedSearch, searchAdminProfiles, currentUser?.id])
+
+	const visibleProfiles = debouncedSearch.trim() ? searchResults : allProfiles
 
 	const filteredSorted = useMemo(
 		() => sortByChatRecency(visibleProfiles, lastByPeer),
 		[visibleProfiles, lastByPeer]
 	)
+
+	const clearAllChats = async () => {
+		const {
+			data: { session },
+		} = await supabase.auth.getSession()
+		if (!session?.access_token) {
+			toast.error('Sesión expirada')
+			return
+		}
+		setClearingAll(true)
+		const res = await fetch('/api/admin/chat/clear-all', {
+			method: 'POST',
+			headers: { Authorization: `Bearer ${session.access_token}` },
+		})
+		setClearingAll(false)
+		setShowClearAllDialog(false)
+		if (!res.ok) {
+			const err = (await res.json().catch(() => ({}))) as { error?: string }
+			toast.error(err.error ?? 'No se pudieron eliminar los mensajes')
+			return
+		}
+		const body = (await res.json().catch(() => ({}))) as { deletedCount?: number }
+		setLastByPeer({})
+		toast.success(
+			body.deletedCount != null && body.deletedCount > 0
+				? `Se eliminaron ${body.deletedCount.toLocaleString('es-AR')} mensajes de todos los chats.`
+				: 'No había mensajes para eliminar.'
+		)
+	}
 
 	if (!isStaffAdmin) {
 		return (
@@ -130,6 +193,17 @@ export default function AdminMessagesPage() {
 						<ArrowLeft className="h-5 w-5" />
 					</Button>
 					<h1 className="text-[20px] font-medium text-slate-900 dark:text-[#E9EDEF]">Chats</h1>
+					<Button
+						type="button"
+						variant="destructive"
+						size="sm"
+						className="ml-auto shrink-0 gap-1.5 text-xs sm:text-sm"
+						onClick={() => setShowClearAllDialog(true)}
+						disabled={clearingAll}
+					>
+						<Trash2 className="h-4 w-4" />
+						<span className="hidden sm:inline">Eliminar todo</span>
+					</Button>
 				</div>
 
 				<div className="shrink-0 bg-slate-50 px-3 pb-2 pt-2 dark:bg-[#111B21]">
@@ -146,7 +220,7 @@ export default function AdminMessagesPage() {
 					<p className="mt-2 px-0.5 text-xs text-slate-600 dark:text-[#8696A0]">
 						{debouncedSearch.trim()
 							? 'Resultados de búsqueda en todos los usuarios.'
-							: 'Conversaciones recientes. Buscá por nombre, email o teléfono para encontrar más contactos.'}
+							: 'Todos los contactos activos. Los que tienen mensajes aparecen primero.'}
 					</p>
 				</div>
 
@@ -157,7 +231,7 @@ export default function AdminMessagesPage() {
 						<p className="px-4 py-10 text-center text-sm text-slate-600 dark:text-[#8696A0]">
 							{debouncedSearch.trim()
 								? 'Ningún usuario coincide con la búsqueda.'
-								: 'No hay conversaciones todavía. Buscá un contacto para iniciar un chat.'}
+								: 'No hay usuarios activos para chatear.'}
 						</p>
 					) : (
 						filteredSorted.map((profile) => {
@@ -219,6 +293,24 @@ export default function AdminMessagesPage() {
 					)}
 				</div>
 			</div>
+
+			<AlertDialog open={showClearAllDialog} onOpenChange={setShowClearAllDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>¿Eliminar todos los mensajes?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Se borrarán todos los mensajes de todos los chats de la comunidad: textos, avisos automáticos,
+							fotos y audios. Esto incluye los chats de todos los usuarios y no se puede deshacer.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={clearingAll}>Cancelar</AlertDialogCancel>
+						<Button variant="destructive" disabled={clearingAll} onClick={() => void clearAllChats()}>
+							{clearingAll ? 'Eliminando…' : 'Sí, eliminar todo'}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</DashboardLayout>
 	)
 }

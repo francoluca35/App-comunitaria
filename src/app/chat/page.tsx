@@ -50,7 +50,7 @@ export default function ChatPage() {
 
 	const myId = currentUser?.id ?? ''
 	const otherId = support?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	const loadMessages = async () => {
@@ -122,12 +122,17 @@ export default function ChatPage() {
 					onMessageUpdated(row)
 				}
 			)
+			.on(
+				'postgres_changes',
+				{ event: 'DELETE', schema: 'public', table: 'chat_messages' },
+				(payload) => onMessageDeleted(payload)
+			)
 			.subscribe()
 		return () => {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, support?.name, onIncomingMessageWhileChatOpen, onMessageUpdated])
+	}, [myId, otherId, support?.name, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted])
 
 	useEffect(() => {
 		if (supportLoading) return

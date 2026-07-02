@@ -71,11 +71,21 @@ export function useChatReceiptEffects(
 		[myId, setMessages]
 	)
 
+	const onMessageDeleted = useCallback(
+		(payload: { old: Record<string, unknown> }) => {
+			const id = payload.old?.id
+			if (typeof id !== 'string') return
+			setMessages((prev) => (prev.some((m) => m.id === id) ? prev.filter((m) => m.id !== id) : prev))
+		},
+		[setMessages]
+	)
+
 	return {
 		onConversationOpen,
 		onIncomingMessage,
 		onIncomingMessageWhileChatOpen,
 		onMessageUpdated,
+		onMessageDeleted,
 		applyOutgoingReadLocally,
 		chatSelect: chatMessageSelect(),
 	}

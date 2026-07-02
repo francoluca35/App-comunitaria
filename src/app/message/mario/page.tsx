@@ -62,7 +62,7 @@ export default function MarioMessagePage() {
 
 	const myId = currentUser?.id ?? ''
 	const otherId = mario?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted } =
 		useChatReceiptEffects(supabase, myId, otherId, setMessages)
 
 	useEffect(() => {
@@ -172,13 +172,18 @@ export default function MarioMessagePage() {
 					onMessageUpdated(row)
 				}
 			)
+			.on(
+				'postgres_changes',
+				{ event: 'DELETE', schema: 'public', table: 'chat_messages' },
+				(payload) => onMessageDeleted(payload)
+			)
 			.subscribe()
 
 		return () => {
 			supabase.removeChannel(channel)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [myId, otherId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
+	}, [myId, otherId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted])
 
 	if (!currentUser) {
 		return (

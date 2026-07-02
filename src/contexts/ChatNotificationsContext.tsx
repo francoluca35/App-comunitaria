@@ -10,11 +10,13 @@ import {
 	type ReactNode,
 } from 'react'
 import { useApp } from '@/app/providers'
-import { getSessionSafe } from '@/lib/auth-api'
 import { createClient } from '@/lib/supabase/client'
 import { chatNotificationBody } from '@/lib/chat-message-payload'
 import { markChatMessageDelivered } from '@/lib/chat-read-receipts'
 import { showSystemNotification } from '@/lib/notifications'
+import { fetchNotificationsFromSupabase } from '@/lib/notifications-client'
+import { getCachedMarioProfileId, setCachedMarioProfileId } from '@/lib/mario-profile-cache'
+import { useDebouncedAppVisible } from '@/hooks/useDebouncedAppVisible'
 import {
 	groupMessageThreads,
 	messageChatInboxUrl,
@@ -56,6 +58,11 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 			setMarioProfileId(null)
 			return
 		}
+		const cached = getCachedMarioProfileId()
+		if (cached) {
+			setMarioProfileId(cached)
+			return
+		}
 		let cancelled = false
 		;(async () => {
 			try {
@@ -68,7 +75,10 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 				})
 				if (!res.ok || cancelled) return
 				const j = (await res.json()) as { id?: string }
-				if (j?.id && !cancelled) setMarioProfileId(j.id)
+				if (j?.id && !cancelled) {
+					setCachedMarioProfileId(j.id)
+					setMarioProfileId(j.id)
+				}
 			} catch {
 				/* fetch puede fallar si no hay red o el servidor no responde */
 			}
@@ -81,27 +91,11 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 	const fetchMessageRows = useCallback(async () => {
 		if (!currentUser?.id) return
 		try {
-			let {
-				data: { session },
-			} = await getSessionSafe(supabase)
-			if (!session?.access_token) return
-
-			const load = async (token: string) =>
-				fetch('/api/notifications?type=message&limit=40', {
-					headers: { Authorization: `Bearer ${token}` },
-				})
-
-			let res = await load(session.access_token)
-			if (res.status === 401) {
-				const { data: refreshed } = await supabase.auth.refreshSession()
-				if (refreshed.session?.access_token) {
-					res = await load(refreshed.session.access_token)
-				}
-			}
-
-			const data: unknown = await res.json().catch(() => null)
-			if (!res.ok || !Array.isArray(data)) return
-			const only = (data as ChatNotificationRow[]).filter((r) => r.type === 'message')
+			const rows = await fetchNotificationsFromSupabase(supabase, currentUser.id, {
+				type: 'message',
+				limit: 40,
+			})
+			const only = rows.filter((r) => r.type === 'message')
 			only.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 			setRows(only)
 		} catch (e) {
@@ -115,19 +109,9 @@ export function ChatNotificationsProvider({ children }: { children: ReactNode })
 		void fetchMessageRows()
 	}, [fetchMessageRows])
 
-	useEffect(() => {
-		if (!currentUser?.id) return
-		const schedule = () => {
-			if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-			setTimeout(() => void fetchMessageRows(), 400)
-		}
-		document.addEventListener('visibilitychange', schedule)
-		window.addEventListener('focus', schedule)
-		return () => {
-			document.removeEventListener('visibilitychange', schedule)
-			window.removeEventListener('focus', schedule)
-		}
-	}, [currentUser?.id, fetchMessageRows])
+	useDebouncedAppVisible(() => {
+		void fetchMessageRows()
+	})
 
 	useEffect(() => {
 		if (!currentUser?.id) return

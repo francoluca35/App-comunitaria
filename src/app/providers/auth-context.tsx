@@ -10,7 +10,7 @@ import React, {
   type ReactNode,
 } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getSessionSafe, fetchProfileFromApi } from '@/lib/auth-api'
+import { getSessionSafe, fetchProfileFromSupabase } from '@/lib/auth-api'
 import { registerWebPushIfPossible } from '@/lib/push-client'
 import { showPushEnrollmentPreviewFirstTime } from '@/lib/notifications'
 import { useAppendRecentRegistration } from '@/app/providers/recent-registrations-context'
@@ -43,6 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentUser?.id) return
     let cancelled = false
+    let lastPushSync = 0
+    const PUSH_SYNC_MIN_MS = 15 * 60 * 1000
     const syncPush = async () => {
       try {
         const {
@@ -57,7 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     void syncPush()
     const onForeground = () => {
-      if (document.visibilityState === 'visible') void syncPush()
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastPushSync < PUSH_SYNC_MIN_MS) return
+      lastPushSync = now
+      void syncPush()
     }
     document.addEventListener('visibilitychange', onForeground)
     window.addEventListener('focus', onForeground)
@@ -79,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await getSessionSafe(supabase)
         if (cancelled) return
         if (session?.user) {
-          const profile = await fetchProfileFromApi(session.access_token)
+          const profile = await fetchProfileFromSupabase(supabase, session.user.id)
           if (cancelled) return
           if (profile && profile.status !== 'blocked') {
             setCurrentUser(profileToUser(profile))
@@ -104,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setCurrentUser(null)
             return
           }
-          const profile = await fetchProfileFromApi(session.access_token)
+          const profile = await fetchProfileFromSupabase(supabase, session.user.id)
           if (profile && profile.status !== 'blocked') {
             setCurrentUser(profileToUser(profile))
           } else {
@@ -128,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { session },
       } = await getSessionSafe(supabase)
       if (!session?.user) return
-      const profile = await fetchProfileFromApi(session.access_token)
+      const profile = await fetchProfileFromSupabase(supabase, session.user.id)
       if (profile && profile.status !== 'blocked') {
         setCurrentUser(profileToUser(profile))
       } else {
@@ -222,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const token = data.session?.access_token
       if (token) {
-        const profile = await fetchProfileFromApi(token)
+        const profile = await fetchProfileFromSupabase(supabase, u.id)
         if (profile?.status === 'blocked') {
           await supabase.auth.signOut().catch(() => {})
           setCurrentUser(null)
@@ -333,7 +339,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let userForContext: User
         const token = signUpData.session?.access_token
         if (token) {
-          const profile = await fetchProfileFromApi(token)
+          const profile = await fetchProfileFromSupabase(supabase, uid)
           userForContext =
             profile && profile.status !== 'blocked'
               ? profileToUser(profile)

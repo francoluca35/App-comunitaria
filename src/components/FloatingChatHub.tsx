@@ -78,7 +78,7 @@ export function FloatingChatHub() {
 	const BOTTOM_SCROLL_THRESHOLD_PX = 80
 
 	const myId = currentUser?.id ?? ''
-	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated } =
+	const { onConversationOpen, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted } =
 		useChatReceiptEffects(supabase, myId, peerId ?? '', setMessages)
 
 	const {
@@ -312,11 +312,16 @@ export function FloatingChatHub() {
 					onMessageUpdated(row)
 				}
 			)
+			.on(
+				'postgres_changes',
+				{ event: 'DELETE', schema: 'public', table: 'chat_messages' },
+				(payload) => onMessageDeleted(payload)
+			)
 			.subscribe()
 		return () => {
 			supabase.removeChannel(ch)
 		}
-	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated])
+	}, [dockOpen, isDesktop, peerId, myId, supabase, onIncomingMessageWhileChatOpen, onMessageUpdated, onMessageDeleted])
 
 	const closeDock = () => {
 		setDockOpen(false)

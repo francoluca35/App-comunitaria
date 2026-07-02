@@ -48,7 +48,29 @@ export async function getSessionSafe(
 }
 
 /**
- * Obtiene el perfil del usuario desde la API (servidor), evitando llamadas directas a Supabase desde el cliente.
+ * Obtiene el perfil del usuario desde Supabase (RLS: lectura del propio perfil).
+ * Evita una invocación de función en Vercel por cada carga de sesión.
+ */
+export async function fetchProfileFromSupabase(
+	supabase: SupabaseClient,
+	userId: string
+): Promise<ProfileFromApi | null> {
+	try {
+		const selectCols =
+			'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, notification_preference'
+		const { data, error } = await supabase.from('profiles').select(selectCols).eq('id', userId).single()
+		if (error) {
+			if (error.code === 'PGRST116') return null
+			return null
+		}
+		return data as ProfileFromApi
+	} catch {
+		return null
+	}
+}
+
+/**
+ * @deprecated Usar fetchProfileFromSupabase. Reservado para fallback vía API si hiciera falta.
  */
 export async function fetchProfileFromApi(accessToken: string): Promise<ProfileFromApi | null> {
   try {

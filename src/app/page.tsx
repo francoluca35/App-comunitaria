@@ -32,6 +32,7 @@ import { PublicidadModal } from '@/components/PublicidadModal'
 import { PublicidadCommentsModal } from '@/components/PublicidadCommentsModal'
 import { PublicidadContactLinks } from '@/components/PublicidadContactLinks'
 import { type PublicidadDisplay, getPublicidadImageUrls } from '@/lib/publicidad-display'
+import { fetchFeedPublicidadAds } from '@/lib/feed-publicidad-cache'
 import { PreviewStorageImage } from '@/components/PreviewStorageImage'
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { PublicidadFeedCard } from '@/components/PublicidadFeedCard'
@@ -338,7 +339,6 @@ function HomePageContent() {
     authLoading,
     postCategories,
     publicidadCategories,
-    refreshPublicidadCategories,
     config,
     postsLoading,
     postsHasMore,
@@ -365,33 +365,11 @@ function HomePageContent() {
   const [selectedPostModal, setSelectedPostModal] = useState<Post | null>(null)
 
   useEffect(() => {
-    void refreshPublicidadCategories()
     let cancelled = false
-    fetch('/api/publicidad/activos')
-      .then(async (res) => {
-        if (!res.ok) return []
-        const data = (await res.json().catch(() => [])) as unknown
-        if (!Array.isArray(data)) return []
-        return data as Record<string, unknown>[]
-      })
-      .then((rows) => {
-        if (cancelled) return
-        const mapped: PublicidadDisplay[] = rows.map((r) => ({
-          id: String(r.id ?? ''),
-          title: String(r.title ?? ''),
-          description: String(r.description ?? ''),
-          category: String(r.category ?? ''),
-          createdAt: new Date(
-            typeof r.createdAt === 'string' || typeof r.createdAt === 'number' ? r.createdAt : Date.now()
-          ),
-          imageUrl: typeof r.imageUrl === 'string' ? r.imageUrl : undefined,
-          images: Array.isArray(r.images)
-            ? (r.images as unknown[]).filter((x): x is string => typeof x === 'string')
-            : undefined,
-          whatsappUrl: typeof r.whatsappUrl === 'string' ? r.whatsappUrl : undefined,
-          instagramUrl: typeof r.instagramUrl === 'string' ? r.instagramUrl : undefined,
-        }))
-        setFeedPublicidades(mapped)
+    setFeedPubLoading(true)
+    void fetchFeedPublicidadAds()
+      .then((mapped) => {
+        if (!cancelled) setFeedPublicidades(mapped)
       })
       .catch(() => {
         if (!cancelled) setFeedPublicidades([])
@@ -402,7 +380,7 @@ function HomePageContent() {
     return () => {
       cancelled = true
     }
-  }, [refreshPublicidadCategories])
+  }, [])
 
   const [avatarDismissed, setAvatarDismissed] = useState(false)
   const [uploading, setUploading] = useState(false)
