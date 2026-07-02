@@ -9,7 +9,7 @@ import {
 import { storageImmutableUploadOptions } from '@/lib/storage-upload-options'
 
 /** Lado mayor de miniaturas para feed, tarjetas y avatares en listas. */
-export const THUMB_MAX_WIDTH_OR_HEIGHT = 480
+export const THUMB_MAX_WIDTH_OR_HEIGHT = 720
 
 export const THUMB_SUFFIX = '_thumb.webp'
 
@@ -68,8 +68,8 @@ export async function generateImageThumbnail(file: File): Promise<File> {
 		return await imageCompression(file, {
 			fileType: 'image/webp',
 			maxWidthOrHeight: THUMB_MAX_WIDTH_OR_HEIGHT,
-			maxSizeMB: 0.3,
-			initialQuality: 0.78,
+			maxSizeMB: 0.5,
+			initialQuality: 0.85,
 			useWebWorker: true,
 		})
 	} catch {

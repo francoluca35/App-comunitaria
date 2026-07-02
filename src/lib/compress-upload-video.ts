@@ -186,14 +186,12 @@ async function transcodeAttempt(file: File, attempt: Attempt): Promise<File> {
 }
 
 const COMPRESSION_ATTEMPTS: Attempt[] = [
-	{ maxSide: 540, fps: 18, bitrateScale: 1 },
-	{ maxSide: 480, fps: 16, bitrateScale: 0.85 },
-	{ maxSide: 420, fps: 15, bitrateScale: 0.72 },
-	{ maxSide: 360, fps: 12, bitrateScale: 0.58 },
-	{ maxSide: 320, fps: 12, bitrateScale: 0.48 },
-	{ maxSide: 280, fps: 10, bitrateScale: 0.38 },
-	{ maxSide: 240, fps: 8, bitrateScale: 0.3 },
-	{ maxSide: 200, fps: 6, bitrateScale: 0.24 },
+	{ maxSide: 720, fps: 24, bitrateScale: 1 },
+	{ maxSide: 640, fps: 24, bitrateScale: 0.85 },
+	{ maxSide: 540, fps: 20, bitrateScale: 0.72 },
+	{ maxSide: 480, fps: 18, bitrateScale: 0.58 },
+	{ maxSide: 420, fps: 15, bitrateScale: 0.48 },
+	{ maxSide: 360, fps: 12, bitrateScale: 0.38 },
 ]
 
 export async function compressVideoForCommunityUpload(file: File): Promise<File> {

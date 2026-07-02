@@ -9,7 +9,7 @@ import { MEDIA_UPLOAD_LIMITS, assertStoredMediaLimit } from '@/lib/media-upload-
  * No usar Supabase /render/image/ al mostrar: la compresión al subir reemplaza las transformaciones en servidor.
  *
  * - Máximo ~2048 px en el lado mayor (suficiente para pantallas y zoom).
- * - Tamaño objetivo por archivo <= 1.5 MB (itera calidad/dimensiones dentro de la librería).
+ * - Tamaño objetivo por archivo <= 3 MB (itera calidad/dimensiones dentro de la librería).
  * - Web Worker: no bloquea el hilo principal tanto como el canvas inline.
  * - SVG y GIF no se tocan (vectorial / animación).
  */
@@ -86,7 +86,7 @@ export async function compressImageForVentaUpload(file: File): Promise<File> {
   }
 }
 
-/** Avatares: recorte cuadrado + compresión hasta ≤ 1.5 MB (entrada hasta 5 MB). */
+/** Avatares: recorte cuadrado + compresión hasta el límite de storage (entrada hasta 5 MB). */
 export async function compressAvatarForUpload(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) return file
   if (file.size > MEDIA_UPLOAD_LIMITS.maxImageInputBytes) {

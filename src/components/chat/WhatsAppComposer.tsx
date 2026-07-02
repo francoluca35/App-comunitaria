@@ -254,7 +254,7 @@ export function WhatsAppComposer({
 		try {
 			assertChatAudioUploadLimit(blob)
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : `El audio debe pesar ${MEDIA_UPLOAD_LIMITS.maxStoredMbLabel} o menos`)
+			toast.error(err instanceof Error ? err.message : `El audio debe pesar ${MEDIA_UPLOAD_LIMITS.maxAudioStoredMbLabel} o menos`)
 			return
 		}
 

@@ -1,5 +1,5 @@
 export const MEDIA_UPLOAD_LIMITS = {
-	maxStoredBytes: 1.5 * 1024 * 1024,
+	maxStoredBytes: 3 * 1024 * 1024,
 	maxImageInputBytes: 5 * 1024 * 1024,
 	maxVideoInputBytes: 50 * 1024 * 1024,
 	maxAudioStoredBytes: 1.5 * 1024 * 1024,
@@ -7,7 +7,8 @@ export const MEDIA_UPLOAD_LIMITS = {
 	ventaMaxStoredBytes: 1 * 1024 * 1024,
 	/** ~24 kbps × duración; margen para que el blob grabado no supere 1.5 MB. */
 	maxAudioDurationMs: 4 * 60 * 1000,
-	maxStoredMbLabel: '1.5 MB',
+	maxStoredMbLabel: '3 MB',
+	maxAudioStoredMbLabel: '1.5 MB',
 	maxImageInputMbLabel: '5 MB',
 	maxVideoInputMbLabel: '50 MB',
 	ventaMaxStoredMbLabel: '1 MB',

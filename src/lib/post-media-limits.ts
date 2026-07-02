@@ -19,7 +19,7 @@ export const POST_MEDIA_LIMITS = {
   /** Tamaño máximo por archivo de imagen antes de comprimir (MB). */
   maxImageMbPerFile: MEDIA_UPLOAD_LIMITS.maxImageInputBytes / (1024 * 1024),
   maxVideosPerPost: 2,
-  /** Tamaño máximo de video antes de comprimir; el archivo final debe quedar <= 1.5 MB. */
+  /** Tamaño máximo de video antes de comprimir; el archivo final debe quedar <= maxStoredMbPerFile. */
   maxVideoMbPerFile: MEDIA_UPLOAD_LIMITS.maxVideoInputBytes / (1024 * 1024),
   maxStoredMbPerFile: MEDIA_UPLOAD_LIMITS.maxStoredBytes / (1024 * 1024),
 } as const

@@ -6,6 +6,6 @@ import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
  */
 export function assertChatAudioUploadLimit(blob: Blob): void {
 	if (blob.size > MEDIA_UPLOAD_LIMITS.maxAudioStoredBytes) {
-		throw new Error(`El audio debe pesar ${MEDIA_UPLOAD_LIMITS.maxStoredMbLabel} o menos`)
+		throw new Error(`El audio debe pesar ${MEDIA_UPLOAD_LIMITS.maxAudioStoredMbLabel} o menos`)
 	}
 }
