@@ -22,7 +22,7 @@ import {
 export default function AdminDashboardPage() {
   const router = useRouter()
   const { currentUser, posts, adminUsersTotal, adminBlockedUsersTotal, recentRegistrations } = useApp()
-  const onlineCount = useOnlinePresenceCount()
+  const onlineCount = useOnlinePresenceCount(Boolean(currentUser?.isAdmin))
 
   if (!currentUser?.isAdmin) {
     return (
