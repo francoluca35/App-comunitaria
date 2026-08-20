@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useApp } from '@/app/providers'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { useOnlinePresenceCount } from '@/hooks/useOnlinePresenceCount'
 import {
   Clock,
   CheckCircle,
@@ -21,6 +22,7 @@ import {
 export default function AdminDashboardPage() {
   const router = useRouter()
   const { currentUser, posts, adminUsersTotal, adminBlockedUsersTotal, recentRegistrations } = useApp()
+  const onlineCount = useOnlinePresenceCount()
 
   if (!currentUser?.isAdmin) {
     return (
@@ -94,6 +96,13 @@ export default function AdminDashboardPage() {
             <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-0.5">Usuarios</p>
               <p className="text-3xl font-bold text-slate-900 dark:text-white">{adminUsersTotal}</p>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 col-span-2 sm:col-span-1">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-0.5 flex items-center gap-1.5">
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                Conectados ahora
+              </p>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{onlineCount}</p>
             </div>
           </div>
         </section>

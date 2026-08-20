@@ -7,6 +7,7 @@ import { AppUpdatePrompt } from '@/components/AppUpdatePrompt'
 import { MobileNotificationsOncePrompt } from '@/components/MobileNotificationsOncePrompt'
 import { PwaInstallPrompt } from '@/components/PwaInstallPrompt'
 import { PushEnrollmentBanner } from '@/components/PushEnrollmentBanner'
+import { OnlinePresenceTracker } from '@/components/OnlinePresenceTracker'
 import { RealtimeNotificationSubscriptions } from '@/components/RealtimeNotificationSubscriptions'
 import { serviceWorkerScriptUrl } from '@/lib/app-version'
 import { AppConfigProvider, useAppConfig } from '@/app/providers/app-config-context'
@@ -63,6 +64,7 @@ function AppChrome() {
       <AppUpdatePrompt />
       <PwaInstallPrompt onOpenChange={setPwaInstallPromptOpen} />
       <PushEnrollmentBanner authLoading={authLoading} userId={currentUser?.id} />
+      <OnlinePresenceTracker />
       <RealtimeNotificationSubscriptions />
       <MobileNotificationsOncePrompt
         gateOpen={!pwaInstallPromptOpen}
