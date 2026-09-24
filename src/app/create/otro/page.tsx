@@ -187,7 +187,7 @@ function CreateOtroForm() {
           imageCount++
         } else {
           if (videoCount >= maxVideosMedia) {
-            toast.error(`Máximo ${maxVideosMedia} video${maxVideosMedia === 1 ? '' : 's'} por publicación`)
+            toast.error(`Máximo ${maxVideosMedia} video${maxVideosMedia > 1 ? 's' : ''} por publicación`)
             continue
           }
           if (f.size > maxVideoMbPerFile * 1024 * 1024) {
@@ -631,7 +631,7 @@ function CreateOtroForm() {
               ) : isAvisoONoticia ? (
                 <>
                   Podés publicar solo con título y texto. Si sumás archivos: como mucho {maxImagesMedia} fotos y{' '}
-                  {maxVideosMedia} video{maxVideosMedia === 1 ? '' : 's'}; alcanza con subir solo fotos, solo un video, o
+                  {maxVideosMedia} video{maxVideosMedia > 1 ? 's' : ''}; alcanza con subir solo fotos, solo un video, o
                   combinar (siempre dentro de esos límites).
                 </>
               ) : (
