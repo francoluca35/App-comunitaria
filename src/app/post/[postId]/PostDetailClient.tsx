@@ -269,17 +269,17 @@ export default function PostDetailClient({ postId }: Props) {
 											<AvatarFallback className="rounded-lg text-xs">{currentUser.name[0]}</AvatarFallback>
 										</Avatar>
 										<div className="flex-1 space-y-1.5">
-											<label className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
-																														<input
-																														type="checkbox"
-																														checked={commentIsIncognito}
-																														onChange={(e) => setCommentIsIncognito(e.target.checked)}
-																														disabled={!currentUser?.incognitoAlias?.trim()}
-																														className="h-3.5 w-3.5 rounded border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
-																														/>
-																														<span>Comentar en incógnito</span>
-																													</label>
-																													< Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
+																		<label className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+																			<input
+																			type="checkbox"
+																			checked={commentIsIncognito}
+																			onChange={(e) => setCommentIsIncognito(e.target.checked)}
+																			disabled={!currentUser?.incognitoAlias?.trim()}
+																			className="h-3.5 w-3.5 rounded border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
+																			/>
+																			<span>Comentar en incógnito</span>
+																		</label>
+<Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
 												<Send className="w-3.5 h-3.5 mr-1.5" />
 												Enviar
 											</Button>

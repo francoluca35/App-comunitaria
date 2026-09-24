@@ -515,7 +515,17 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 															rows={1}
 															className="min-h-[1.7rem] resize-none border-0 bg-transparent px-0 py-0 text-[15px] text-[#1C1E21] placeholder:text-[#65676B] shadow-none focus-visible:ring-0 dark:text-[#E4E6EB] dark:placeholder:text-[#B0B3B8]"
 														/>
-														<div className="mt-1.5 flex items-center gap-2 text-[#65676B] dark:text-[#B0B3B8]">
+																														<label className="flex items-center gap-2 text-[11px] text-[#65676B] dark:text-[#B0B3B8]">
+																															<input
+																															type="checkbox"
+																															checked={commentIsIncognito}
+																															onChange={(e) => setCommentIsIncognito(e.target.checked)}
+																															disabled={!currentUser?.incognitoAlias?.trim()}
+																															className="h-3.5 w-3.5 rounded border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
+																															/>
+																															<span>Comentar en incógnito</span>
+																														</label>
+<div className="mt-1.5 flex items-center gap-2 text-[#65676B] dark:text-[#B0B3B8]">
 															<button
 																type="button"
 																onClick={() => setEmojiPickerOpen(true)}

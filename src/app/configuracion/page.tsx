@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { useApp, type NotificationPreference } from '@/app/providers'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Label } from '@/app/components/ui/label'
 import { Switch } from '@/app/components/ui/switch'
@@ -17,6 +18,7 @@ import { PushBackgroundSetupSection } from '@/components/PushBackgroundSetupSect
 
 export default function ConfiguracionPage() {
   const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const { currentUser, authLoading, setNotificationPreference, refreshUser } = useApp()
   const { theme, setTheme } = useTheme()
   const [notificationSaving, setNotificationSaving] = useState(false)
@@ -126,9 +128,21 @@ export default function ConfiguracionPage() {
                   onClick={async () => {
                     setAliasSaving(true)
                     try {
+                      const {
+                        data: { session },
+                      } = await supabase.auth.getSession()
+
+                      if (!session?.access_token) {
+                        toast.error('No hay sesión activa para guardar el alias')
+                        return
+                      }
+
                       const res = await fetch('/api/profile', {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                          'Content-Type': 'application/json',
+                          Authorization: `Bearer ${session.access_token}`,
+                        },
                         body: JSON.stringify({ incognitoAlias: incognitoAliasDraft.trim() }),
                       })
                       const json = await res.json().catch(() => ({}))
