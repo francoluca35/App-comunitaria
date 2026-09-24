@@ -20,7 +20,6 @@ import { LoginLegalLinks, LoginOAuthTrustNote } from '@/components/login/LoginTr
 import { ArgentinaWhatsAppPhoneField } from '@/components/ArgentinaWhatsAppPhoneField'
 import {
 	buildArgentinaMobileE164,
-	DEFAULT_ARGENTINA_PROVINCE_PREFIX,
 	normalizeArgentinaLocalDigits,
 	validateArgentinaAreaCode,
 	validateArgentinaLocalDigits,
@@ -52,7 +51,7 @@ export default function LoginPage() {
 	const [loginPassword, setLoginPassword] = useState('')
 	const [registerName, setRegisterName] = useState('')
 	const [registerBirthDate, setRegisterBirthDate] = useState('')
-	const [registerPhonePrefix, setRegisterPhonePrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
+	const [registerPhonePrefix, setRegisterPhonePrefix] = useState('')
 	const [registerPhoneLocal, setRegisterPhoneLocal] = useState('')
 	const [registerProvince, setRegisterProvince] = useState('')
 	const [registerLocality, setRegisterLocality] = useState('')

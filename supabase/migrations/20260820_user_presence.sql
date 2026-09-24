@@ -33,3 +33,18 @@ create policy "user_presence_update_own"
 	to authenticated
 	using (auth.uid() = user_id)
 	with check (auth.uid() = user_id);
+
+-- Admins pueden leer el conteo global sin service role.
+drop policy if exists "user_presence_admin_select" on public.user_presence;
+create policy "user_presence_admin_select"
+	on public.user_presence
+	for select
+	to authenticated
+	using (
+		exists (
+			select 1
+			from public.profiles p
+			where p.id = auth.uid()
+				and p.role in ('admin', 'admin_master')
+		)
+	);

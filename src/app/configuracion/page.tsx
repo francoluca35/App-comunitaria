@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Label } from '@/app/components/ui/label'
 import { Switch } from '@/app/components/ui/switch'
 import { DashboardLayout } from '@/components/DashboardLayout'
+import { Button } from '@/app/components/ui/button'
 import { Bell, FileText, Shield, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { showSystemNotification } from '@/lib/notifications'
@@ -16,9 +17,15 @@ import { PushBackgroundSetupSection } from '@/components/PushBackgroundSetupSect
 
 export default function ConfiguracionPage() {
   const router = useRouter()
-  const { currentUser, authLoading, setNotificationPreference } = useApp()
+  const { currentUser, authLoading, setNotificationPreference, refreshUser } = useApp()
   const { theme, setTheme } = useTheme()
   const [notificationSaving, setNotificationSaving] = useState(false)
+  const [aliasSaving, setAliasSaving] = useState(false)
+  const [incognitoAliasDraft, setIncognitoAliasDraft] = useState(currentUser?.incognitoAlias ?? '')
+
+  useEffect(() => {
+    setIncognitoAliasDraft(currentUser?.incognitoAlias ?? '')
+  }, [currentUser?.incognitoAlias])
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -99,6 +106,47 @@ export default function ConfiguracionPage() {
                 ))}
               </div>
               <PushBackgroundSetupSection userId={currentUser.id} />
+            </div>
+            <div className="pt-2 border-t border-slate-200 dark:border-gray-700">
+              <Label className="mb-3 block">Alias para publicaciones anónimas</Label>
+              <p className="text-sm text-slate-500 dark:text-gray-400 mb-3">
+                Este nombre se muestra cuando publicás o comentás en incógnito. No se publica tu foto ni tu nombre real.
+              </p>
+              <div className="space-y-2">
+                <input
+                  value={incognitoAliasDraft}
+                  onChange={(e) => setIncognitoAliasDraft(e.target.value.slice(0, 30))}
+                  placeholder="Ej.: Luna, Mica, Comunidad"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none ring-0 placeholder:text-slate-400 focus:border-[#8B0015] dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={aliasSaving}
+                  onClick={async () => {
+                    setAliasSaving(true)
+                    try {
+                      const res = await fetch('/api/profile', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ incognitoAlias: incognitoAliasDraft.trim() }),
+                      })
+                      const json = await res.json().catch(() => ({}))
+                      if (!res.ok) {
+                        toast.error((json as { error?: string }).error ?? 'No se pudo guardar el alias')
+                        return
+                      }
+                      await refreshUser()
+                      toast.success('Alias guardado')
+                    } finally {
+                      setAliasSaving(false)
+                    }
+                  }}
+                  className="h-9"
+                >
+                  {aliasSaving ? 'Guardando…' : 'Guardar alias'}
+                </Button>
+              </div>
             </div>
             <div className="pt-2 border-t border-slate-200 dark:border-gray-700">
               <Label className="mb-3 block">Legal</Label>

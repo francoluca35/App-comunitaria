@@ -11,8 +11,8 @@ export type PostStatus = 'pending' | 'approved' | 'rejected'
 export type PostReactionType = 'like' | 'love'
 
 export type PostReactionSummary = {
-	like: number
-	love: number
+  like: number
+  love: number
 }
 
 /** Preferencia de notificaciones del usuario */
@@ -32,6 +32,7 @@ export interface User {
   phone?: string
   province?: string
   locality?: string
+  incognitoAlias?: string | null
   notificationPreference?: NotificationPreference | null
 }
 
@@ -75,6 +76,8 @@ export interface Post {
   authorId: string
   authorName: string
   authorAvatar?: string
+  isIncognito?: boolean
+  incognitoAlias?: string | null
   status: PostStatus
   createdAt: Date
   whatsappNumber?: string
@@ -86,6 +89,8 @@ export interface Comment {
   authorId: string
   authorName: string
   authorAvatar?: string
+  isIncognito?: boolean
+  incognitoAlias?: string | null
   text: string
   imageUrl?: string
   likeCount: number
@@ -185,7 +190,12 @@ export interface CommunityContextType {
   comments: Comment[]
   commentCountByPostId: Record<string, number>
   loadCommentsForPost: (postId: string) => Promise<void>
-  addComment: (postId: string, text: string, imageFile?: File | null) => Promise<{ ok: boolean; error?: string }>
+  addComment: (
+    postId: string,
+    text: string,
+    imageFile?: File | null,
+    options?: { isIncognito?: boolean; incognitoAlias?: string | null }
+  ) => Promise<{ ok: boolean; error?: string }>
   deleteComment: (commentId: string) => Promise<{ ok: boolean; error?: string }>
   reportComment: (commentId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>
   toggleCommentLike: (commentId: string) => Promise<{ ok: boolean; error?: string }>

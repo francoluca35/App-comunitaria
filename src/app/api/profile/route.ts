@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 })
   }
 
-  let body: { name?: string; phone?: string; province?: string; locality?: string }
+  let body: { name?: string; phone?: string; province?: string; locality?: string; incognitoAlias?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -35,6 +35,10 @@ export async function PATCH(request: NextRequest) {
   }
   if (body.locality !== undefined) {
     updates.locality = typeof body.locality === 'string' ? body.locality.trim() || null : null
+  }
+  if (body.incognitoAlias !== undefined) {
+    const alias = typeof body.incognitoAlias === 'string' ? body.incognitoAlias.trim() : ''
+    updates.incognito_alias = alias || null
   }
 
   if (Object.keys(updates).length === 0) {

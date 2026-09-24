@@ -11,6 +11,7 @@ create table if not exists public.profiles (
   email text not null,
   name text,
   avatar_url text,
+  incognito_alias text,
   role text not null default 'viewer' check (role in ('viewer', 'moderator', 'admin', 'admin_master')),
   status text not null default 'active' check (status in ('active', 'blocked')),
   created_at timestamptz not null default now(),
@@ -56,6 +57,8 @@ create table if not exists public.posts (
   proposed_category_label text,
   sale_subcategory text,
   sale_price text,
+  is_incognito boolean not null default false,
+  incognito_alias text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   whatsapp_number text,
   created_at timestamptz not null default now(),
@@ -89,6 +92,8 @@ create table if not exists public.comments (
   author_id uuid not null references public.profiles(id) on delete cascade,
   text text not null,
   image_url text,
+  is_incognito boolean not null default false,
+  incognito_alias text,
   created_at timestamptz not null default now()
 );
 

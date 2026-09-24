@@ -44,6 +44,7 @@ export default function PostDetailClient({ postId }: Props) {
 	const [commentText, setCommentText] = useState('')
 	const [hydrateDone, setHydrateDone] = useState(false)
 	const [commentsLoading, setCommentsLoading] = useState(false)
+	const [commentIsIncognito, setCommentIsIncognito] = useState(false)
 
 	const post = posts.find((p) => p.id === postId)
 	const postComments = comments.filter((c) => c.postId === postId)
@@ -103,12 +104,16 @@ export default function PostDetailClient({ postId }: Props) {
 			toast.error('Escribí un comentario')
 			return
 		}
-		const result = await addComment(post.id, commentText)
+		const result = await addComment(post.id, commentText, null, {
+			isIncognito: commentIsIncognito,
+			incognitoAlias: currentUser.incognitoAlias ?? null,
+		})
 		if (!result.ok) {
 			toast.error(result.error ?? 'No se pudo publicar')
 			return
 		}
 		setCommentText('')
+		setCommentIsIncognito(false)
 		toast.success('Comentario agregado')
 	}
 
@@ -264,14 +269,17 @@ export default function PostDetailClient({ postId }: Props) {
 											<AvatarFallback className="rounded-lg text-xs">{currentUser.name[0]}</AvatarFallback>
 										</Avatar>
 										<div className="flex-1 space-y-1.5">
-											<Textarea
-												placeholder="Escribí un comentario…"
-												value={commentText}
-												onChange={(e) => setCommentText(e.target.value)}
-												rows={2}
-												className="min-h-0 resize-none rounded-lg border-slate-200 dark:border-gray-700 text-sm py-2"
-											/>
-											<Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
+											<label className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+																														<input
+																														type="checkbox"
+																														checked={commentIsIncognito}
+																														onChange={(e) => setCommentIsIncognito(e.target.checked)}
+																														disabled={!currentUser?.incognitoAlias?.trim()}
+																														className="h-3.5 w-3.5 rounded border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
+																														/>
+																														<span>Comentar en incógnito</span>
+																													</label>
+																													< Button type="submit" size="sm" className="h-8 rounded-lg text-xs">
 												<Send className="w-3.5 h-3.5 mr-1.5" />
 												Enviar
 											</Button>

@@ -13,6 +13,7 @@ export interface ProfileFromApi {
   phone?: string | null
   province?: string | null
   locality?: string | null
+  incognito_alias?: string | null
   /** Preferencia de notificaciones: 'all' | 'custom' | 'messages_only'. Null = aún no eligió. */
   notification_preference?: string | null
 }
@@ -52,21 +53,21 @@ export async function getSessionSafe(
  * Evita una invocación de función en Vercel por cada carga de sesión.
  */
 export async function fetchProfileFromSupabase(
-	supabase: SupabaseClient,
-	userId: string
+  supabase: SupabaseClient,
+  userId: string
 ): Promise<ProfileFromApi | null> {
-	try {
-		const selectCols =
-			'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, notification_preference'
-		const { data, error } = await supabase.from('profiles').select(selectCols).eq('id', userId).single()
-		if (error) {
-			if (error.code === 'PGRST116') return null
-			return null
-		}
-		return data as ProfileFromApi
-	} catch {
-		return null
-	}
+  try {
+    const selectCols =
+      'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, incognito_alias, notification_preference'
+    const { data, error } = await supabase.from('profiles').select(selectCols).eq('id', userId).single()
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      return null
+    }
+    return data as ProfileFromApi
+  } catch {
+    return null
+  }
 }
 
 /**

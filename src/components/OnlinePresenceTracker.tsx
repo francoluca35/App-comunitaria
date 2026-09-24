@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { ONLINE_PRESENCE_HEARTBEAT_MS } from '@/lib/online-presence'
 
 /**
- * Envía heartbeats periódicos para alimentar el conteo global de conectados (admin).
+ * Registra presencia global en `user_presence` (Supabase) para el conteo del admin.
+ * Escribe directo al bucket con RLS (sin depender solo del API route).
  */
 export function OnlinePresenceTracker() {
 	const { currentUser } = useAuth()
@@ -14,21 +15,31 @@ export function OnlinePresenceTracker() {
 
 	const sendHeartbeat = useCallback(async () => {
 		if (!currentUser?.id || inFlightRef.current) return
-		if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
 
 		inFlightRef.current = true
 		try {
 			const supabase = createClient()
-			const {
-				data: { session },
-			} = await supabase.auth.getSession()
-			const token = session?.access_token
-			if (!token) return
+			const userId = currentUser.id
+			const now = new Date().toISOString()
 
-			await fetch('/api/presence/heartbeat', {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${token}` },
-			})
+			const { error } = await supabase.from('user_presence').upsert(
+				{ user_id: userId, last_seen_at: now },
+				{ onConflict: 'user_id' }
+			)
+
+			// Fallback si el cliente no puede escribir (RLS / schema cache): API con service role.
+			if (error) {
+				const {
+					data: { session },
+				} = await supabase.auth.getSession()
+				const token = session?.access_token
+				if (!token) return
+				await fetch('/api/presence/heartbeat', {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}` },
+					keepalive: true,
+				})
+			}
 		} catch {
 			// Silencioso: el admin verá un conteo menor hasta el próximo heartbeat.
 		} finally {

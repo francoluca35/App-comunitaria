@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useApp, type PostMediaItem } from '@/app/providers'
 import { uploadVentaImage } from '@/lib/upload-venta-image'
 import { MEDIA_UPLOAD_LIMITS } from '@/lib/media-upload-limits'
+import { USER_TEXT_MAX_LENGTH, isUserTextTooLong, userTextTooLongMessage } from '@/lib/text-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
@@ -81,6 +82,10 @@ export default function CreateVentaPage() {
 		}
 		if (!desc) {
 			toast.error('Completá la descripción')
+			return
+		}
+		if (isUserTextTooLong(desc)) {
+			toast.error(userTextTooLongMessage())
 			return
 		}
 		if (!pr) {
@@ -200,9 +205,12 @@ export default function CreateVentaPage() {
 							onChange={(e) => setDescription(e.target.value)}
 							placeholder="Estado, marca, zona de retiro, formas de pago…"
 							rows={5}
-							maxLength={1200}
+							maxLength={USER_TEXT_MAX_LENGTH}
 							className="min-h-[120px] resize-y"
 						/>
+						<p className="text-xs text-slate-500 dark:text-slate-400">
+							{description.length}/{USER_TEXT_MAX_LENGTH} caracteres
+						</p>
 					</div>
 
 					<div className="space-y-2">

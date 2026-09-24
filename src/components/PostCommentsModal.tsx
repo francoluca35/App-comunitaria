@@ -198,6 +198,7 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 	const [commentText, setCommentText] = useState('')
 	const [commentsLoading, setCommentsLoading] = useState(false)
 	const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null)
+	const [commentIsIncognito, setCommentIsIncognito] = useState(false)
 	const [commentImageFile, setCommentImageFile] = useState<File | null>(null)
 	const [commentImagePreviewUrl, setCommentImagePreviewUrl] = useState<string | null>(null)
 	const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
@@ -310,17 +311,21 @@ export function PostCommentsModal({ post, onClose }: PostCommentsModalProps) {
 				toast.error('Escribí un comentario o agregá una imagen')
 				return
 			}
-			const result = await addComment(post.id, commentText, commentImageFile)
+			const result = await addComment(post.id, commentText, commentImageFile, {
+				isIncognito: commentIsIncognito,
+				incognitoAlias: currentUser.incognitoAlias ?? null,
+			})
 			if (!result.ok) {
 				toast.error(result.error ?? 'No se pudo publicar')
 				return
 			}
 			setCommentText('')
 			setReplyingToCommentId(null)
+			setCommentIsIncognito(false)
 			clearCommentImage()
 			toast.success('Comentario agregado')
 		},
-		[post, currentUser, commentText, commentImageFile, addComment, clearCommentImage]
+		[post, currentUser, commentText, commentImageFile, commentIsIncognito, addComment, clearCommentImage]
 	)
 
 	const handleShare = useCallback(async () => {

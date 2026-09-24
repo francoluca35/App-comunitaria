@@ -37,11 +37,12 @@ export async function GET(request: NextRequest) {
       phone?: string | null
       province?: string | null
       locality?: string | null
+      incognito_alias?: string | null
       notification_preference?: string | null
     }
     let profile: ProfileRow | null = null
     let selectError: { message: string; code?: string } | null = null
-    const selectCols = 'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, notification_preference'
+    const selectCols = 'id, email, name, avatar_url, role, status, suspended_until, phone, province, locality, incognito_alias, notification_preference'
 
     const { data, error } = await supabase
       .from('profiles')

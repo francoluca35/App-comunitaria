@@ -12,6 +12,7 @@ export function profileToUser(profile: {
   phone?: string | null
   province?: string | null
   locality?: string | null
+  incognito_alias?: string | null
   notification_preference?: string | null
 }): User {
   const pref = profile.notification_preference
@@ -28,6 +29,7 @@ export function profileToUser(profile: {
     phone: profile.phone ?? undefined,
     province: profile.province ?? undefined,
     locality: profile.locality ?? undefined,
+    incognitoAlias: profile.incognito_alias ?? null,
     notificationPreference: pref === 'custom' || pref === 'messages_only' ? pref : 'all',
   }
 }

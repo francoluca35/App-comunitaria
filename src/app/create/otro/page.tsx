@@ -9,6 +9,13 @@ import {
   type LocalAttachment,
 } from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
+import {
+  USER_TEXT_MAX_LENGTH,
+  isUserTextTooLong,
+  userTextTooLongMessage,
+  isNewsTextTooLong,
+  newsTextTooLongMessage,
+} from '@/lib/text-limits'
 import { cn } from '@/app/components/ui/utils'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
@@ -98,6 +105,7 @@ function CreateOtroForm() {
   const [whatsappPrefix, setWhatsappPrefix] = useState(DEFAULT_ARGENTINA_PROVINCE_PREFIX)
   const [whatsappLocal, setWhatsappLocal] = useState('')
   const [attachmentFiles, setAttachmentFiles] = useState<LocalAttachment[]>([])
+  const [postIsIncognito, setPostIsIncognito] = useState(false)
   const [sending, setSending] = useState(false)
   const {
     includeMarioPrefix,
@@ -152,6 +160,16 @@ function CreateOtroForm() {
       for (const f of list) {
         const isImg = f.type.startsWith('image/') || /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(f.name)
         const isVid = isAllowedPostVideoFile(f)
+        if (isNoticias) {
+          if (isVid) {
+            toast.error('En Noticias solo podés subir una foto, no videos')
+            continue
+          }
+          if (imageCount >= maxImagesMedia) {
+            toast.error('En Noticias solo podés subir una foto')
+            continue
+          }
+        }
         if (!isImg && !isVid) {
           toast.error(`${f.name}: solo fotos o videos (p. ej. MP4, MOV, WebM)`)
           continue
@@ -271,6 +289,21 @@ function CreateOtroForm() {
       { includePrefix: includeMarioPrefix }
     )
 
+    if (isNoticias && isNewsTextTooLong(descriptionToSend)) {
+      toast.error(newsTextTooLongMessage())
+      return
+    }
+
+    if (!isNoticias && isUserTextTooLong(descriptionToSend)) {
+      toast.error(userTextTooLongMessage())
+      return
+    }
+
+    if (isNoticias && videoAttachmentCount > 0) {
+      toast.error('En Noticias no se permiten videos')
+      return
+    }
+
     setSending(true)
     try {
       let media: PostMediaItem[] = []
@@ -289,6 +322,8 @@ function CreateOtroForm() {
         category,
         media,
         whatsappNumber: waE164 ?? undefined,
+        isIncognito: postIsIncognito,
+        incognitoAlias: currentUser.incognitoAlias ?? null,
       })
       if (!result.ok) {
         toast.error(result.error ?? 'Error al enviar')
@@ -359,6 +394,26 @@ function CreateOtroForm() {
             <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200">
               {categoryLabel}
             </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+            <label className="flex items-start justify-between gap-3 cursor-pointer">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Publicar en incógnito</p>
+                <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  {currentUser.incognitoAlias?.trim()
+                    ? `Se mostrará tu alias “${currentUser.incognitoAlias.trim()}” y no se publicará tu foto ni tu nombre real.`
+                    : 'Definí un alias fijo en Configuración para poder publicar anónimamente.'}
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={postIsIncognito}
+                onChange={(e) => setPostIsIncognito(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#8B0015] focus:ring-[#8B0015]"
+                disabled={!currentUser.incognitoAlias?.trim()}
+              />
+            </label>
           </div>
 
           {isObjetos && (
@@ -478,7 +533,7 @@ function CreateOtroForm() {
                 allowPrefixToggle={canToggleMarioPrefix}
                 onIncludePrefixChange={setIncludeMarioPrefix}
                 placeholder="Si querés agregar un detalle extra, escribilo acá…"
-                maxTotalLength={1000}
+                maxTotalLength={USER_TEXT_MAX_LENGTH}
                 rows={4}
                 textareaClassName="min-h-[96px] flex-1 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 className="space-y-2"
@@ -522,11 +577,16 @@ function CreateOtroForm() {
                     ? 'Contá los detalles que quieras compartir con el barrio…'
                     : 'Describe tu publicación con el mayor detalle posible…'
                 }
-                maxTotalLength={1000}
+                maxTotalLength={USER_TEXT_MAX_LENGTH}
                 rows={isAvisoONoticia ? 5 : 6}
                 textareaClassName="min-h-[120px] flex-1 resize-none rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                 className="space-y-2"
               />
+              {isNoticias && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Límite: {USER_TEXT_MAX_LENGTH} caracteres en el texto de la noticia.
+                </p>
+              )}
             </>
           )}
 
@@ -544,19 +604,21 @@ function CreateOtroForm() {
 
           <div className="space-y-2">
             <Label>
-              Fotos y/o videos{' '}
-              {isAvisoONoticia ? (
-                <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
-              ) : (
-                '(opcional)'
-              )}
               {isNoticias ? (
                 <>
+                  Foto{' '}
+                  <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
                   {' '}
-                  · hasta {maxImagesMedia} fotos y {maxVideosMedia} video
+                  · 1 imagen
                 </>
               ) : (
                 <>
+                  Fotos y/o videos{' '}
+                  {isAvisoONoticia ? (
+                    <span className="font-normal text-slate-500 dark:text-slate-400">(opcional)</span>
+                  ) : (
+                    '(opcional)'
+                  )}
                   {' '}
                   · hasta {maxImagesMedia} fotos ({POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u) y hasta {maxVideosMedia}{' '}
                   videos
@@ -564,7 +626,9 @@ function CreateOtroForm() {
               )}
             </Label>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              {isAvisoONoticia ? (
+              {isNoticias ? (
+                <>Publicá con título y texto. Podés sumar una sola foto (sin videos).</>
+              ) : isAvisoONoticia ? (
                 <>
                   Podés publicar solo con título y texto. Si sumás archivos: como mucho {maxImagesMedia} fotos y{' '}
                   {maxVideosMedia} video{maxVideosMedia === 1 ? '' : 's'}; alcanza con subir solo fotos, solo un video, o
@@ -611,16 +675,25 @@ function CreateOtroForm() {
               <label className="block border-2 border-dashed border-slate-300 dark:border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-[#8B0015] dark:hover:border-[#8B0015] transition-colors">
                 <input
                   type="file"
-                  accept="image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2"
-                  multiple
+                  accept={isNoticias ? 'image/*' : 'image/*,video/*,.mp4,.mov,.webm,.m4v,.3gp,.3g2'}
+                  multiple={!isNoticias}
                   className="hidden"
                   onChange={handleAttachmentChange}
                 />
                 <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600 dark:text-gray-400">
-                  {imageAttachmentCount}/{maxImagesMedia} fotos · {videoAttachmentCount}/{maxVideosMedia} videos · fotos hasta{' '}
-                  {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u y videos hasta {POST_MEDIA_LIMITS.maxVideoMbPerFile} MB c/u;
-                  al subir se optimizan a {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
+                  {isNoticias ? (
+                    <>
+                      {imageAttachmentCount}/{maxImagesMedia} foto · hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB; al subir
+                      se optimiza a {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
+                    </>
+                  ) : (
+                    <>
+                      {imageAttachmentCount}/{maxImagesMedia} fotos · {videoAttachmentCount}/{maxVideosMedia} videos · fotos
+                      hasta {POST_MEDIA_LIMITS.maxImageMbPerFile} MB c/u y videos hasta {POST_MEDIA_LIMITS.maxVideoMbPerFile}{' '}
+                      MB c/u; al subir se optimizan a {POST_MEDIA_LIMITS.maxStoredMbPerFile} MB o menos.
+                    </>
+                  )}
                 </p>
               </label>
             )}

@@ -796,6 +796,22 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      if (post.category === 'noticias' && post.description.trim().length > 500) {
+        return {
+          ok: false,
+          error: 'La noticia no puede superar 500 caracteres.',
+        }
+      }
+
+      const isIncognito = Boolean(post.isIncognito)
+      const incognitoAlias = isIncognito ? (post.incognitoAlias ?? u.incognitoAlias ?? '').trim() : ''
+      if (isIncognito && !incognitoAlias) {
+        return {
+          ok: false,
+          error: 'Definí un alias fijo en tu perfil o escribilo para publicar en incógnito.',
+        }
+      }
+
       const isProposedCategory = post.category === 'propuesta' && Boolean(post.proposedCategoryLabel?.trim())
       const isVenta = post.category === 'venta'
       const status: PostStatus =
@@ -810,6 +826,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
             description: post.description.trim(),
             category: post.category,
             status,
+            is_incognito: isIncognito,
+            incognito_alias: isIncognito ? incognitoAlias : null,
             whatsapp_number: post.whatsappNumber?.trim() || null,
             proposed_category_label: post.proposedCategoryLabel?.trim() || null,
             sale_subcategory: post.saleSubcategory?.trim() || null,
@@ -856,8 +874,10 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           ...post,
           id: data.id,
           authorId: u.id,
-          authorName: u.name,
-          authorAvatar: u.avatar,
+          authorName: isIncognito ? (incognitoAlias || 'Anónimo') : u.name,
+          authorAvatar: isIncognito ? undefined : u.avatar,
+          isIncognito,
+          incognitoAlias: isIncognito ? incognitoAlias : undefined,
           status,
           createdAt: new Date(data.created_at),
           media: mediaItems,
@@ -1031,7 +1051,12 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
   )
 
   const addComment = useCallback(
-    async (postId: string, text: string, imageFile?: File | null): Promise<{ ok: boolean; error?: string }> => {
+    async (
+      postId: string,
+      text: string,
+      imageFile?: File | null,
+      options?: { isIncognito?: boolean; incognitoAlias?: string | null }
+    ): Promise<{ ok: boolean; error?: string }> => {
       const u = currentUserRef.current
       const cfg = configRef.current
       if (!u || !cfg.commentsEnabled) return { ok: false, error: 'Comentarios deshabilitados' }
@@ -1040,6 +1065,13 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
       }
       const trimmed = text.trim()
       if (!trimmed && !imageFile) return { ok: false, error: 'Escribí un comentario o agregá una imagen' }
+
+      const isIncognito = Boolean(options?.isIncognito)
+      const incognitoAlias = isIncognito ? (options?.incognitoAlias ?? u.incognitoAlias ?? '').trim() : ''
+      if (isIncognito && !incognitoAlias) {
+        return { ok: false, error: 'Definí un alias fijo para comentar en incógnito.' }
+      }
+
       let imageUrl: string | null = null
       if (imageFile) {
         try {
@@ -1060,6 +1092,8 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
           author_id: u.id,
           text: trimmed || '',
           image_url: imageUrl,
+          is_incognito: isIncognito,
+          incognito_alias: isIncognito ? incognitoAlias : null,
         })
         .select('id, post_id, author_id, text, image_url, created_at, profiles!comments_author_id_fkey(name, avatar_url)')
         .single()
@@ -1102,10 +1136,12 @@ export function CommunityProvider({ children }: { children: ReactNode }) {
         id: String(r.id),
         postId: String(r.post_id),
         authorId: String(r.author_id),
-        authorName: profile?.name?.trim() || u.name,
-        authorAvatar: profile?.avatar_url
+        authorName: isIncognito ? (incognitoAlias || 'Anónimo') : (profile?.name?.trim() || u.name),
+        authorAvatar: isIncognito ? undefined : profile?.avatar_url
           ? ensureStorageObjectPublicUrl(profile.avatar_url)
           : u.avatar,
+        isIncognito,
+        incognitoAlias: isIncognito ? incognitoAlias : undefined,
         text: r.text,
         imageUrl: r.image_url ? ensureStorageObjectPublicUrl(r.image_url) : undefined,
         likeCount: 0,

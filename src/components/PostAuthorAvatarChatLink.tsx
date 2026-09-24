@@ -11,6 +11,7 @@ type PostAuthorAvatarChatLinkProps = {
 	authorId: string
 	authorName: string
 	authorAvatar?: string
+	isIncognito?: boolean
 	className?: string
 	fallbackClassName?: string
 	onNavigate?: () => void
@@ -20,23 +21,24 @@ export function PostAuthorAvatarChatLink({
 	authorId,
 	authorName,
 	authorAvatar,
+	isIncognito,
 	className,
 	fallbackClassName,
 	onNavigate,
 }: PostAuthorAvatarChatLinkProps) {
 	const { currentUser } = useApp()
-	const canChat = canOpenAuthorChatFromPost(currentUser, authorId)
+	const canChat = !isIncognito && canOpenAuthorChatFromPost(currentUser, authorId)
 
 	const avatar = (
 		<Avatar className={className}>
-			<AvatarImage src={authorAvatar} alt={authorName} />
+			{authorAvatar ? <AvatarImage src={authorAvatar} alt={authorName} /> : null}
 			<AvatarFallback
 				className={cn(
 					'bg-[#E8E4E0] text-sm font-semibold text-[#2B2B2B]',
 					fallbackClassName
 				)}
 			>
-				{authorName[0]?.toUpperCase() ?? '?'}
+				{isIncognito ? 'A' : (authorName[0]?.toUpperCase() ?? '?')}
 			</AvatarFallback>
 		</Avatar>
 	)

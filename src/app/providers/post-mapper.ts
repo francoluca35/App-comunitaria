@@ -30,7 +30,7 @@ export function dedupePostsById(posts: Post[]): Post[] {
 export const POSTS_FEED_PAGE_SIZE = 20
 
 export const POSTS_SELECT =
-  'id, title, description, category, proposed_category_label, sale_subcategory, sale_price, status, whatsapp_number, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
+  'id, title, description, category, proposed_category_label, sale_subcategory, sale_price, status, whatsapp_number, is_incognito, incognito_alias, created_at, author_id, profiles(name, avatar_url), post_media(url, position, type)'
 
 export type SupabasePostRow = {
   id: string
@@ -42,6 +42,8 @@ export type SupabasePostRow = {
   sale_price: string | null
   status: string
   whatsapp_number: string | null
+  is_incognito?: boolean | null
+  incognito_alias?: string | null
   created_at: string
   author_id: string
   profiles?: { name: string | null; avatar_url: string | null } | { name: string | null; avatar_url: string | null }[] | null
@@ -51,6 +53,9 @@ export type SupabasePostRow = {
 export function mapSupabasePostRow(row: SupabasePostRow): Post {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
   const media = normalizePostMediaRows(row.post_media)
+  const isIncognito = Boolean(row.is_incognito)
+  const incognitoAlias = (row.incognito_alias ?? '').trim() || null
+  const authorName = isIncognito ? (incognitoAlias ?? 'Anónimo') : (profile?.name ?? row.author_id.slice(0, 8))
   return {
     id: row.id,
     title: row.title,
@@ -61,8 +66,10 @@ export function mapSupabasePostRow(row: SupabasePostRow): Post {
     salePrice: row.sale_price ?? undefined,
     media,
     authorId: row.author_id,
-    authorName: profile?.name ?? row.author_id.slice(0, 8),
-    authorAvatar: profile?.avatar_url ? ensureStorageObjectPublicUrl(profile.avatar_url) : undefined,
+    authorName,
+    authorAvatar: isIncognito ? undefined : profile?.avatar_url ? ensureStorageObjectPublicUrl(profile.avatar_url) : undefined,
+    isIncognito,
+    incognitoAlias,
     status: row.status as PostStatus,
     createdAt: new Date(row.created_at),
     whatsappNumber: row.whatsapp_number ?? undefined,

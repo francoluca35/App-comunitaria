@@ -9,6 +9,7 @@ import {
 	type LocalAttachment,
 } from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
+import { USER_TEXT_MAX_LENGTH } from '@/lib/text-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
@@ -287,7 +288,7 @@ export default function CreateExtravioPage() {
 						allowPrefixToggle={canToggleMarioPrefix}
 						onIncludePrefixChange={setIncludeMarioPrefix}
 						placeholder="Datos para reconocer a la persona, última vez vista, teléfono de contacto, pedido de difusión."
-						maxTotalLength={2000}
+						maxTotalLength={USER_TEXT_MAX_LENGTH}
 						rows={6}
 						textareaClassName="min-h-[140px] flex-1 resize-y rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
 						className="space-y-2 [&_p]:text-[#7A5C52]"

@@ -13,9 +13,9 @@ export const POST_MEDIA_LIMITS = {
   /** Alertas (crear/alerta): máximo de fotos y de videos. */
   maxImagesAlertas: 3,
   maxVideosAlertas: 2,
-  /** Noticias (crear/otro?categoria=noticias): máximo de fotos y de videos. */
-  maxImagesNoticias: 2,
-  maxVideosNoticias: 1,
+  /** Noticias (crear/otro?categoria=noticias): una sola foto, sin videos. */
+  maxImagesNoticias: 1,
+  maxVideosNoticias: 0,
   /** Tamaño máximo por archivo de imagen antes de comprimir (MB). */
   maxImageMbPerFile: MEDIA_UPLOAD_LIMITS.maxImageInputBytes / (1024 * 1024),
   maxVideosPerPost: 2,

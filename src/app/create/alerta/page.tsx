@@ -9,6 +9,7 @@ import {
   type LocalAttachment,
 } from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
+import { USER_TEXT_MAX_LENGTH } from '@/lib/text-limits'
 import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Label } from '@/app/components/ui/label'
@@ -279,7 +280,7 @@ export default function CreateAlertaPage() {
             allowPrefixToggle={canToggleMarioPrefix}
             onIncludePrefixChange={setIncludeMarioPrefix}
             placeholder="Qué pasó, dónde, cuándo y qué hacer o a quién avisar."
-            maxTotalLength={2000}
+            maxTotalLength={USER_TEXT_MAX_LENGTH}
             rows={5}
             textareaClassName="min-h-[120px] flex-1 resize-y rounded-none border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             className="space-y-2 [&_p]:text-[#7A5C52]"

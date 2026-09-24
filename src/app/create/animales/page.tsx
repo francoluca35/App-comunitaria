@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useApp, type PostMediaItem } from '@/app/providers'
 import { uploadLocalPostMedia, type LocalAttachment } from '@/lib/upload-post-media'
 import { POST_MEDIA_LIMITS } from '@/lib/post-media-limits'
+import { isUserTextTooLong, userTextTooLongMessage } from '@/lib/text-limits'
 import {
   buildAnimalesDescription,
   buildAnimalesTitle,
@@ -169,6 +170,11 @@ export default function CreateAnimalesPage() {
       },
       { includePrefix: includeMarioPrefix }
     )
+
+    if (isUserTextTooLong(description)) {
+      toast.error(userTextTooLongMessage())
+      return
+    }
 
     setSending(true)
     try {
